@@ -416,3 +416,8 @@
 .tpw-done { font-size: 14px; color: #065f46; }
 .tpw-done i { color: #059669; }
 .tpw-list { margin: 8px 0 16px; padding-inline-start: 20px; font-size: 13px; color: #374151; line-height: 1.8; }
+
+/* ?q= from the global search: only the matching users, with a way back to all */
+.um-only { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.um-show-all { border: 1px solid currentColor; background: transparent; color: inherit; border-radius: 8px;
+    padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; }

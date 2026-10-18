@@ -1,6 +1,6 @@
 import { useSelector } from "react-redux";
 import React, { lazy } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePermission } from "../hooks/usePermission";
 import { t } from "../i18n";
 import { tx } from "../i18n/tx";
@@ -8,6 +8,14 @@ import { tx } from "../i18n/tx";
 const AssetList = lazy(() => import("./AssetList/AssetList").then((m) => ({ default: m.AssetList })));
 const AutoDiscovery = lazy(() => import("./AutoDiscovery/AutoDiscovery"));
 const HardeningMain = lazy(() => import("./Hardening/HardeningMain").then((m) => ({ default: m.HardeningMain })));
+
+// ── A page that takes its search box from ?q= ─────────────────────────────────
+// The global search opens such a page with ?q=. A page already open keeps its state, so a new ?q= starts
+// it afresh; other query parameters (filters the page sets itself) do not.
+export const ByQuery = ({ children }) => {
+    const [params] = useSearchParams();
+    return <React.Fragment key={params.get("q") || ""}>{children}</React.Fragment>;
+};
 
 // ── Access denied (shown when a user lacks read permission for a section) ──────
 export const AccessDenied = ({ menuName }) => (

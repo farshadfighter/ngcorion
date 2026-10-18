@@ -19,8 +19,7 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Order | # | Item | Scope |
 |---|---|---|---|
-| 1 | 11 | Global search | One search box on every page: assets, IP, MAC, CVE, findings, users, reports |
-| 2 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
+| 1 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
 
 ## Known limits (shipped, documented, not yet improved)
 
@@ -41,6 +40,9 @@ Bugs reported from testing on the customer test server go before everything else
 - TLS certificates: services that switch to TLS with STARTTLS (SMTP 25/587, LDAP 389, RDP) are not
   checked; revocation (CRL/OCSP) is not checked; the name is checked only when a host name is known
   (asset host name or the service's server name).
+- Global search: remediation finding titles are stored in English, so a Persian word does not find them
+  (CVE ids, check numbers and asset names do); results are plain substring matches, not ranked by
+  relevance beyond exact and prefix matches first.
 
 ## On the customer side
 
@@ -55,7 +57,8 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Item | Commit |
 |---|---|
-| 14 TLS certificates (scan, trust, expiry, weak key/signature, TLS 1.0/1.1, own CAs, remediation, risk, alerts, report) | recorded with the next item |
+| 11 Global search (assets, IP, MAC, CVE, devices, findings, certificates, software, groups, users, reports, pages) | recorded with the next item |
+| 14 TLS certificates (scan, trust, expiry, weak key/signature, TLS 1.0/1.1, own CAs, remediation, risk, alerts, report) | d3edee3 |
 | 10 End of life (catalog from endoflife.date, own products, remediation, risk, alerts, report) | fe425bd |
 | Production image start: no plain methods on Pydantic models (guard test) | 6d7b258 |
 | 15 Compliance with standards (PCI DSS, ISO 27001, NIST, own standards, report) | b262320 |

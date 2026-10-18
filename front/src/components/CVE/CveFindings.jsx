@@ -2,9 +2,9 @@
  * CVE findings page: CVEs affecting the inventory by finding or by asset, with priority (KEV,
  * EPSS, CVSS), fix versions and the asset products they were matched on.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../config/api.js";
 import { fetchCveDbStatus, fetchCveFindings } from "../../store/cveSlice.jsx";
 import { usePermission } from "../../hooks/usePermission";
@@ -48,6 +48,9 @@ export function CveFindings() {
     const [search, setSearch] = useState("");
     const [limit, setLimit] = useState(PAGE);
     const [detail, setDetail] = useState(null);
+    const [params, setParams] = useSearchParams();
+    const cveParam = params.get("cve");      // ?cve=CVE-... (the global search) opens that CVE
+    const closeCveParam = useCallback(() => setParams((p) => { p.delete("cve"); return p; }), [setParams]);
     const [jobId, setJobId] = useState(null);
 
     useEffect(() => {
@@ -212,6 +215,7 @@ export function CveFindings() {
             )}
 
             {detail && <CveDetail cveId={detail.cve_id} finding={detail} onClose={() => setDetail(null)} />}
+            {!detail && cveParam && <CveDetail cveId={cveParam} onClose={closeCveParam} />}
             {jobId && <CveJobModal jobId={jobId} isAdmin={!!status?.is_admin} onClose={closeJob} />}
         </div>
     );

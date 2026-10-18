@@ -53,6 +53,7 @@
   "No users found": "کاربری پیدا نشد",
   "NOC": "NOC",
   "Off in the directory": "غیرفعال در دایرکتوری",
+  "Only users matching {{text}}": "فقط کاربرانی که «{{text}}» دارند",
   "Password *": "رمز عبور *",
   "Passwords do not match": "رمزهای عبور یکسان نیستند",
   "Re-enter new password": "رمز عبور جدید را دوباره وارد کنید",

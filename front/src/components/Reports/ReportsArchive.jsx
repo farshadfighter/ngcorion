@@ -26,8 +26,8 @@ export function ReportsArchive() {
     const [params] = useSearchParams();
     const highlight = Number(params.get("new")) || null;
     const [view, setView] = useState("all");
-    const [search, setSearch] = useState("");
-    const [query, setQuery] = useState("");
+    const [search, setSearch] = useState(() => params.get("q") || "");   // ?q= from the global search
+    const [query, setQuery] = useState(() => (params.get("q") || "").trim());
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
     const [busy, setBusy] = useState(null);

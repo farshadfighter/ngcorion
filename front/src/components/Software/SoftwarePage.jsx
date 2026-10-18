@@ -52,7 +52,7 @@ export function SoftwarePage() {
     const [error, setError] = useState(null);
     const [reload, setReload] = useState(0);
     const [view, setView] = useState("all");
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = useState(() => params.get("q") || "");   // ?q= from the global search
     const [limit, setLimit] = useState(PAGE);
     const [product, setProduct] = useState(null);
     const [mapping, setMapping] = useState(null);

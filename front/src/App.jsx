@@ -74,6 +74,7 @@ import {
     RequireAdmin,
     RequireAnyPermission,
     RequirePermission,
+    ByQuery,
     AssetListRoute,
     AutoDiscoveryRoute,
     HardeningRoute,
@@ -196,12 +197,12 @@ function AppContent() {
                         } />
                         <Route path="/assets/groups" element={
                             <RequirePermission module="asset_list" name="Asset groups">
-                                <AssetGroupsPage />
+                                <ByQuery><AssetGroupsPage /></ByQuery>
                             </RequirePermission>
                         } />
                         <Route path="/assets/software" element={
                             <RequirePermission module="asset_list" name="Software">
-                                <SoftwarePage />
+                                <ByQuery><SoftwarePage /></ByQuery>
                             </RequirePermission>
                         } />
                         <Route path="/assets/software/lifecycle" element={
@@ -425,7 +426,7 @@ function AppContent() {
                         } />
                         <Route path="/reports/archive" element={
                             <RequirePermission module="reports" name="Report archive">
-                                <ReportsArchive />
+                                <ByQuery><ReportsArchive /></ByQuery>
                             </RequirePermission>
                         } />
                         <Route path="/reports/schedules" element={

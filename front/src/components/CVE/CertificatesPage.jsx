@@ -346,7 +346,8 @@ export function CertificatesPage() {
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
     const [view, setView] = useState("attention");
-    const [open, setOpen] = useState(Number(params.get("service")) || null);
+    const [picked, setPicked] = useState(null);
+    const open = picked || Number(params.get("service")) || null;      // ?service= (alerts, the global search)
     const [adding, setAdding] = useState(false);
     const [tick, setTick] = useState(0);
     const refresh = () => setTick((x) => x + 1);
@@ -438,8 +439,8 @@ export function CertificatesPage() {
                                     {services.map((s) => {
                                         const left = daysLeft(s.not_after);
                                         return (
-                                            <tr key={s.id} className="tls-click" tabIndex={0} onClick={() => setOpen(s.id)}
-                                                onKeyDown={(e) => e.key === "Enter" && setOpen(s.id)}>
+                                            <tr key={s.id} className="tls-click" tabIndex={0} onClick={() => setPicked(s.id)}
+                                                onKeyDown={(e) => e.key === "Enter" && setPicked(s.id)}>
                                                 <td>
                                                     <div className="ud-addr">
                                                         <b><Mono>{s.where}</Mono></b>
@@ -479,9 +480,9 @@ export function CertificatesPage() {
             {view === "settings" && <Settings isAdmin={isAdmin} onChanged={refresh} />}
 
             {open && <ServiceDrawer id={open} canWrite={canWrite} canDelete={canDelete} onChanged={refresh}
-                                    onClose={() => { setOpen(null); if (params.get("service")) { params.delete("service"); setParams(params); } }} />}
+                                    onClose={() => { setPicked(null); if (params.get("service")) { params.delete("service"); setParams(params); } }} />}
             {adding && <AddDrawer presetAsset={assetFilter} onClose={() => setAdding(false)}
-                                  onDone={(id) => { setAdding(false); refresh(); setOpen(id); }} />}
+                                  onDone={(id) => { setAdding(false); refresh(); setPicked(id); }} />}
         </div>
     );
 }

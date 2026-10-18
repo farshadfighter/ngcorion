@@ -6,7 +6,7 @@
  * group lists its assets by hand. Endpoints: /api/asset-groups (app/modules/asset_groups/router.py).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import api from "../../config/api.js";
 import { usePermission } from "../../hooks/usePermission";
@@ -47,7 +47,8 @@ export function AssetGroupsPage() {
     const [error, setError] = useState(null);
     const [editing, setEditing] = useState(null);   // a group object, or emptyGroup() for a new one
     const [deleting, setDeleting] = useState(null);
-    const [search, setSearch] = useState("");
+    const [params] = useSearchParams();
+    const [search, setSearch] = useState(() => params.get("q") || "");   // ?q= from the global search
 
     const load = useCallback(() => {
         api.get("/api/asset-groups")

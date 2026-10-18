@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Global search
+
+- A search box in the header of every page ("/" or Ctrl+K): assets by name,
+  host name, address, MAC in any notation, serial number, model or OS; CVE
+  ids; unknown devices on the network; remediation findings; TLS services;
+  software; asset groups; users; reports; and the menu's own pages. Arrow keys
+  and Enter open a result; Persian digits are understood.
+- Each kind of result appears only for users who may read its module, and
+  reports only among those the archive shows them.
+- The CVE page opens a CVE from `?cve=`; the software, asset group, report
+  archive and user pages take their search from `?q=`.
+
 ### TLS certificates
 
 - New tab Security assessment → Vulnerabilities (CVE) → TLS certificates: the

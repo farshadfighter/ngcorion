@@ -21,6 +21,7 @@ import "../assets/Dashboard.css";
 import api from "../config/api";
 import { currentLanguage, hasStoredLanguage, isRtl, LANGUAGES, setLanguage, t, uiLocale } from "../i18n";
 import { formatLongDate } from "../utils/dates";
+import { GlobalSearch } from "./GlobalSearch.jsx";
 import { SidebarNav } from "./SidebarNav";
 import { menuFromPath } from "./sidebarMenu";
 
@@ -266,7 +267,8 @@ export const DashboardLayout = () => {
                             )}
                         </div>
                     </div>
-                    <div className="header-center" style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+                    <div className="header-center">
+                        <GlobalSearch />
                         {currentModule && <LicenseBadge />}
                     </div>
                     <div className="header-right">

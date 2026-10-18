@@ -5,6 +5,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { fetchUsers, deleteUser, clearMessages } from "../../store/userSlice";
 import { AddUserModal } from "./AddUserModal";
 import { EditUserModal } from "./EditUserModal";
@@ -31,7 +32,11 @@ const TwoStepBadge = ({ state }) => {
 
 export const UserManagement = () => {
     const dispatch = useDispatch();
-    const { users, isLoading, error, successMessage } = useSelector((state) => state.users);
+    const { users: allUsers, isLoading, error, successMessage } = useSelector((state) => state.users);
+    // ?q= (the global search): only the users whose name or email contains it
+    const [params, setParams] = useSearchParams();
+    const only = (params.get("q") || "").trim().toLowerCase();
+    const users = only ? allUsers.filter((u) => `${u.username} ${u.email || ""}`.toLowerCase().includes(only)) : allUsers;
     // Only a system administrator sets temporary passwords, and never their own (the server checks too).
     const { role: myRole, username: myName } = useSelector((state) => state.auth);
     const [tempPasswordFor, setTempPasswordFor] = useState(null);
@@ -94,6 +99,13 @@ export const UserManagement = () => {
             )}
             {error && (
                 <div className="alert alert-error">{error}</div>
+            )}
+
+            {only && (
+                <div className="alert alert-success um-only">
+                    {t("Only users matching {{text}}", { text: params.get("q") })}
+                    <button type="button" className="um-show-all" onClick={() => setParams({})}>{t("Show all")}</button>
+                </div>
             )}
 
             {/* Loading State */}

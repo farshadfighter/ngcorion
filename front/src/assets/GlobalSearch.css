@@ -1,0 +1,44 @@
+/* The global search in the page header (components/GlobalSearch.jsx). */
+.gs { position: relative; width: min(440px, 100%); }
+.gs-box {
+    display: flex; align-items: center; gap: 8px; height: 40px; padding-inline: 12px;
+    border: 1px solid #d1d5db; border-radius: 10px; background: #f8fafc; cursor: text;
+}
+.gs-box:focus-within { border-color: #1e3a5f; background: #fff; box-shadow: 0 0 0 3px rgba(30, 58, 95, .12); }
+.gs-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13.5px; color: #111827; }
+.gs-box input::-webkit-search-cancel-button { cursor: pointer; }
+.gs-glass { color: #6b7280; font-size: 14px; }
+.gs-kbd {
+    font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: #6b7280; border: 1px solid #d1d5db;
+    border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; line-height: 18px; background: #fff;
+}
+.gs-box:focus-within .gs-kbd { display: none; }
+.gs-icon-btn {
+    display: none; width: 40px; height: 40px; border-radius: 10px; border: 1px solid #d1d5db; background: #f8fafc;
+    color: #374151; cursor: pointer; font-size: 15px;
+}
+.gs-panel {
+    position: absolute; inset-inline: 0; top: calc(100% + 6px); z-index: 1200; max-height: min(70vh, 560px);
+    overflow-y: auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, .18); padding: 6px;
+}
+.gs-group + .gs-group { border-top: 1px solid #f1f5f9; margin-top: 4px; padding-top: 4px; }
+.gs-group-title { font-size: 11.5px; font-weight: 700; color: #6b7280; padding: 6px 10px 4px; letter-spacing: .02em; }
+.gs-item { display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border-radius: 8px; cursor: pointer; min-width: 0; }
+.gs-item.is-on { background: #eef3f9; }
+.gs-title { font-size: 13.5px; color: #111827; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gs-detail { font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gs-hint { margin: 8px 10px; font-size: 12.5px; color: #6b7280; }
+
+/* Narrow screens: an icon; the box opens over the header. */
+@media (max-width: 1100px) {
+    .gs { width: auto; position: static; }
+    .gs-icon-btn { display: inline-flex; align-items: center; justify-content: center; }
+    .gs-box, .gs-panel { display: none; }
+    .gs.is-expanded .gs-box {
+        display: flex; position: absolute; inset-inline: 16px; top: 50%; transform: translateY(-50%); z-index: 1201;
+        background: #fff;
+    }
+    .gs.is-expanded .gs-panel { display: block; inset-inline: 16px; top: calc(50% + 28px); position: absolute; }
+    .gs.is-expanded .gs-kbd { display: none; }
+}

@@ -162,6 +162,14 @@ import, plus the organisation's own products (`eol_products`). The status
 request from today's date; remediation (source `eol`), the risk score's
 vulnerability factor, two alert events and a report read the same evaluation.
 
+**Global search.** `app/modules/search` answers the header's search box
+(`GET /api/search`): assets (name, address, MAC in any notation, serial),
+CVE ids, unknown devices, remediation items, TLS services, software, asset
+groups, users and reports, each kind only when the user may read its module
+(and reports only among those the archive shows the user). Plain ILIKE
+queries, at most a few results per kind; the menu's own pages are matched in
+the browser.
+
 **TLS certificates.** `app/modules/tls` scans the TLS ports of the assets (the
 configured list plus open ports discovery saw with a TLS service) with plain
 handshakes only (`scanner.py`: OpenSSL verification against certifi and the
