@@ -5,7 +5,7 @@ import { t, n } from "../../i18n";
 import { formatDateTime } from "../../utils/dates.js";
 import { AcceptanceModal } from "./AcceptanceModal.jsx";
 import {
-    ACCEPTANCE_STATUS, SEVERITY, SOURCE, STATUS, dueClass, dueText, errorText, eventText, itemTitle, shortDate, sourceLink,
+    ACCEPTANCE_STATUS, SEVERITY, SOURCE, STATUS, dueClass, dueText, errorText, eventText, itemTitle, shortDate, sourceLink, titled,
 } from "./remediationFormat.js";
 import { DateInput } from "../shared/DateInput.jsx";
 
@@ -59,7 +59,7 @@ export function RemediationDrawer({ itemId, canWrite, onClose, onChanged }) {
                 <header className="bkm-drawer-head">
                     <div>
                         <h2 id="rem-title">
-                            {item ? (item.source === "arch" ? itemTitle(item) : <span className="bkm-mono">{item.ref}</span>) : t("Finding")}
+                            {item ? (titled(item.source) ? itemTitle(item) : <span className="bkm-mono">{item.ref}</span>) : t("Finding")}
                             {item?.asset_name ? ` · ${item.asset_name}` : ""}
                         </h2>
                         {item && (

@@ -212,6 +212,28 @@ def _arch_found(db: Session) -> List[Found]:
     return out
 
 
+def _eol_found(db: Session) -> List[Found]:
+    """Operating systems, firmware and server software past the end of their vendor's support
+    (app/modules/eol): unsupported ones high, those only covered by paid extended support medium."""
+    from app.modules.eol import service as eol
+    assets = {a.id: a for a in db.query(Asset)}
+    out = []
+    for c in eol.components(db):
+        asset = assets.get(c.asset_id)
+        if asset is None or c.status not in eol.SEVERITY:
+            continue
+        what = c.title
+        title = (f"{what} is past the end of support" if c.status == "unsupported"
+                 else f"{what} gets security fixes only with paid extended support")
+        out.append(Found(
+            key=f"eol:{asset.id}:{c.key}", source="eol", ref=c.key, asset=asset, title=title,
+            severity=eol.SEVERITY[c.status],
+            detail={"name": c.name, "version": c.version, "product": c.product, "cycle": c.cycle,
+                    "status": c.status, "until": c.until, "ended_on": c.ended_on, "origin": c.origin},
+        ))
+    return out
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Sync
 # ──────────────────────────────────────────────────────────────────────────
@@ -274,6 +296,8 @@ def sync(db: Session, now: Optional[datetime] = None) -> Dict[str, int]:
     checked.add("audit")
     found += _arch_found(db)
     checked.add("arch")
+    found += _eol_found(db)
+    checked.add("eol")
 
     expired = _expire_acceptances(db, now)
     by_item_acc, by_ref_acc = _active_acceptances(db, now)

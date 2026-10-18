@@ -14,6 +14,7 @@ import "../../assets/Alerts.css";
 import "../../assets/Remediation.css";
 import "../../assets/Software.css";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
+import { SoftwareTabs } from "./SoftwareTabs.jsx";
 
 const VIEWS = [
     ["all", t("All")],
@@ -103,6 +104,7 @@ export function SoftwarePage() {
                     {canWrite && <button type="button" className="bkm-btn bkm-btn-primary" onClick={() => setCollect(true)}>{t("Collect now…")}</button>}
                 </div>
             </div>
+            <SoftwareTabs />
 
             <div className="bkm-stats bkm-stats-4">
                 <div className="bkm-stat">

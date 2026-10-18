@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../../config/api.js";
 import { t } from "../../i18n";
 import { tb } from "../../i18n/backendText";
-import { ACCEPTANCE_STATUS, SEVERITY, SOURCE, count, errorText, shortDate } from "./remediationFormat.js";
+import { ACCEPTANCE_STATUS, SEVERITY, SOURCE, count, errorText, shortDate, titled } from "./remediationFormat.js";
 import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
 import "../../assets/Remediation.css";
@@ -89,7 +89,7 @@ export function AcceptancesPage() {
                                         {a.kev && <span className="bkm-pill rem-kev rem-kev-block">KEV</span>}
                                     </td>
                                     <td>
-                                        <b className={a.source === "arch" ? "" : "bkm-mono"}>{a.source === "arch" ? tb(a.title) : a.ref}</b>
+                                        <b className={titled(a.source) ? "" : "bkm-mono"}>{titled(a.source) ? tb(a.title) : a.ref}</b>
                                         <span className="bkm-sub">
                                             {SOURCE[a.source]} · {a.scope === "ref"
                                                 ? t("every asset ({{count}} now)", { count: a.items ?? 0 })
@@ -161,7 +161,7 @@ function DecisionModal({ acc, approve, onClose, onDone }) {
             <button type="button" className="bkm-scrim" aria-label={t("Close")} onClick={onClose} />
             <div className="alr-modal">
                 <h2 id="rem-dec-title">{approve ? t("Approve risk acceptance") : t("Reject risk acceptance")}</h2>
-                <p><b className={acc.source === "arch" ? "" : "bkm-mono"}>{acc.source === "arch" ? tb(acc.title) : acc.ref}</b>
+                <p><b className={titled(acc.source) ? "" : "bkm-mono"}>{titled(acc.source) ? tb(acc.title) : acc.ref}</b>
                     {" · "}{acc.scope === "ref" ? t("every asset") : acc.asset_name} · {t("until {{date}}", { date: shortDate(acc.expires_at) })}</p>
                 <p className="bkm-muted bidi-auto">{acc.justification}</p>
                 <label className="alr-lbl">{approve ? t("Note (optional)") : t("Reason for rejecting")}

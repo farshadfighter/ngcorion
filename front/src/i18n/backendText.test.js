@@ -32,6 +32,11 @@ describe("audit trail details in Persian", () => {
         // digits alone become Persian and need no isolation; a translated value stays as it is
         expect(tb("{{count}} addresses that are not assets appeared".replace("{{count}}", "12"))).not.toMatch(/\u2068/);
     });
+    it("reads a day from the API as a Persian date", () => {
+        const text = tb("nginx 1.18 on web-01: support ended 2021-04-20");
+        expect(text).toMatch(/پشتیبانی در .*۱۴۰۰ تمام شد$/);
+        expect(text).not.toMatch(/2021/);
+    });
     it("translates each part of a joined detail", () => {
         expect(tbDetail("NVD API key set; automatic update off"))
             .toBe("کلید API سامانهٔ NVD تنظیم شد؛ به‌روزرسانی خودکار خاموش");

@@ -17,6 +17,8 @@ import { BidiText } from "../../i18n/BidiText.jsx";
 import { formatDateTime, formatWhen, relativeDays } from "../../utils/dates.js";
 import { TECHS, errorText } from "../AssetGroups/groupFormat.js";
 import { AssetIcon } from "../shared/AssetIcon.jsx";
+import { EOL_STATUS, untilText } from "../Software/eolFormat.js";
+import "../../assets/Lifecycle.css";
 import "../../assets/BackupModule.css";
 import "../../assets/AssetDetail.css";
 
@@ -414,6 +416,19 @@ export function AssetDetailPage() {
                                 <Kv label={t("Collected")}>{formatWhen(d.software.last_collected_at)}</Kv>
                             </>
                         ) : <p className="bkm-muted a360-empty">{t("Not collected yet.")}</p>}
+                        {d.software.lifecycle?.components.length > 0 && (
+                            <div className="eol-life">
+                                <b className="bkm-small">{t("Vendor support")}</b>
+                                {d.software.lifecycle.components.map((c) => (
+                                    <div key={c.key} className="eol-life-row">
+                                        <span className={`bkm-pill ${EOL_STATUS[c.status].pill}`}>{EOL_STATUS[c.status].label}</span>
+                                        <bdi dir="auto">{c.title}{!c.cycle && c.version ? ` ${c.version}` : ""}</bdi>
+                                        <span className="bkm-small bkm-muted">{untilText(c)}</span>
+                                    </div>
+                                ))}
+                                <Link className="bkm-link bkm-small" to={`/assets/software/lifecycle?asset=${a.id}`}>{t("Open in End of life")}</Link>
+                            </div>
+                        )}
                     </Card>
 
                     {d.hardening && d.hardening.recent.length > 0 && (

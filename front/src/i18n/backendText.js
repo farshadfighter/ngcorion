@@ -1,4 +1,5 @@
 import { t, n, currentLanguage } from "./index";
+import { formatDate } from "../utils/dates.js";
 
 /*
  * Text that the API sends in English: alert titles and details, the
@@ -96,6 +97,21 @@ const TEMPLATES = [
     msg("Rejected excluding {{what}} of the {{bench}} benchmark"),
     msg("Ended the rule making {{what}} of the {{bench}} benchmark optional"),
     msg("Ended the rule excluding {{what}} of the {{bench}} benchmark"),
+    // end of life (app/modules/eol/router.py, remediation titles, alert details)
+    msg("Updated {{n}} products of the end-of-life catalog from endoflife.date"),
+    msg("Imported {{n}} products into the end-of-life catalog"),
+    msg("Removed {{name}} from the end-of-life catalog changes"),
+    msg("Added the product {{name}} to the end-of-life catalog"),
+    msg("Changed the product {{name}} of the end-of-life catalog"),
+    msg("Entered the end of support of {{name}} on {{asset_name}}"),
+    msg("Removed the end of support of {{name}} on {{asset_name}}"),
+    msg("End of support warns {{days}} days ahead"),
+    msg("{{what}} is past the end of support"),
+    msg("{{what}} gets security fixes only with paid extended support"),
+    msg("{{what}} on {{name}}: support ended {{until}}"),
+    msg("{{what}} on {{name}}: fixes only with paid extended support, until {{until}}"),
+    msg("{{what}} on {{name}}: support ends {{until}}"),
+    msg("Vendor support ends within {{days}} days"),
     // compliance with standards (app/modules/compliance/router.py)
     msg("Assessed requirement {{ref}} of {{name}} by hand"),
     msg("Removed the assessment of requirement {{ref}} of {{name}}"),
@@ -439,6 +455,14 @@ msg("Every failed check of each asset");
 msg("Not audited in the period");
 msg("Include the evidence of each failed check");
 // reports: compliance with a standard (app/modules/reports/templates3.py)
+msg("End of life");
+msg("Operating systems, firmware and server software past (or close to) the end of their vendor's support.");
+msg("Unsupported");
+msg("No more fixes from the vendor");
+msg("Paid extended support only");
+msg("Ending soon");
+msg("Not in the catalog");
+msg("All software");
 msg("Compliance with a standard");
 msg("Score of a standard (PCI DSS, ISO/IEC 27001, NIST SP 800-53 or the organisation's own), each requirement with its evidence, the gaps and what is assessed by hand.");
 msg("Requirements");
@@ -945,6 +969,10 @@ const PERSIAN = /[\u0600-\u06FF]/;
 const isolate = (value) => (currentLanguage() === "fa" && typeof value === "string" && LATIN.test(value)
     && !PERSIAN.test(value) && !/^[\u2066-\u2068]/.test(value) ? `\u2068${value}\u2069` : value);
 
+// A day the API wrote as 2028-04-26 reads as a date of the UI's calendar ("۶ اردیبهشت ۱۴۰۷").
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const value = (raw) => (DAY.test(raw) ? formatDate(raw) : isolate(n(tb(raw))));
+
 /** Translate one English sentence from the API; unknown text comes back unchanged. */
 export function tb(text) {
     if (typeof text !== "string" || !text) return text;
@@ -953,7 +981,7 @@ export function tb(text) {
     for (const { key, names, re } of COMPILED) {
         const m = re.exec(text);
         if (!m) continue;
-        const values = Object.fromEntries(names.map((name, i) => [name, isolate(n(tb(m[i + 1])))]));
+        const values = Object.fromEntries(names.map((name, i) => [name, value(m[i + 1])]));
         return t(key, values);
     }
     return text;
@@ -1127,3 +1155,21 @@ msg("LLDP/CDP topology discovery turned off");
 msg("No such neighbour");
 msg("This neighbour is not an asset yet");
 msg("This neighbour is already an asset");
+
+// end of life (app/modules/eol, alerts software.end_of_life*)
+msg("Software past the end of support");
+msg("Software support ends soon");
+msg("An operating system, firmware or server software of an asset no longer gets fixes from its vendor");
+msg("Days before the end");
+msg("Only administrators can change the end-of-life catalog");
+msg("endoflife.date could not be reached; import a file instead");
+msg("The file is larger than 5 MB");
+msg("The file is not JSON");
+msg("The file is neither an NGCorion end-of-life catalog nor an endoflife.date answer");
+msg("A product has no key");
+msg("Only a downloaded, imported or own product can be removed");
+msg("Two release cycles have the same name");
+msg("A product with this name already exists");
+msg("Product not found");
+msg("Entry not found");
+msg("Give the software names the product is found under");

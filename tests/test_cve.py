@@ -942,7 +942,11 @@ class TestRiskAndDashboard:
         b = risk_calculation_service.calculate(asset_id=patched.id, db=db, trigger_type="test")
         assert float(a.vulnerability_score) == 100 and a.cve_kev_count == 1 and a.cve_findings_count == 1
         assert float(a.vulnerability_contribution) == float(a.vulnerability_weight)   # 100% of its share
-        assert float(b.vulnerability_score) == 0 and b.cve_findings_count == 0
+        assert b.cve_findings_count == 0 and b.cve_kev_count == 0
+        # FortiOS 7.2 left vendor support on 2026-09-30: the factor of the patched asset is the
+        # end-of-life score (app/modules/eol), still below a known exploited vulnerability
+        from app.modules.eol.service import RISK_SCORE
+        assert float(b.vulnerability_score) == RISK_SCORE["unsupported"]
         assert float(a.final_risk_score) > float(b.final_risk_score)
 
     def test_risk_factor_is_zero_before_the_database_is_loaded(self, db):
@@ -950,7 +954,10 @@ class TestRiskAndDashboard:
         _load(db, FORTI)                                   # records, but no watermark: not loaded
         asset = _asset(db, os_name="FortiOS", os_version="7.2.5")
         score = risk_calculation_service.calculate(asset_id=asset.id, db=db, trigger_type="test")
-        assert float(score.vulnerability_score) == 0
+        assert score.cve_findings_count == 0 and score.cve_kev_count == 0
+        # no CVE part; what remains is the end of support of FortiOS 7.2 (app/modules/eol)
+        from app.modules.eol.service import RISK_SCORE
+        assert float(score.vulnerability_score) == RISK_SCORE["unsupported"]
 
     def test_dashboard_sub_score(self, db):
         from app.modules.dashboard.security_score_router import _vulnerability

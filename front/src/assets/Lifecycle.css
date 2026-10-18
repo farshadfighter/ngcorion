@@ -1,0 +1,37 @@
+/* End of life (components/Software/LifecyclePage.jsx); builds on BackupModule.css. */
+.sw-tabs { margin: -4px 0 16px; }
+.sw-tabs a { text-decoration: none; }
+.eol-stat { text-align: start; cursor: pointer; font: inherit; border: 1px solid #e5e7eb; }
+.eol-stat:hover { border-color: #94a3b8; }
+.eol-unsupported b { color: #b0222a; }
+.eol-extended b, .eol-ending b { color: #a37a06; }
+.eol-supported b { color: #1f7a45; }
+.eol-table td { vertical-align: top; }
+.eol-block { display: block; }
+.eol-lts { margin-inline-start: 6px; }
+.eol-sub td { background: #fafbfc; }
+.eol-assets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.eol-assets li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 13px; }
+.eol-pad { margin: 12px 16px; }
+.eol-settings { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; }
+.eol-inline { display: inline-flex; align-items: center; gap: 8px; }
+.eol-settings .eol-inline input { width: 90px; flex: none; }
+.eol-cat-head { flex-wrap: wrap; }
+.eol-cat-head > div:first-child { flex: 1 1 420px; min-width: 0; }
+.eol-file { position: relative; overflow: hidden; cursor: pointer; }
+.eol-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.eol-drawer { width: 620px; }
+.eol-cycles { display: flex; flex-direction: column; gap: 8px; }
+.eol-cycle-head, .eol-cycle-row { display: grid; grid-template-columns: 1fr 1.3fr 1.3fr auto; gap: 8px; align-items: center; }
+.eol-cycle-row > * { min-width: 0; }
+.eol-cycle-row .di-wrap { display: flex; width: 100%; }
+.eol-cycle-row .di-wrap > .di-field { width: 100%; }
+.eol-pick { height: auto; padding: 4px; }
+.eol-cycle-head { font-size: 12px; font-weight: 600; color: #475569; }
+.eol-life { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.eol-life-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; }
+@media (max-width: 720px) {
+    .eol-drawer { width: 100%; }
+    .eol-cycle-head { display: none; }
+    .eol-cycle-row { grid-template-columns: 1fr; }
+}

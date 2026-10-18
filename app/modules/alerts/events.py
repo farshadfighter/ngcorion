@@ -851,6 +851,43 @@ def _restore_test_failed(db: Session, params: Dict, now: datetime, since: dateti
 # Software inventory (app/modules/software)
 # ---------------------------------------------------------------------------
 
+def _eol_problems(db: Session, statuses, within_days: Optional[int] = None) -> List[Problem]:
+    from app.models import Asset
+    from app.modules.eol import service as eol
+    comps = [c for c in eol.components(db) if c.status in statuses]
+    if within_days is not None:
+        limit = (datetime.utcnow() + timedelta(days=within_days)).date().isoformat()
+        comps = [c for c in comps if c.until and c.until <= limit]
+    assets = {a.id: a for a in db.query(Asset).filter(Asset.id.in_({c.asset_id for c in comps} or {-1}))}
+    out = []
+    for c in comps:
+        asset = assets.get(c.asset_id)
+        if asset is None:
+            continue
+        what = c.title
+        if c.status == "unsupported":
+            title, detail = "Software past the end of support", f"{what} on {asset.asset_name}: support ended {c.until or '-'}"
+        elif c.status == "extended":
+            title = "Software past the end of support"
+            detail = f"{what} on {asset.asset_name}: fixes only with paid extended support, until {c.until}"
+        else:
+            title, detail = "Software support ends soon", f"{what} on {asset.asset_name}: support ends {c.until}"
+        out.append(Problem(key=f"eol:{c.asset_id}:{c.key}", title=title, detail=detail, asset_id=c.asset_id,
+                           source_label=_label(asset), link=f"/assets/software/lifecycle?asset={c.asset_id}"))
+    return out
+
+
+def _eol_reached(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Operating systems, firmware and server software past the end of their vendor's support
+    (app/modules/eol); clears when upgraded."""
+    return _eol_problems(db, ("unsupported", "extended"))
+
+
+def _eol_soon(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Support ends within the chosen number of days."""
+    return _eol_problems(db, ("ending", "supported"), within_days=int(params.get("days", 90)))
+
+
 def _software_unexpected(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
     """Software that appeared on an asset from outside the repositories it
     already used: installed by hand, or from a repository new to the asset."""
@@ -1020,6 +1057,14 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("system.emergency_login", "system", "Local administrator signed in",
               "A local administrator account signs in while sign-in goes through the directory", "event", 60,
               _emergency_login, has_owner=True, severity="warning", channels=["email"]),
+    EventType("software.end_of_life", "software", "Software past the end of support",
+              "An operating system, firmware or server software of an asset no longer gets fixes from its vendor",
+              "state", 3600, _eol_reached, uses_assets=True, severity="warning", channels=["email"],
+              repeat_minutes=10080),
+    EventType("software.end_of_life_soon", "software", "Software support ends soon",
+              "Vendor support ends within {days} days", "state", 3600, _eol_soon,
+              [Param("days", "Days before the end", 90, "days", 7, 730)], uses_assets=True, severity="info",
+              channels=["email"]),
     EventType("software.unexpected", "software", "New software outside known repositories",
               "Software installed by hand or from a repository new to the asset", "event", 300,
               _software_unexpected, uses_assets=True, has_owner=True, severity="warning", channels=[],

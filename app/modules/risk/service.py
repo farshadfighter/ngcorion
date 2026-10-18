@@ -19,7 +19,9 @@ NGCorion Risk Score Calculation Specification (risk.pdf):
   CV  Known Vulnerabilities  CVE findings (app/modules/cve) - the worst
                              finding of the asset's products: exploited in
                              the wild 100, CVSS 9+/EPSS 50%+ 80, CVSS 7+/
-                             EPSS 10%+ 55, other 25, none 0
+                             EPSS 10%+ 55, other 25, none 0 - or software
+                             past its end of support (app/modules/eol):
+                             unsupported 80, paid extended support only 40
 
   Default weights with CV: AC 20, AR 15, AZ 15, OP 10, AF 20, HF 5, CV 15
   (migration 7a3c91e5d204 moves untouched installs there; customised weights
@@ -471,25 +473,34 @@ class AssetRiskCalculationService:
     _CVE_PRIORITY_SCORE = {1: 100.0, 2: 80.0, 3: 55.0, 4: 25.0}
 
     def _vulnerability_score(self, db: Session, asset_id: int) -> dict:
-        """CV: the asset's worst CVE finding. 0 with no findings - also when
-        the CVE database is not loaded or no product of the asset is known,
-        since nothing is known to be vulnerable."""
+        """CV: the asset's worst CVE finding, or software past the end of its
+        vendor's support (app/modules/eol) - no fixes come for it any more:
+        unsupported 80, only paid extended support 40 - whichever is higher.
+        0 with neither - also when the CVE database is not loaded or no product
+        of the asset is known, since nothing is known to be vulnerable."""
         from app.modules.cve import findings as cve_findings
         from app.modules.cve import settings as cve_settings
-        if not cve_settings.vulnerability_data_loaded(db):
-            return {"score": 0.0, "findings": 0, "kev": 0}
-        rows = cve_findings.compute(db, asset_id)["findings"]
+        from app.modules.eol import service as eol
         # Findings under an approved risk acceptance (app/modules/remediation)
         # leave the score until the acceptance ends.
         from app.modules.remediation.service import accepted_refs
-        accepted = accepted_refs(db, asset_id, "cve")
-        if accepted:
-            rows = [f for f in rows if f["cve_id"] not in accepted]
+        rows = []
+        if cve_settings.vulnerability_data_loaded(db):
+            rows = cve_findings.compute(db, asset_id)["findings"]
+            accepted = accepted_refs(db, asset_id, "cve")
+            if accepted:
+                rows = [f for f in rows if f["cve_id"] not in accepted]
         worst = min((f["priority"] for f in rows), default=None)
+        accepted_eol = accepted_refs(db, asset_id, "eol")
+        ended = [c for c in eol.components(db, [asset_id])
+                 if c.status in eol.RISK_SCORE and c.key not in accepted_eol]
+        eol_score = max((eol.RISK_SCORE[c.status] for c in ended), default=0.0)
         return {
-            "score": self._CVE_PRIORITY_SCORE.get(worst, 0.0),
+            "score": max(self._CVE_PRIORITY_SCORE.get(worst, 0.0), eol_score),
             "findings": len(rows),
             "kev": sum(1 for f in rows if f["kev"]),
+            "end_of_life": sum(1 for c in ended if c.status == "unsupported"),
+            "extended_support": sum(1 for c in ended if c.status == "extended"),
         }
 
     # ------------------------------------------------------------------

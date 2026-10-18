@@ -230,10 +230,14 @@ def _software(db: Session, a: Asset) -> Dict:
                  .group_by(SoftwareItem.kind).all())
     last = (db.query(SoftwareCollection).filter(SoftwareCollection.asset_id == a.id)
             .order_by(SoftwareCollection.collected_at.desc()).first())
+    from app.modules.eol import service as eol
+    comps = eol.by_asset(eol.components(db, [a.id])).get(a.id, [])
     return {"packages": int(kinds.get("package", 0) + kinds.get("program", 0)),
             "services": int(kinds.get("service", 0)), "hotfixes": int(kinds.get("hotfix", 0)),
             "last_collected_at": _iso(last.collected_at) if last else None,
-            "last_status": last.status if last else None}
+            "last_status": last.status if last else None,
+            # End of vendor support of its operating system, firmware and server software (app/modules/eol)
+            "lifecycle": {"status": eol.worst(comps), "components": [c.out() for c in comps if c.status != "unknown"]}}
 
 
 def _timeline(db: Session, a: Asset, can, owner: Optional[int]) -> List[Dict]:

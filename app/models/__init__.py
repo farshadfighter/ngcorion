@@ -355,3 +355,6 @@ from app.models.audit_policy import AuditPolicyRule  # noqa: E402,F401
 # Compliance with standards (see app/models/compliance.py)
 from app.models.compliance import (ComplianceAssessment, ComplianceCheckDomains,  # noqa: E402,F401
                                    ComplianceRequirement, ComplianceSection, ComplianceStandard)
+
+# End of life of the software on the assets (see app/models/eol.py)
+from app.models.eol import EolAssetEntry, EolProduct  # noqa: E402,F401

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import api from "../../config/api.js";
 import { t } from "../../i18n";
 import { formatDate } from "../../utils/dates.js";
-import { SEVERITY, errorText } from "./remediationFormat.js";
+import { SEVERITY, errorText, refText, titled } from "./remediationFormat.js";
 import { DateInput } from "../shared/DateInput.jsx";
 
 const dayOffset = (days) => {
@@ -44,12 +44,12 @@ export function AcceptanceModal({ item, onClose, onSent }) {
             <button type="button" className="bkm-scrim" aria-label={t("Close")} onClick={onClose} />
             <div className="alr-modal rem-modal">
                 <h2 id="rem-acc-title">{t("Request risk acceptance")}</h2>
-                <p className="bkm-muted"><span className="bkm-mono">{item.ref}</span> · {item.asset_name} · {SEVERITY[item.severity]?.label}</p>
+                <p className="bkm-muted"><span className={titled(item.source) ? "" : "bkm-mono"}>{refText(item)}</span> · {item.asset_name} · {SEVERITY[item.severity]?.label}</p>
 
                 <div className="alr-lbl">{t("Scope")}
                     <div className="rem-radio" role="radiogroup" aria-label={t("Scope")}>
                         <button type="button" role="radio" aria-checked={scope === "item"} className={scope === "item" ? "is-on" : ""} onClick={() => setScope("item")}>
-                            {t("This finding only")}<small>{item.ref} · {item.asset_name}</small>
+                            {t("This finding only")}<small>{refText(item)} · {item.asset_name}</small>
                         </button>
                         <button type="button" role="radio" aria-checked={scope === "ref"} className={scope === "ref" ? "is-on" : ""} onClick={() => setScope("ref")}>
                             {scopeLabel}<small>{t("Assets where it appears later are covered too")}</small>

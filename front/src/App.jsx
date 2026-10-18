@@ -66,6 +66,7 @@ const AssetGroupsPage = lazy(() => import("./components/AssetGroups/AssetGroupsP
 const BackupSchedulesPage = lazy(() => import("./components/Backup/BackupSchedulesPage").then((m) => ({ default: m.BackupSchedulesPage })));
 const GroupRunsPage = lazy(() => import("./components/AssetGroups/GroupRunsPage").then((m) => ({ default: m.GroupRunsPage })));
 const SoftwarePage = lazy(() => import("./components/Software/SoftwarePage").then((m) => ({ default: m.SoftwarePage })));
+const LifecyclePage = lazy(() => import("./components/Software/LifecyclePage").then((m) => ({ default: m.LifecyclePage })));
 const SystemBackup = lazy(() => import("./components/SystemBackup/SystemBackup").then((m) => ({ default: m.SystemBackup })));
 const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
 import {
@@ -200,6 +201,11 @@ function AppContent() {
                         <Route path="/assets/software" element={
                             <RequirePermission module="asset_list" name="Software">
                                 <SoftwarePage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/assets/software/lifecycle" element={
+                            <RequirePermission module="asset_list" name="End of life">
+                                <LifecyclePage />
                             </RequirePermission>
                         } />
                         <Route path="/assets/discovery" element={

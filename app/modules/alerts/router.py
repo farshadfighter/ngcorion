@@ -35,7 +35,8 @@ router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 admin_router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
 # Alert module -> the permission module that may see it.
-MODULE_PERMISSION = {"noc": "noc", "cve": "cve", "audit": "auditing", "backup": "backup", "system": "system_config"}
+MODULE_PERMISSION = {"noc": "noc", "cve": "cve", "audit": "auditing", "backup": "backup", "software": "asset_list",
+                     "system": "system_config"}
 BELL_ITEMS = 8
 
 

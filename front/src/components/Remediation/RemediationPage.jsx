@@ -5,7 +5,7 @@ import { usePermission } from "../../hooks/usePermission";
 import { t, n } from "../../i18n";
 import { RemediationDrawer } from "./RemediationDrawer.jsx";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
-import { SEVERITY, SOURCE, STATUS, count, dueClass, dueText, itemTitle, shortDate } from "./remediationFormat.js";
+import { SEVERITY, SOURCE, STATUS, count, dueClass, dueText, itemTitle, shortDate, titled } from "./remediationFormat.js";
 import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
 import "../../assets/Remediation.css";
@@ -156,7 +156,7 @@ export function RemediationPage() {
                                     <td><span className={`bkm-pill ${SEVERITY[i.severity]?.pill}`}>{SEVERITY[i.severity]?.label || i.severity}</span></td>
                                     <td>
                                         <div className="rem-title">
-                                            {i.source !== "arch" && <span className="bkm-mono rem-ref">{i.ref}</span>}
+                                            {!titled(i.source) && <span className="bkm-mono rem-ref">{i.ref}</span>}
                                             {i.kev && <span className="bkm-pill rem-kev">{t("Exploited in the wild")}</span>}
                                         </div>
                                         <span className="bkm-sub rem-clip bidi-auto" title={i.title}>{itemTitle(i)}</span>

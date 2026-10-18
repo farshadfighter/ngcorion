@@ -1,5 +1,5 @@
 """
-Report templates, third set: compliance with a standard (app/modules/compliance) — the standard's score,
+Report templates, third set: end of life (app/modules/eol), and compliance with a standard (app/modules/compliance) — the standard's score,
 each requirement with its status and evidence, the failing checks behind the gaps, the requirements
 assessed by hand or still to assess, and (in Excel) every failed check of every asset.
 
@@ -154,6 +154,82 @@ def _compliance(ctx: Ctx) -> Dict[str, List[dict]]:
     return out
 
 
+EOL_STATUS = {"unsupported": "Unsupported", "extended": "Paid extended support only", "ending": "Ending soon",
+              "supported": "Supported", "unknown": "Not in the catalog"}
+EOL_CLS = {"unsupported": "down", "extended": "", "ending": "", "supported": "up"}
+
+
+def _end_of_life(ctx: Ctx) -> Dict[str, List[dict]]:
+    """Operating systems, firmware and server software of the report's assets against their vendor's
+    support (app/modules/eol), as when the report is built."""
+    from app.modules.eol import service as eol
+    tr, db, out = ctx.tr, ctx.db, {}
+    comps = eol.components(db, ctx.ids, today=ctx.now.date())
+    names = {a.id: a.asset_name for a in ctx.assets}
+    per_asset = eol.by_asset(comps)
+    ctx.header_line = tr("Vendor support as of {date}", date=ctx.date(ctx.now))
+
+    def rows(statuses, date_col):
+        sel = sorted((c for c in comps if c.status in statuses), key=lambda c: (c.until or "9999", c.title))
+        return [[cell(names.get(c.asset_id, f"#{c.asset_id}"), cls="mono"), cell(c.title),
+                 cell(c.version or "—", cls="mono"), cell(_iso_date(ctx, getattr(c, date_col)), cls="nowrap"),
+                 cell(tr(EOL_STATUS[c.status]), cls=EOL_CLS.get(c.status, ""))] for c in sel]
+
+    cols = lambda when: [col(tr("Asset"), mono=True), col(tr("Software")), col(tr("Version"), mono=True),  # noqa: E731
+                         col(when), col(tr("Status"))]
+    if ctx.on("overview"):
+        worst = defaultdict(int)
+        for cs in per_asset.values():
+            worst[eol.worst(cs)] += 1
+        total = len(per_asset) or 1
+        out["overview"] = [kpis([
+            kpi(tr("Assets with unsupported software"), tr.num(worst.get("unsupported", 0)),
+                sub=tr("of {n} assets with known software", n=tr.num(len(per_asset)))),
+            kpi(tr("Only paid extended support"), tr.num(worst.get("extended", 0))),
+            kpi(tr("Support ends soon"), tr.num(worst.get("ending", 0)),
+                sub=tr("within {days} days", days=tr.num(eol.get_settings(db)["warn_days"]))),
+            kpi(tr("Supported"), tr.num(worst.get("supported", 0))),
+        ]), bars([{"label": tr(EOL_STATUS[k]), "text": tr.num(worst.get(k, 0)),
+                   "segments": [(100 * worst.get(k, 0) / total, c)]}
+                  for k, c in (("unsupported", RED), ("extended", YELLOW), ("ending", YELLOW), ("supported", GREEN))
+                  if worst.get(k)], mono_labels=False),
+            note(tr("Release cycles and dates from endoflife.date as kept in this installation; software the "
+                    "catalog does not know is listed separately."))]
+    if ctx.on("unsupported"):
+        out["unsupported"] = [table(tr("Unsupported"), cols(tr("Support ended")), rows(("unsupported",), "until"),
+                                    tr("No software past the end of support."))]
+    if ctx.on("extended"):
+        out["extended"] = [table(tr("Paid extended support only"), cols(tr("Extended support until")),
+                                 rows(("extended",), "until"), tr("Nothing relies on paid extended support."))]
+    if ctx.on("ending"):
+        out["ending"] = [table(tr("Ending soon"), cols(tr("Support ends")), rows(("ending",), "until"),
+                               tr("No support ends soon."))]
+    if ctx.on("unknown"):
+        unknown = defaultdict(set)
+        for c in comps:
+            if c.status == "unknown":
+                unknown[(c.name, c.version or "—")].add(c.asset_id)
+        out["unknown"] = [table(tr("Not in the catalog"), [col(tr("Software")), col(tr("Version"), mono=True),
+                                                           col(tr("Assets"), num=True)],
+                                [[cell(n), cell(v, cls="mono"), cell(tr.num(len(ids)), value=len(ids), cls="num")]
+                                 for (n, v), ids in sorted(unknown.items(), key=lambda x: -len(x[1]))],
+                                tr("All software found is in the catalog."))]
+    if ctx.on("all"):
+        out["all"] = [table(tr("All software"), cols(tr("Support until")),
+                            rows(("unsupported", "extended", "ending", "supported"), "until"), tr("No software found."))]
+    return out
+
+
+def _iso_date(ctx: Ctx, value) -> str:
+    from datetime import date as _d
+    if not value:
+        return "—"
+    try:
+        return ctx.date(_d.fromisoformat(value[:10]))
+    except ValueError:
+        return value
+
+
 PHASE3 = (
     Template("compliance_standard", "Compliance with a standard",
              "Score of a standard (PCI DSS, ISO/IEC 27001, NIST SP 800-53 or the organisation's own), each "
@@ -168,4 +244,15 @@ PHASE3 = (
              ], options=[Option("standard", "Standard", "choice", "pci-dss-4.0", choices_fn=_standards),
                          Option("group", "Asset group", "choice", "all", choices_fn=_groups)],
              default_period="last_30_days", build=_compliance, uses_period=False),
+    Template("end_of_life", "End of life",
+             "Operating systems, firmware and server software past (or close to) the end of their vendor's support.",
+             "vulnerability", "asset_list", sections=[
+                 Section("overview", "Overview", "asset_list"),
+                 Section("unsupported", "Unsupported", "asset_list", "No more fixes from the vendor"),
+                 Section("extended", "Paid extended support only", "asset_list"),
+                 Section("ending", "Ending soon", "asset_list"),
+                 Section("unknown", "Not in the catalog", "asset_list", default=False),
+                 Section("all", "All software", "asset_list", "As a separate Excel file", default=False,
+                         excel_only=True),
+             ], default_period="last_30_days", build=_end_of_life, uses_period=False),
 )

@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+### End of life
+
+- New tab Assets → Software → End of life: until when the vendor still ships
+  security fixes for the operating system, firmware and server software of
+  every asset, from endoflife.date (24 products, among them Ubuntu, Debian,
+  RHEL and its rebuilds, SUSE, Windows Server, Windows, FortiOS, Cisco IOS XE,
+  VMware ESXi, SQL Server, PostgreSQL, MySQL, MongoDB, Apache, nginx,
+  Kubernetes and Docker Engine). Status per component and asset: unsupported,
+  paid extended support only, ending within the warning period (180 days by
+  default), supported, not in the catalog.
+- The catalog ships with NGCorion and works offline; an administrator updates
+  it from endoflife.date, imports a file (another NGCorion's export or a saved
+  endoflife.date answer) on a closed network, and adds products of their own
+  for what endoflife.date does not track. A date can also be entered by hand
+  for a device that has no software inventory.
+- Unsupported software opens remediation findings (source "End of life": high,
+  or medium with paid extended support only) that close by themselves after
+  the upgrade, raises the vulnerability factor of the risk score, and has two
+  alert events (past the end of support, support ending soon). The asset page
+  shows the vendor support of its components; new report "End of life" (PDF
+  and Excel).
+- Dates inside alert details and other sentences from the server now read in
+  the UI's calendar (Persian dates in Persian).
+
+### Production image start
+
+- The image compiled with Cython failed to start (a plain method on a request
+  model of the compliance module); fixed, and a test now keeps request models
+  free of plain methods.
+
 ### Compliance with standards
 
 - New page Remediation & hardening → Compliance with standards: how far the

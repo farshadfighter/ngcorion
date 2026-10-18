@@ -19,10 +19,9 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Order | # | Item | Scope |
 |---|---|---|---|
-| 1 | 10 | End of life | OS and firmware out of (or near the end of) vendor support; alert and risk factor |
-| 2 | 14 | TLS certificates | Certificates of services and devices: expiry, weak algorithm or chain; alert before expiry |
-| 3 | 11 | Global search | One search box on every page: assets, IP, MAC, CVE, findings, users, reports |
-| 4 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
+| 1 | 14 | TLS certificates | Certificates of services and devices: expiry, weak algorithm or chain; alert before expiry |
+| 2 | 11 | Global search | One search box on every page: assets, IP, MAC, CVE, findings, users, reports |
+| 3 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
 
 ## Known limits (shipped, documented, not yet improved)
 
@@ -36,6 +35,10 @@ Bugs reported from testing on the customer test server go before everything else
 - Compliance: checks are put in security domains from their titles (about 6% of the checks land in none
   and count only for secure configuration as a whole); the score is indicative, not a certification.
   National requirements are not shipped: the organisation adds them as its own standard.
+- End of life: endoflife.date has no data for Cisco classic IOS, NX-OS or Sophos Firewall OS (they are
+  defined as the organisation's own products); the edition of a Windows client (Enterprise, IoT, LTSC)
+  is guessed from its name; the online update needs HTTPS to endoflife.date (a file import works
+  without it).
 
 ## On the customer side
 
@@ -50,7 +53,9 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Item | Commit |
 |---|---|
-| 15 Compliance with standards (PCI DSS, ISO 27001, NIST, own standards, report) | recorded with the next item |
+| 10 End of life (catalog from endoflife.date, own products, remediation, risk, alerts, report) | recorded with the next item |
+| Production image start: no plain methods on Pydantic models (guard test) | 6d7b258 |
+| 15 Compliance with standards (PCI DSS, ISO 27001, NIST, own standards, report) | b262320 |
 | 9 Benchmark policy (optional / excluded checks, four eyes, rescoring) | cfa38c5 |
 | I1–I3 Bidi isolation, real ports on the map, Cisco per-VLAN MAC tables | 3ac5ec3, f0f10f8, 6ed4f95 |
 | 8 Topology from LLDP and CDP | d91a854 |

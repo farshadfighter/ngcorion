@@ -152,6 +152,16 @@ the database) is evidenced by the checks of its domains, topics or numbers.
 Scores are computed on request, grouped by check in SQL; nothing is stored but
 the standards, the administrator's domain corrections and hand assessments.
 
+**End of life.** `app/modules/eol` matches what runs on an asset (the os,
+firmware and service items of the software inventory, else the OS typed on
+the asset, plus entries made by hand) to a release cycle of the catalog: the
+built-in `catalog.json` (generated from endoflife.date by
+`scripts/eol_catalog.py`), overridden per product by an online update or a file
+import, plus the organisation's own products (`eol_products`). The status
+(unsupported, paid extended support only, ending, supported) is computed on
+request from today's date; remediation (source `eol`), the risk score's
+vulnerability factor, two alert events and a report read the same evaluation.
+
 ## 5. Background work
 
 Started in the lifespan of `app/main.py`, each wrapped in a `SingletonTask`

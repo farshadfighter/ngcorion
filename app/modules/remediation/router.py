@@ -93,7 +93,7 @@ def get_summary(_user: User = Depends(_read), db: Session = Depends(get_db)):
 def list_items(
     view: Literal["open", "overdue", "in_progress", "pending_verification", "accepted", "resolved",
                   "unassigned", "mine", "all"] = "open",
-    source: Optional[Literal["cve", "audit", "arch"]] = None,
+    source: Optional[Literal["cve", "audit", "arch", "eol"]] = None,
     severity: Optional[Literal["critical", "high", "medium", "low"]] = None,
     asset_id: Optional[int] = None,
     q: Optional[str] = Query(None, max_length=200),
