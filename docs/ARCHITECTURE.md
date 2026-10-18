@@ -162,6 +162,17 @@ import, plus the organisation's own products (`eol_products`). The status
 request from today's date; remediation (source `eol`), the risk score's
 vulnerability factor, two alert events and a report read the same evaluation.
 
+**TLS certificates.** `app/modules/tls` scans the TLS ports of the assets (the
+configured list plus open ports discovery saw with a TLS service) with plain
+handshakes only (`scanner.py`: OpenSSL verification against certifi and the
+organisation's CAs, then an unverified handshake to read an untrusted
+certificate, then TLS 1.0 / 1.1 probes), in the SingletonTask `tls-scan`.
+`tls_endpoints` keeps the last certificate per service; `checks.py` judges it
+when read (expiry, trust, name, key, signature, old protocols), so the
+problems follow today's date. Remediation (source `tls`), the risk score's
+vulnerability factor, two alert events, the asset page and a report read that
+judgement.
+
 ## 5. Background work
 
 Started in the lifespan of `app/main.py`, each wrapped in a `SingletonTask`

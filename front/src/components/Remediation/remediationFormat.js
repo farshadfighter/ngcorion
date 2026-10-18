@@ -16,6 +16,7 @@ export const SOURCE = {
     audit: t("Audit"),
     arch: t("Architecture"),
     eol: t("End of life"),
+    tls: t("TLS certificates"),
 };
 
 export const STATUS = {
@@ -102,13 +103,15 @@ export function sourceLink(item) {
     if (item.source === "audit" && d.session_id) return { to: `/audit/sessions/${d.session_id}`, label: t("Open the audit result") };
     if (item.source === "arch") return { to: "/architecture-validation", label: t("Open in Architecture Validation") };
     if (item.source === "eol") return { to: "/assets/software/lifecycle", label: t("Open in End of life") };
+    if (item.source === "tls") return { to: d.service_id ? `/cve/certificates?service=${d.service_id}` : "/cve/certificates",
+                                        label: t("Open in TLS certificates") };
     return null;
 }
 
-/** Title shown for an item: CVE descriptions come from the API; rule titles and end-of-life sentences are translated. */
 /** Sources whose ref is an internal key: the title names the finding instead. */
-export const titled = (source) => source === "arch" || source === "eol";
+export const titled = (source) => source === "arch" || source === "eol" || source === "tls";
 
+/** Title shown for an item: CVE descriptions come from the API; rule titles and end-of-life and TLS sentences are translated. */
 export const itemTitle = (item) => (titled(item.source) ? tb(item.title) : item.title);
 
 /** How a finding is named in one line: its CVE id or check, or its title. */

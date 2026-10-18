@@ -19,9 +19,8 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Order | # | Item | Scope |
 |---|---|---|---|
-| 1 | 14 | TLS certificates | Certificates of services and devices: expiry, weak algorithm or chain; alert before expiry |
-| 2 | 11 | Global search | One search box on every page: assets, IP, MAC, CVE, findings, users, reports |
-| 3 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
+| 1 | 11 | Global search | One search box on every page: assets, IP, MAC, CVE, findings, users, reports |
+| 2 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
 
 ## Known limits (shipped, documented, not yet improved)
 
@@ -39,6 +38,9 @@ Bugs reported from testing on the customer test server go before everything else
   defined as the organisation's own products); the edition of a Windows client (Enterprise, IoT, LTSC)
   is guessed from its name; the online update needs HTTPS to endoflife.date (a file import works
   without it).
+- TLS certificates: services that switch to TLS with STARTTLS (SMTP 25/587, LDAP 389, RDP) are not
+  checked; revocation (CRL/OCSP) is not checked; the name is checked only when a host name is known
+  (asset host name or the service's server name).
 
 ## On the customer side
 
@@ -53,7 +55,8 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Item | Commit |
 |---|---|
-| 10 End of life (catalog from endoflife.date, own products, remediation, risk, alerts, report) | recorded with the next item |
+| 14 TLS certificates (scan, trust, expiry, weak key/signature, TLS 1.0/1.1, own CAs, remediation, risk, alerts, report) | recorded with the next item |
+| 10 End of life (catalog from endoflife.date, own products, remediation, risk, alerts, report) | fe425bd |
 | Production image start: no plain methods on Pydantic models (guard test) | 6d7b258 |
 | 15 Compliance with standards (PCI DSS, ISO 27001, NIST, own standards, report) | b262320 |
 | 9 Benchmark policy (optional / excluded checks, four eyes, rescoring) | cfa38c5 |

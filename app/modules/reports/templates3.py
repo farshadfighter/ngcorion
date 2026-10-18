@@ -1,5 +1,5 @@
 """
-Report templates, third set: end of life (app/modules/eol), and compliance with a standard (app/modules/compliance) — the standard's score,
+Report templates, third set: end of life (app/modules/eol), TLS certificates (app/modules/tls), and compliance with a standard (app/modules/compliance) — the standard's score,
 each requirement with its status and evidence, the failing checks behind the gaps, the requirements
 assessed by hand or still to assess, and (in Excel) every failed check of every asset.
 
@@ -220,6 +220,95 @@ def _end_of_life(ctx: Ctx) -> Dict[str, List[dict]]:
     return out
 
 
+TLS_PROBLEM = {"expired": "Expired", "not_yet_valid": "Not yet valid", "untrusted": "Not trusted",
+               "self_signed": "Self-signed", "weak_key": "Weak key", "weak_signature": "Weak signature",
+               "old_protocol": "Old TLS versions accepted", "name_mismatch": "For another name",
+               "expiring": "Expires soon"}
+TLS_LEVEL = {"critical": "Expired", "warning": "Has problems", "ok": "No problem", "unknown": "Not read yet"}
+
+
+def _tls_certificates(ctx: Ctx) -> Dict[str, List[dict]]:
+    """The certificates of the report's assets' TLS services (app/modules/tls) as at the last scan, judged
+    when the report is built."""
+    from datetime import timedelta
+    from app.modules.tls import service as tls
+    tr, db, out = ctx.tr, ctx.db, {}
+    now = ctx.now.replace(tzinfo=None)
+    rows = tls.evaluate(db, ctx.ids, now=now)
+    ctx.header_line = tr("TLS certificates as of {date}", date=ctx.date(ctx.now))
+
+    def ends(e):
+        return ctx.date(e.not_after) if e.not_after else "—"
+
+    def label(p):
+        return tr(TLS_PROBLEM["self_signed" if p["code"] == "untrusted" and p.get("self_signed") else p["code"]])
+
+    def detail(p):
+        if p["code"] == "weak_key":
+            return p["key"]
+        if p["code"] == "weak_signature":
+            return p["algorithm"]
+        if p["code"] == "old_protocol":
+            return ", ".join(p["protocols"])
+        if p["code"] == "untrusted" and not p.get("self_signed"):
+            return (p.get("reason") or "")[:80]
+        return ""
+
+    service_cols = [col(tr("Asset"), mono=True), col(tr("Service"), mono=True), col(tr("Issued to")),
+                    col(tr("Ends"))]
+    expired = [r for r in rows if any(p["code"] == "expired" for p in r["problems"])]
+    soon = [r for r in rows if r["endpoint"].not_after and now < r["endpoint"].not_after <= now + timedelta(days=90)]
+    found = [(r, p) for r in rows for p in r["problems"] if p["code"] not in ("expired", "expiring")]
+    if ctx.on("overview"):
+        levels = defaultdict(int)
+        for r in rows:
+            levels[r["level"]] += 1
+        total = len(rows) or 1
+        out["overview"] = [kpis([
+            kpi(tr("TLS services"), tr.num(len(rows)), sub=tr("on {n} assets", n=tr.num(len({r["asset"].id for r in rows})))),
+            kpi(tr("Expired"), tr.num(len(expired))),
+            kpi(tr("Expire within 90 days"), tr.num(len(soon))),
+            kpi(tr("With other problems"), tr.num(len({r["endpoint"].id for r, _ in found}))),
+        ]), bars([{"label": tr(TLS_LEVEL[k]), "text": tr.num(levels.get(k, 0)),
+                   "segments": [(100 * levels.get(k, 0) / total, c)]}
+                  for k, c in (("critical", RED), ("warning", YELLOW), ("ok", GREEN), ("unknown", GREY))
+                  if levels.get(k)], mono_labels=False),
+            note(tr("Certificates as the last scan read them; trust is judged against the public authorities and "
+                    "the organisation's own trusted authorities."))]
+    if ctx.on("expired"):
+        out["expired"] = [table(tr("Expired"), service_cols,
+                                [[cell(r["asset"].asset_name, cls="mono"), cell(tls.where(r["endpoint"]), cls="mono"),
+                                  cell(r["endpoint"].subject or "—"), cell(ends(r["endpoint"]), cls="nowrap down")]
+                                 for r in expired], tr("No expired certificate."))]
+    if ctx.on("expiring"):
+        out["expiring"] = [table(tr("Expire within 90 days"), service_cols,
+                                 [[cell(r["asset"].asset_name, cls="mono"), cell(tls.where(r["endpoint"]), cls="mono"),
+                                   cell(r["endpoint"].subject or "—"), cell(ends(r["endpoint"]), cls="nowrap")]
+                                  for r in sorted(soon, key=lambda r: r["endpoint"].not_after)],
+                                 tr("No certificate expires within 90 days."))]
+    if ctx.on("problems"):
+        out["problems"] = [table(tr("Other problems"), [col(tr("Asset"), mono=True), col(tr("Service"), mono=True),
+                                                        col(tr("Problem")), col(tr("Detail")), col(tr("Severity"))],
+                                 [[cell(r["asset"].asset_name, cls="mono"), cell(tls.where(r["endpoint"]), cls="mono"),
+                                   cell(label(p)), cell(detail(p)), _sev_cell(ctx, p["severity"])]
+                                  for r, p in sorted(found, key=lambda x: (["high", "medium", "low"].index(x[1]["severity"]),
+                                                                           x[0]["asset"].asset_name or ""))],
+                                 tr("No other problem."))]
+    if ctx.on("all"):
+        out["all"] = [table(tr("All TLS services"),
+                            [col(tr("Asset"), mono=True), col(tr("Service"), mono=True), col(tr("Issued to")),
+                             col(tr("Issuer")), col(tr("Ends")), col(tr("Key")), col(tr("Signature")),
+                             col(tr("Protocol")), col(tr("Status"))],
+                            [[cell(r["asset"].asset_name, cls="mono"), cell(tls.where(r["endpoint"]), cls="mono"),
+                              cell(r["endpoint"].subject or "—"), cell(r["endpoint"].issuer or "—"),
+                              cell(ends(r["endpoint"]), cls="nowrap"),
+                              cell(f"{r['endpoint'].key_type or ''} {r['endpoint'].key_bits or ''}".strip() or "—"),
+                              cell(r["endpoint"].signature or "—"), cell(r["endpoint"].protocol or "—"),
+                              cell(tr(TLS_LEVEL[r["level"]]))] for r in rows],
+                            tr("No TLS service found."))]
+    return out
+
+
 def _iso_date(ctx: Ctx, value) -> str:
     from datetime import date as _d
     if not value:
@@ -255,4 +344,15 @@ PHASE3 = (
                  Section("all", "All software", "asset_list", "As a separate Excel file", default=False,
                          excel_only=True),
              ], default_period="last_30_days", build=_end_of_life, uses_period=False),
+    Template("tls_certificates", "TLS certificates",
+             "Certificates of the assets' TLS services: expired or expiring, untrusted, weak, or still accepting "
+             "TLS 1.0 and 1.1.",
+             "vulnerability", "cve", sections=[
+                 Section("overview", "Overview", "cve"),
+                 Section("expired", "Expired", "cve"),
+                 Section("expiring", "Expire within 90 days", "cve"),
+                 Section("problems", "Other problems", "cve", "Trust, key, signature, protocol, name"),
+                 Section("all", "All TLS services", "cve", "As a separate Excel file", default=False,
+                         excel_only=True),
+             ], default_period="last_30_days", build=_tls_certificates, uses_period=False),
 )

@@ -1,5 +1,4 @@
 {
-  ", ": "، ",
   "“Healthy” means the file opened, the hash of every part matched the list inside the file and its database version can be restored here. The weekly restore test fully restores the latest backup into a temporary database and then removes it.": "«سالم» یعنی فایل باز شد، هش هر بخش با فهرست داخل فایل خواند و نسخهٔ پایگاه دادهٔ آن اینجا قابل بازیابی است. «آزمون بازیابی» هفته‌ای یک بار آخرین پشتیبان را در یک پایگاه دادهٔ موقت کامل بازیابی می‌کند و بعد پاکش می‌کند.",
   "{{a}} of {{b}}": "{{a}} از {{b}}",
   "{{count}} rows": "{{count, number}} ردیف",

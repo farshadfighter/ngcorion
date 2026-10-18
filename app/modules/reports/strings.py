@@ -54,6 +54,8 @@ def collect() -> Set[str]:
     from app.modules.reports import templates3
     found.update(templates3.STATUS.values())
     found.update(templates3.EOL_STATUS.values())
+    found.update(templates3.TLS_PROBLEM.values())
+    found.update(templates3.TLS_LEVEL.values())
     found.update(["System administrator", "Manager", "User", "Guest", "Redundancy", "Exposure", "Best practice", "Inventory",
                   "Topology", "Resilience", "Compliance"])
     from app.modules.alerts.events import EVENTS

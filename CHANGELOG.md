@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### TLS certificates
+
+- New tab Security assessment → Vulnerabilities (CVE) → TLS certificates: the
+  certificate every TLS service of the assets presents (web, device
+  management, LDAPS, mail …), read with a plain TLS handshake on the usual TLS
+  ports and on the open ports discovery saw with a TLS service; no credentials,
+  nothing changes on the device. Automatic every 24 hours, or on request.
+- Each certificate is checked for expiry (expired; expiring within 30 days by
+  default), trust (self-signed or an unknown issuer; the organisation's own
+  CAs can be trusted), the asset's host name, weak keys (RSA under 2048 bits)
+  and signatures (SHA-1, MD5), and whether the service still accepts TLS 1.0
+  or 1.1.
+- Services can be added by hand (another port, or a site with its own name
+  sent in the handshake) and turned off when they are not the organisation's.
+- Problems open remediation findings (source "TLS certificates": expired high,
+  untrusted / weak / old protocol medium, another name low) that close by
+  themselves after the fix, raise the vulnerability factor of the risk score,
+  and have two alert events (certificate expired, expiring soon). The asset
+  page lists its services; new report "TLS certificates" (PDF and Excel).
+- Remediation titles on the asset page are now translated like on the
+  remediation page.
+
 ### End of life
 
 - New tab Assets → Software → End of life: until when the vendor still ships

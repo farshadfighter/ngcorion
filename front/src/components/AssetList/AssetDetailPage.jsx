@@ -14,11 +14,14 @@ import { HealthBar } from "../NOC/Health.jsx";
 import { celsius, duration } from "../NOC/healthFormat.js";
 import { tb } from "../../i18n/backendText.js";
 import { BidiText } from "../../i18n/BidiText.jsx";
-import { formatDateTime, formatWhen, relativeDays } from "../../utils/dates.js";
+import { formatDate, formatDateTime, formatWhen, relativeDays } from "../../utils/dates.js";
 import { TECHS, errorText } from "../AssetGroups/groupFormat.js";
 import { AssetIcon } from "../shared/AssetIcon.jsx";
 import { EOL_STATUS, untilText } from "../Software/eolFormat.js";
+import { LEVEL as TLS_LEVEL, SCAN_STATUS as TLS_SCAN, problemText } from "../CVE/tlsFormat.js";
+import { itemTitle } from "../Remediation/remediationFormat.js";
 import "../../assets/Lifecycle.css";
+import "../../assets/Certificates.css";
 import "../../assets/BackupModule.css";
 import "../../assets/AssetDetail.css";
 
@@ -259,6 +262,22 @@ export function AssetDetailPage() {
                                     </tbody>
                                 </table>
                             )}
+                            {d.certificates?.services.length > 0 && (
+                                <div className="a360-tls">
+                                    <b className="bkm-small">{t("TLS certificates")}</b>
+                                    {d.certificates.services.map((s) => (
+                                        <div key={s.id} className="a360-tls-row">
+                                            <span className={`bkm-pill ${TLS_LEVEL[s.level].pill}`}>{s.status === "read" ? TLS_LEVEL[s.level].label : TLS_SCAN[s.status]}</span>
+                                            <bdi dir="ltr" className="bkm-mono">{s.where}</bdi>
+                                            {s.not_after && <span className="bkm-small bkm-muted">{t("Valid until {{date}}", { date: formatDate(s.not_after) })}</span>}
+                                            {s.problems.filter((p) => p.code !== "expired" && p.code !== "expiring").map((p) => (
+                                                <span key={p.code} className="bkm-small">{problemText(p)}</span>
+                                            ))}
+                                        </div>
+                                    ))}
+                                    <Link className="bkm-link bkm-small" to={`/cve/certificates?asset=${a.id}`}>{t("Open in TLS certificates")}</Link>
+                                </div>
+                            )}
                         </Card>
                     )}
 
@@ -271,7 +290,7 @@ export function AssetDetailPage() {
                                     {d.remediation.top.map((i) => (
                                         <li key={i.id}>
                                             <Sev value={i.severity} />
-                                            <span className="a360-grow" dir="auto">{i.title}</span>
+                                            <span className="a360-grow" dir="auto">{itemTitle(i)}</span>
                                             {i.due_at && (
                                                 <span className={`bkm-small bkm-nowrap ${new Date(`${i.due_at}Z`) < new Date() ? "bkm-red bkm-strong" : "bkm-muted"}`}>
                                                     {t("Due {{date}}", { date: formatDateTime(i.due_at) })}

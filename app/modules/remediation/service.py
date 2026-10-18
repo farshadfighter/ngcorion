@@ -234,6 +234,26 @@ def _eol_found(db: Session) -> List[Found]:
     return out
 
 
+def _tls_found(db: Session) -> List[Found]:
+    """Problems of the certificates of the assets' TLS services (app/modules/tls): one item per service and
+    problem; a certificate ending soon is only an alert."""
+    from app.modules.tls import service as tls
+    out = []
+    for row in tls.evaluate(db):
+        ep, asset = row["endpoint"], row["asset"]
+        for p in row["problems"]:
+            title = tls.problem_title(ep, p)
+            if title is None:
+                continue
+            out.append(Found(
+                key=f"tls:{asset.id}:{ep.id}:{p['code']}", source="tls", ref=p["code"], asset=asset, title=title,
+                severity=p["severity"],
+                detail={"service_id": ep.id, "where": tls.where(ep), "problem": p, "subject": ep.subject,
+                        "issuer": ep.issuer, "not_after": ep.not_after.isoformat() if ep.not_after else None},
+            ))
+    return out
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Sync
 # ──────────────────────────────────────────────────────────────────────────
@@ -298,6 +318,8 @@ def sync(db: Session, now: Optional[datetime] = None) -> Dict[str, int]:
     checked.add("arch")
     found += _eol_found(db)
     checked.add("eol")
+    found += _tls_found(db)
+    checked.add("tls")
 
     expired = _expire_acceptances(db, now)
     by_item_acc, by_ref_acc = _active_acceptances(db, now)

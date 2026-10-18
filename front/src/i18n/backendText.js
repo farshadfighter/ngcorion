@@ -112,6 +112,28 @@ const TEMPLATES = [
     msg("{{what}} on {{name}}: fixes only with paid extended support, until {{until}}"),
     msg("{{what}} on {{name}}: support ends {{until}}"),
     msg("Vendor support ends within {{days}} days"),
+    // TLS certificates (app/modules/tls/router.py, remediation titles, alert details)
+    msg("Scanned the TLS certificates of {{name}}"),
+    msg("Added the TLS service {{what}} of {{name}}"),
+    msg("Turned off the TLS service {{what}} of {{name}}"),
+    msg("Turned on the TLS service {{what}} of {{name}}"),
+    msg("Changed the server name of the TLS service {{what}} of {{name}}"),
+    msg("Removed the TLS service {{what}} of {{name}}"),
+    msg("Automatic TLS scan every {{hours}} h on ports {{ports}}; warns {{days}} days before expiry"),
+    msg("Automatic TLS scan off; ports {{ports}}; warns {{days}} days before expiry"),
+    msg("Trusted the certificate authority {{name}}"),
+    msg("No longer trusts the certificate authority {{name}}"),
+    msg("The certificate of {{what}} expired on {{date}}"),
+    msg("The certificate of {{what}} is not valid before {{date}}"),
+    msg("The certificate of {{what}} is self-signed"),
+    msg("The certificate of {{what}} is issued by an untrusted authority"),
+    msg("The certificate of {{what}} has a weak key ({{key}})"),
+    msg("The certificate of {{what}} is signed with {{algorithm}}"),
+    msg("The certificate of {{what}} does not name the host"),
+    msg("{{what}} still accepts {{protocols}}"),
+    msg("The certificate of {{what}} on {{name}} expired {{date}}"),
+    msg("The certificate of {{what}} on {{name}} expires {{date}}"),
+    msg("A TLS certificate of an asset expires within {{days}} days"),
     // compliance with standards (app/modules/compliance/router.py)
     msg("Assessed requirement {{ref}} of {{name}} by hand"),
     msg("Removed the assessment of requirement {{ref}} of {{name}}"),
@@ -462,6 +484,14 @@ msg("No more fixes from the vendor");
 msg("Paid extended support only");
 msg("Ending soon");
 msg("Not in the catalog");
+// reports: TLS certificates (app/modules/reports/templates3.py)
+msg("TLS certificates");
+msg("Certificates of the assets' TLS services: expired or expiring, untrusted, weak, or still accepting TLS 1.0 and 1.1.");
+msg("Expired");
+msg("Expire within 90 days");
+msg("Other problems");
+msg("Trust, key, signature, protocol, name");
+msg("All TLS services");
 msg("All software");
 msg("Compliance with a standard");
 msg("Score of a standard (PCI DSS, ISO/IEC 27001, NIST SP 800-53 or the organisation's own), each requirement with its evidence, the gaps and what is assessed by hand.");
@@ -1173,3 +1203,18 @@ msg("A product with this name already exists");
 msg("Product not found");
 msg("Entry not found");
 msg("Give the software names the product is found under");
+
+// TLS certificates (app/modules/tls, alerts tls.certificate_*)
+msg("Asked for a scan of every TLS certificate");
+msg("Certificate expired");
+msg("Certificate expires soon");
+msg("A TLS service of an asset presents an expired certificate");
+msg("Only administrators can change the TLS certificate settings");
+msg("TLS service not found");
+msg("The asset has no address: enter the host");
+msg("This TLS service is already listed");
+msg("A service the scan found comes back with the next scan: turn it off instead");
+msg("Certificate authority not found");
+msg("This certificate authority is already trusted");
+msg("The file is not a PEM certificate");
+msg("This certificate is not a certificate authority");

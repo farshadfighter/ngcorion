@@ -45,7 +45,7 @@ export const MENU_GROUPS = [
             { key: "operation-device", label: t("Run audits"), path: "/audit/sessions", perm: "auditing" },
             { key: "group-runs", label: t("Group audits"), path: "/audit/group-runs", perm: "auditing" },
             { key: "schedule-auditing", label: t("Audit schedules"), path: "/audit/schedule-auditing", perm: "auditing" },
-            { key: "cve", label: t("Vulnerabilities (CVE)"), path: "/cve", perm: "cve" },
+            { key: "cve", keys: ["tls-certificates"], label: t("Vulnerabilities (CVE)"), path: "/cve", perm: "cve" },
         ],
     },
     {
@@ -166,6 +166,7 @@ const PATHS = [
     ["/architecture-validation", "architecture-validation"],
     ["/design-configuration", "design-configuration"],
     ["/cve/database", "cve-database"],
+    ["/cve/certificates", "tls-certificates"],
     ["/cve", "cve"],
     ["/noc/dashboard", "noc-dashboard"],
     ["/noc/hosts", "noc-hosts"],

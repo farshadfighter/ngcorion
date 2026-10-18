@@ -113,6 +113,7 @@ from app.modules.noc.topology_router import router as topology_discovery_router
 from app.modules.audit_policy.router import router as audit_policy_router
 from app.modules.compliance.router import router as compliance_router
 from app.modules.eol.router import router as eol_router
+from app.modules.tls.router import router as tls_router
 
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
@@ -293,6 +294,7 @@ async def lifespan(app: FastAPI):
     from app.modules.directory.engine import start_directory_check, stop_directory_check
     from app.modules.asset_groups.runs import start_group_runs, stop_group_runs
     from app.modules.syslog.listener import start_syslog_intake, stop_syslog_intake
+    from app.modules.tls.worker import start_tls_worker, stop_tls_worker
     singletons = [
         SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
         SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
@@ -306,6 +308,7 @@ async def lifespan(app: FastAPI):
         SingletonTask("directory-check", start_directory_check, stop_directory_check),
         SingletonTask("group-runs", start_group_runs, stop_group_runs),
         SingletonTask("syslog-intake", start_syslog_intake, stop_syslog_intake),
+        SingletonTask("tls-scan", start_tls_worker, stop_tls_worker),
     ]
     for task in singletons:
         task.start()
@@ -582,6 +585,7 @@ app.include_router(topology_discovery_router)
 app.include_router(audit_policy_router)
 app.include_router(compliance_router)
 app.include_router(eol_router)
+app.include_router(tls_router)
 
 # Architecture Validation routes
 app.include_router(architecture_validation_router)

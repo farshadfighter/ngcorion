@@ -358,3 +358,6 @@ from app.models.compliance import (ComplianceAssessment, ComplianceCheckDomains,
 
 # End of life of the software on the assets (see app/models/eol.py)
 from app.models.eol import EolAssetEntry, EolProduct  # noqa: E402,F401
+
+# TLS certificates of the services the assets run (see app/models/tls.py)
+from app.models.tls import TlsEndpoint, TlsTrustedCa  # noqa: E402,F401

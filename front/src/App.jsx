@@ -46,6 +46,7 @@ const DesignDetail = lazy(() => import("./components/DesignConfiguration/DesignD
 const DesignCanvas = lazy(() => import("./components/DesignConfiguration/DesignCanvas").then((m) => ({ default: m.DesignCanvas })));
 const ScheduledJobsPage = lazy(() => import("./components/Scheduling/ScheduledJobsPage").then((m) => ({ default: m.ScheduledJobsPage })));
 const CveFindings = lazy(() => import("./components/CVE/CveFindings").then((m) => ({ default: m.CveFindings })));
+const CertificatesPage = lazy(() => import("./components/CVE/CertificatesPage").then((m) => ({ default: m.CertificatesPage })));
 const CveDatabase = lazy(() => import("./components/CVE/CveDatabase").then((m) => ({ default: m.CveDatabase })));
 const NocDashboard = lazy(() => import("./components/NOC/NocDashboard").then((m) => ({ default: m.NocDashboard })));
 const AssetDetailPage = lazy(() => import("./components/AssetList/AssetDetailPage").then((m) => ({ default: m.AssetDetailPage })));
@@ -335,6 +336,11 @@ function AppContent() {
                         <Route path="/cve" element={
                             <RequirePermission module="cve" name="CVE">
                                 <CveFindings />
+                            </RequirePermission>
+                        } />
+                        <Route path="/cve/certificates" element={
+                            <RequirePermission module="cve" name="TLS certificates">
+                                <CertificatesPage />
                             </RequirePermission>
                         } />
                         <Route path="/cve/database" element={

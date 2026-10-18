@@ -26,7 +26,7 @@ from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integ
 
 from app.core.database import Base
 
-SOURCES = ("cve", "audit", "arch", "eol")
+SOURCES = ("cve", "audit", "arch", "eol", "tls")
 SEVERITIES = ("critical", "high", "medium", "low")
 
 ITEM_OPEN = "open"

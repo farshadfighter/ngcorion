@@ -16,6 +16,7 @@ import { CvePackageImport } from "./CvePackageImport.jsx";
 import { CveDetail } from "./CveDetail.jsx";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 import { CveAssetProducts } from "./CveAssetProducts.jsx";
+import { CveTabs } from "./CveTabs.jsx";
 import "../../assets/Cve.css";
 import { t as tr, n } from "../../i18n";
 import { tx } from "../../i18n/tx";
@@ -135,6 +136,7 @@ export function CveFindings() {
                     <DbPill status={status} onOpenJob={setJobId} />
                 </div>
             </div>
+            <CveTabs />
 
             {error && <div className="cvx-note cvx-note-error">{error}</div>}
 

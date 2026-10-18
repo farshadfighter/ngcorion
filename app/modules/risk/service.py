@@ -21,7 +21,10 @@ NGCorion Risk Score Calculation Specification (risk.pdf):
                              the wild 100, CVSS 9+/EPSS 50%+ 80, CVSS 7+/
                              EPSS 10%+ 55, other 25, none 0 - or software
                              past its end of support (app/modules/eol):
-                             unsupported 80, paid extended support only 40
+                             unsupported 80, paid extended support only 40 -
+                             or a TLS certificate problem (app/modules/tls):
+                             expired 60, untrusted / weak key or signature /
+                             TLS 1.0-1.1 30, another name 10
 
   Default weights with CV: AC 20, AR 15, AZ 15, OP 10, AF 20, HF 5, CV 15
   (migration 7a3c91e5d204 moves untouched installs there; customised weights
@@ -475,12 +478,16 @@ class AssetRiskCalculationService:
     def _vulnerability_score(self, db: Session, asset_id: int) -> dict:
         """CV: the asset's worst CVE finding, or software past the end of its
         vendor's support (app/modules/eol) - no fixes come for it any more:
-        unsupported 80, only paid extended support 40 - whichever is higher.
+        unsupported 80, only paid extended support 40 - or a problem of the
+        certificate of one of its TLS services (app/modules/tls): expired 60,
+        untrusted / weak / old protocol 30, another name 10 - whichever is
+        highest.
         0 with neither - also when the CVE database is not loaded or no product
         of the asset is known, since nothing is known to be vulnerable."""
         from app.modules.cve import findings as cve_findings
         from app.modules.cve import settings as cve_settings
         from app.modules.eol import service as eol
+        from app.modules.tls import service as tls
         # Findings under an approved risk acceptance (app/modules/remediation)
         # leave the score until the acceptance ends.
         from app.modules.remediation.service import accepted_refs
@@ -495,12 +502,18 @@ class AssetRiskCalculationService:
         ended = [c for c in eol.components(db, [asset_id])
                  if c.status in eol.RISK_SCORE and c.key not in accepted_eol]
         eol_score = max((eol.RISK_SCORE[c.status] for c in ended), default=0.0)
+        accepted_tls = accepted_refs(db, asset_id, "tls")
+        tls_problems = [p for r in tls.evaluate(db, [asset_id]) for p in r["problems"]
+                        if p["severity"] in tls.RISK_SCORE
+                        and f"{r['endpoint'].id}:{p['code']}" not in accepted_tls]
+        tls_score = max((tls.RISK_SCORE[p["severity"]] for p in tls_problems), default=0.0)
         return {
-            "score": max(self._CVE_PRIORITY_SCORE.get(worst, 0.0), eol_score),
+            "score": max(self._CVE_PRIORITY_SCORE.get(worst, 0.0), eol_score, tls_score),
             "findings": len(rows),
             "kev": sum(1 for f in rows if f["kev"]),
             "end_of_life": sum(1 for c in ended if c.status == "unsupported"),
             "extended_support": sum(1 for c in ended if c.status == "extended"),
+            "certificate_problems": len(tls_problems),
         }
 
     # ------------------------------------------------------------------

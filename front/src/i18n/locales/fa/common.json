@@ -1,5 +1,4 @@
 {
-  "{{count}} days ago": "{{count, number}} روز پیش",
   "{{h}} h {{mm}} min": "{{h}} ساعت و {{mm}} دقیقه",
   "{{m}} min": "{{m}} دقیقه",
   "{{s}} s": "{{s}} ثانیه",
@@ -147,7 +146,6 @@
   "Unknown devices": "دستگاه‌های ناشناس",
   "Use the code from the app": "استفاده از کد برنامه",
   "User Management": "مدیریت کاربران",
-  "Vulnerabilities (CVE)": "آسیب‌پذیری‌ها (CVE)",
   "Vulnerability database": "پایگاه دادهٔ آسیب‌پذیری",
   "When you have used some or lost the list.": "وقتی چند کد را مصرف کرده‌اید یا فهرست را گم کرده‌اید.",
   "Yesterday {{time}}": "دیروز {{time}}",

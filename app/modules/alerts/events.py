@@ -888,6 +888,40 @@ def _eol_soon(db: Session, params: Dict, now: datetime, since: datetime) -> List
     return _eol_problems(db, ("ending", "supported"), within_days=int(params.get("days", 90)))
 
 
+def _tls_problems(db: Session, codes, within_days: Optional[int] = None) -> List[Problem]:
+    from app.modules.tls import service as tls
+    now = datetime.utcnow()
+    out = []
+    for row in tls.evaluate(db, now=now):
+        ep, asset = row["endpoint"], row["asset"]
+        if ep.not_after is None:
+            continue
+        if within_days is not None:
+            if not (now < ep.not_after <= now + timedelta(days=within_days)):
+                continue
+            title = "Certificate expires soon"
+            detail = f"The certificate of {tls.where(ep)} on {asset.asset_name} expires {ep.not_after.date().isoformat()}"
+        elif any(p["code"] in codes for p in row["problems"]):
+            title = "Certificate expired"
+            detail = f"The certificate of {tls.where(ep)} on {asset.asset_name} expired {ep.not_after.date().isoformat()}"
+        else:
+            continue
+        out.append(Problem(key=f"tls:{ep.id}", title=title, detail=detail, asset_id=asset.id,
+                           source_label=_label(asset), link=f"/cve/certificates?service={ep.id}"))
+    return out
+
+
+def _tls_expired(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """TLS services of the assets presenting an expired certificate (app/modules/tls); clears when
+    renewed."""
+    return _tls_problems(db, ("expired",))
+
+
+def _tls_expiring(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """A certificate ends within the chosen number of days."""
+    return _tls_problems(db, (), within_days=int(params.get("days", 30)))
+
+
 def _software_unexpected(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
     """Software that appeared on an asset from outside the repositories it
     already used: installed by hand, or from a repository new to the asset."""
@@ -1064,6 +1098,13 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("software.end_of_life_soon", "software", "Software support ends soon",
               "Vendor support ends within {days} days", "state", 3600, _eol_soon,
               [Param("days", "Days before the end", 90, "days", 7, 730)], uses_assets=True, severity="info",
+              channels=["email"]),
+    EventType("tls.certificate_expired", "cve", "Certificate expired",
+              "A TLS service of an asset presents an expired certificate", "state", 3600, _tls_expired,
+              uses_assets=True, severity="critical", channels=["email"], repeat_minutes=1440),
+    EventType("tls.certificate_expiring", "cve", "Certificate expires soon",
+              "A TLS certificate of an asset expires within {days} days", "state", 3600, _tls_expiring,
+              [Param("days", "Days before the end", 30, "days", 1, 180)], uses_assets=True, severity="warning",
               channels=["email"]),
     EventType("software.unexpected", "software", "New software outside known repositories",
               "Software installed by hand or from a repository new to the asset", "event", 300,

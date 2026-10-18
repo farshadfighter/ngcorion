@@ -37,6 +37,11 @@ describe("audit trail details in Persian", () => {
         expect(text).toMatch(/پشتیبانی در .*۱۴۰۰ تمام شد$/);
         expect(text).not.toMatch(/2021/);
     });
+    it("reads TLS certificate findings", () => {
+        expect(tb("The certificate of 10.0.0.5:443 is self-signed")).toBe("گواهی 10.0.0.5:443 خودامضاست");
+        expect(tb("The certificate of 10.0.0.5:443 expired on 2026-10-01")).toMatch(/^گواهی .* در .*۱۴۰۵ منقضی شده است$/);
+        expect(tb("10.0.0.5:636 still accepts TLS 1.0, TLS 1.1")).toMatch(/هنوز .*TLS 1\.0, TLS 1\.1.* را می‌پذیرد$/);
+    });
     it("translates each part of a joined detail", () => {
         expect(tbDetail("NVD API key set; automatic update off"))
             .toBe("کلید API سامانهٔ NVD تنظیم شد؛ به‌روزرسانی خودکار خاموش");

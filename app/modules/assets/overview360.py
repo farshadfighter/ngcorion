@@ -7,7 +7,7 @@ sessions and hardening actions follow the same ownership rule as their own pages
 their own). Each section is a short summary that links to the module's page for the rest.
 
 Sections: identity (type, owner, location, tags, groups, hosting, license coverage), risk, audits
-(latest per technology), hardening, vulnerabilities, remediation, configuration backups,
+(latest per technology), hardening, vulnerabilities, TLS certificates, remediation, configuration backups,
 monitoring (SNMP and syslog), open alerts, topology neighbours, software, and a timeline of what
 happened to the asset across all of them.
 """
@@ -132,6 +132,15 @@ def _cves(db: Session, a: Asset) -> Dict:
             "top": [{"cve_id": f["cve_id"], "severity": f["severity"], "cvss": f["cvss"], "kev": f["kev"],
                      "priority": f["priority"], "product": f["product"], "installed": f["installed"],
                      "fixed_in": f["fixed_in"]} for f in rows[:6]]}
+
+
+def _certificates(db: Session, a: Asset, now: datetime) -> Dict:
+    """The TLS services of the asset with their certificate (app/modules/tls)."""
+    from app.modules.tls import service as tls
+    rows = tls.evaluate(db, [a.id], now=now)
+    return {"services": [{"id": r["endpoint"].id, "where": tls.where(r["endpoint"]), "level": r["level"],
+                          "status": r["endpoint"].status, "not_after": _iso(r["endpoint"].not_after),
+                          "problems": r["problems"]} for r in rows]}
 
 
 def _remediation(db: Session, a: Asset, now: datetime) -> Dict:
@@ -320,6 +329,7 @@ def build(db: Session, asset: Asset, user: User, now: Optional[datetime] = None)
         "audits": _audits(db, asset, owner) if can("auditing") else None,
         "hardening": _hardening(db, asset, owner) if can("hardening") else None,
         "cve": _cves(db, asset) if can("cve") else None,
+        "certificates": _certificates(db, asset, now) if can("cve") else None,
         "remediation": _remediation(db, asset, now) if can("remediation") else None,
         "backups": _backups(db, asset, now) if can("backup") else None,
         "monitoring": _monitoring(db, asset, now) if can("noc") else None,

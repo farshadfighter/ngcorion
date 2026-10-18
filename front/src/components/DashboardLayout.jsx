@@ -153,6 +153,7 @@ export const DashboardLayout = () => {
         "design-configuration": t("Design & Configuration"),
         "cve":                 t("Vulnerabilities (CVE)"),
         "cve-database":        t("Vulnerability database"),
+        "tls-certificates":    t("TLS certificates"),
         "noc-dashboard":       t("Network status (NOC)"),
         "noc-hosts":           t("Hosts"),
         "noc-syslog":          t("Syslog"),
