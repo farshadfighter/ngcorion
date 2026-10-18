@@ -87,7 +87,7 @@ def _template_out(db: Session, user: User, t, last: Dict[str, datetime]) -> dict
                       "excel_only": s.excel_only, "allowed": service.can_read(db, user, s.module)}
                      for s in t.sections],
         "options": [{"key": o.key, "label": o.label, "kind": o.kind, "default": o.default,
-                     "choices": [{"value": v, "label": l} for v, l in o.choices]} for o in t.options],
+                     "choices": [{"value": v, "label": l} for v, l in o.choices_for(db)]} for o in t.options],
     }
 
 

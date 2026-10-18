@@ -91,7 +91,6 @@
   "Run the risk seed to create the default zones.": "برای ایجاد ناحیه‌های پیش‌فرض، داده‌های اولیهٔ ریسک را بارگذاری کنید.",
   "Save & recalculate": "ذخیره و محاسبهٔ دوباره",
   "Saving recalculates this asset's risk score.": "با ذخیره، امتیاز ریسک این دارایی دوباره محاسبه می‌شود.",
-  "Score": "امتیاز",
   "Search Asset": "جستجوی دارایی",
   "Severity Score": "امتیاز شدت",
   "Sort by {{label}}": "مرتب‌سازی بر اساس {{label}}",

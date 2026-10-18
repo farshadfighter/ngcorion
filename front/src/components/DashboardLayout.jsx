@@ -138,6 +138,7 @@ export const DashboardLayout = () => {
         "remediation":         t("Remediation"),
         "remediation-acceptances": t("Accepted Risks"),
         "benchmark-policy":     t("Benchmark policy"),
+        "compliance":           t("Compliance with standards"),
         "reports":             t("Build a report"),
         "reports-archive":     t("Report archive"),
         "reports-schedules":   t("Report schedules"),

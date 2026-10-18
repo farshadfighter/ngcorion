@@ -51,6 +51,10 @@ class Option:
     kind: str                        # bool | choice | multi | int (set by the page that links here)
     default: object = None
     choices: Sequence = ()           # [(value, label)]
+    choices_fn: Optional[Callable] = None   # (db) -> [(value, label)], for choices that live in the database
+
+    def choices_for(self, db) -> Sequence:
+        return self.choices_fn(db) if self.choices_fn else self.choices
 
 
 @dataclass
@@ -879,3 +883,8 @@ PLANNED: tuple = ()
 from app.modules.reports.templates2 import PHASE2  # noqa: E402
 
 TEMPLATES.update({t.id: t for t in PHASE2})
+
+# Compliance with standards lives in templates3.py.
+from app.modules.reports.templates3 import PHASE3  # noqa: E402
+
+TEMPLATES.update({t.id: t for t in PHASE3})

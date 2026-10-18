@@ -351,3 +351,7 @@ from app.models.syslog import ConfigChangeEvent, SyslogMessage, SyslogSource, Sy
 
 # Organisation policy on the audit benchmarks (see app/models/audit_policy.py)
 from app.models.audit_policy import AuditPolicyRule  # noqa: E402,F401
+
+# Compliance with standards (see app/models/compliance.py)
+from app.models.compliance import (ComplianceAssessment, ComplianceCheckDomains,  # noqa: E402,F401
+                                   ComplianceRequirement, ComplianceSection, ComplianceStandard)

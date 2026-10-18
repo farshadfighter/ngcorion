@@ -338,6 +338,24 @@ ChaCha20-Poly1305 (`traefik/dynamic/tls.yml`). HTTP به HTTPS هدایت می�
 * **رویدادهای ثبت‌شده:** `audit_policy.request`، `audit_policy.approve`، `audit_policy.reject` و
   `audit_policy.end` در دنبالهٔ ممیزی، با بنچمارک، کنترل یا سطح و تصمیم.
 
+### ۵.۱۰ استانداردهای انطباق
+
+«اصلاح و مقاوم‌سازی ← انطباق با استانداردها» (راهنمای کاربر، بند ۱۲.۲).
+
+* **استانداردهای داخلی:** PCI DSS 4.0، ISO/IEC 27001:2022 و NIST SP 800-53 ویرایش ۵ از فایل‌های
+  `app/modules/compliance/standards/*.json` خوانده و در هر به‌روزرسانی نسخه با آن‌ها هم‌گام می‌شوند (روشن یا خاموش
+  بودن را سازمان تعیین می‌کند و حفظ می‌شود). الزامات ملی همراه نرم‌افزار نیست: سازمان آن‌ها را به‌صورت استاندارد
+  خود می‌سازد یا از فایل تعریف درون‌ریزی می‌کند.
+* **دسترسی‌ها:** دیدن با «خواندن» ممیزی؛ ارزیابی دستی یک الزام با «نوشتن» ممیزی؛ ساخت، تغییر، درون‌ریزی، حذف و
+  روشن/خاموش کردن استاندارد با «نوشتن» ممیزی و نقش «مدیر» یا «مدیر سیستم»؛ اصلاح حوزه‌های یک کنترل (که همهٔ
+  استانداردها را تغییر می‌دهد) فقط با «مدیر سیستم».
+* **داده‌ها:** جدول‌های `compliance_standards`، `compliance_sections`، `compliance_requirements`،
+  `compliance_check_domains` (اصلاح‌های مدیر) و `compliance_assessments` (ارزیابی‌های دستی با تاریخ اعتبار)،
+  همه جزو بخش اصلی پشتیبان NGCorion. امتیازها ذخیره نمی‌شوند و هر بار از آخرین ممیزی‌ها حساب می‌شوند.
+* **رویدادهای ثبت‌شده:** `compliance.assess`، `compliance.unassess`، `compliance.standard_create`،
+  `compliance.standard_import`، `compliance.standard_update`، `compliance.standard_toggle`،
+  `compliance.standard_delete`، `compliance.requirement_add/update/delete` و `compliance.check_domains`.
+
 ---
 
 ## ۶. لایسنس

@@ -111,6 +111,7 @@ from app.modules.noc.router import router as noc_router
 from app.modules.noc.endpoints_router import router as noc_endpoints_router
 from app.modules.noc.topology_router import router as topology_discovery_router
 from app.modules.audit_policy.router import router as audit_policy_router
+from app.modules.compliance.router import router as compliance_router
 
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
@@ -578,6 +579,7 @@ app.include_router(noc_router)
 app.include_router(noc_endpoints_router)
 app.include_router(topology_discovery_router)
 app.include_router(audit_policy_router)
+app.include_router(compliance_router)
 
 # Architecture Validation routes
 app.include_router(architecture_validation_router)

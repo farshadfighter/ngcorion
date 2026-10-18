@@ -184,9 +184,9 @@ def validate(db: Session, user: User, template: str, language: str, formats: Lis
         if o.kind == "bool":
             v = bool(v)
         elif o.kind == "choice":
-            v = v if v in {c[0] for c in o.choices} else o.default
+            v = v if v in {c[0] for c in o.choices_for(db)} else o.default
         elif o.kind == "multi":
-            v = [x for x in (v or []) if x in {c[0] for c in o.choices}]
+            v = [x for x in (v or []) if x in {c[0] for c in o.choices_for(db)}]
         elif o.kind == "int":
             try:
                 v = int(v) if v not in (None, "") else None

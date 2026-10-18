@@ -19,11 +19,10 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Order | # | Item | Scope |
 |---|---|---|---|
-| 1 | 15 | Compliance standards | Map checks to PCI DSS, ISO 27001, NIST and national requirements; compliance percentage, gaps, report |
-| 2 | 10 | End of life | OS and firmware out of (or near the end of) vendor support; alert and risk factor |
-| 3 | 14 | TLS certificates | Certificates of services and devices: expiry, weak algorithm or chain; alert before expiry |
-| 4 | 11 | Global search | One search box on every page: assets, IP, MAC, CVE, findings, users, reports |
-| 5 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
+| 1 | 10 | End of life | OS and firmware out of (or near the end of) vendor support; alert and risk factor |
+| 2 | 14 | TLS certificates | Certificates of services and devices: expiry, weak algorithm or chain; alert before expiry |
+| 3 | 11 | Global search | One search box on every page: assets, IP, MAC, CVE, findings, users, reports |
+| 4 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
 
 ## Known limits (shipped, documented, not yet improved)
 
@@ -34,6 +33,9 @@ Bugs reported from testing on the customer test server go before everything else
 - Unknown devices / topology: tested against snmpsim and net-snmp agents, not yet on real switches.
 - Benchmark policy: a rule names a check by its number in the audit module; if a later benchmark
   version renumbers a check, the rule has to be asked for again under the new number.
+- Compliance: checks are put in security domains from their titles (about 6% of the checks land in none
+  and count only for secure configuration as a whole); the score is indicative, not a certification.
+  National requirements are not shipped: the organisation adds them as its own standard.
 
 ## On the customer side
 
@@ -48,7 +50,8 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Item | Commit |
 |---|---|
-| 9 Benchmark policy (optional / excluded checks, four eyes, rescoring) | recorded with the next item |
+| 15 Compliance with standards (PCI DSS, ISO 27001, NIST, own standards, report) | recorded with the next item |
+| 9 Benchmark policy (optional / excluded checks, four eyes, rescoring) | cfa38c5 |
 | I1–I3 Bidi isolation, real ports on the map, Cisco per-VLAN MAC tables | 3ac5ec3, f0f10f8, 6ed4f95 |
 | 8 Topology from LLDP and CDP | d91a854 |
 | 6 Unknown devices (ARP / MAC tables), nine new icons | 2abccc5 |

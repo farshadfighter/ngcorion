@@ -57,6 +57,7 @@ export const MENU_GROUPS = [
             { key: "remediation-acceptances", label: t("Accepted Risks"), path: "/remediation/acceptances",
               perm: "remediation" },
             { key: "benchmark-policy", label: t("Benchmark policy"), path: "/remediation/policy", perm: "auditing" },
+            { key: "compliance", label: t("Compliance with standards"), path: "/compliance", perm: "auditing" },
         ],
     },
     {
@@ -150,6 +151,7 @@ const PATHS = [
     ["/hardening", "hardening"],
     ["/remediation/acceptances", "remediation-acceptances"],
     ["/remediation/policy", "benchmark-policy"],
+    ["/compliance", "compliance"],
     ["/remediation", "remediation"],
     ["/reports/archive", "reports-archive"],
     ["/reports/schedules", "reports-schedules"],

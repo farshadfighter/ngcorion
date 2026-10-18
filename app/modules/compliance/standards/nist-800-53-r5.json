@@ -1,0 +1,431 @@
+{
+ "key": "nist-800-53-r5",
+ "name": "NIST SP 800-53",
+ "name_fa": "NIST SP 800-53",
+ "version": "Rev. 5",
+ "description": "Security controls of NIST SP 800-53 Rev. 5 that configuration audits can give evidence for, and a few organisational ones to assess by hand.",
+ "description_fa": "کنترل‌های امنیتی NIST SP 800-53 ویرایش ۵ که ممیزی پیکربندی برایشان شاهد می‌آورد، و چند کنترل سازمانی که دستی ارزیابی می‌شوند.",
+ "sections": [
+  {
+   "ref": "AC",
+   "title": "Access Control",
+   "title_fa": "کنترل دسترسی"
+  },
+  {
+   "ref": "AT",
+   "title": "Awareness and Training",
+   "title_fa": "آگاهی و آموزش"
+  },
+  {
+   "ref": "AU",
+   "title": "Audit and Accountability",
+   "title_fa": "ممیزی و پاسخ‌گویی"
+  },
+  {
+   "ref": "CM",
+   "title": "Configuration Management",
+   "title_fa": "مدیریت پیکربندی"
+  },
+  {
+   "ref": "CP",
+   "title": "Contingency Planning",
+   "title_fa": "برنامه‌ریزی اضطراری"
+  },
+  {
+   "ref": "IA",
+   "title": "Identification and Authentication",
+   "title_fa": "شناسایی و احراز هویت"
+  },
+  {
+   "ref": "IR",
+   "title": "Incident Response",
+   "title_fa": "پاسخ به رخداد"
+  },
+  {
+   "ref": "RA",
+   "title": "Risk Assessment",
+   "title_fa": "ارزیابی ریسک"
+  },
+  {
+   "ref": "SC",
+   "title": "System and Communications Protection",
+   "title_fa": "حفاظت از سامانه و ارتباطات"
+  },
+  {
+   "ref": "SI",
+   "title": "System and Information Integrity",
+   "title_fa": "یکپارچگی سامانه و اطلاعات"
+  }
+ ],
+ "requirements": [
+  {
+   "ref": "AC-2",
+   "section": "AC",
+   "title": "Account Management",
+   "title_fa": "مدیریت حساب‌ها",
+   "mapping": {
+    "domains": [
+     "accounts"
+    ]
+   }
+  },
+  {
+   "ref": "AC-3",
+   "section": "AC",
+   "title": "Access Enforcement",
+   "title_fa": "اعمال کنترل دسترسی",
+   "mapping": {
+    "domains": [
+     "filesystem"
+    ]
+   }
+  },
+  {
+   "ref": "AC-6",
+   "section": "AC",
+   "title": "Least Privilege",
+   "title_fa": "کمترین امتیاز",
+   "mapping": {
+    "topics": [
+     "privileged_access",
+     "privileged_utilities"
+    ]
+   }
+  },
+  {
+   "ref": "AC-7",
+   "section": "AC",
+   "title": "Unsuccessful Logon Attempts",
+   "title_fa": "تلاش‌های ناموفق ورود",
+   "mapping": {
+    "topics": [
+     "lockout"
+    ]
+   }
+  },
+  {
+   "ref": "AC-8",
+   "section": "AC",
+   "title": "System Use Notification",
+   "title_fa": "اعلان استفاده از سامانه",
+   "mapping": {
+    "topics": [
+     "logon_banner"
+    ]
+   }
+  },
+  {
+   "ref": "AC-11",
+   "section": "AC",
+   "title": "Device Lock",
+   "title_fa": "قفل دستگاه",
+   "mapping": {
+    "topics": [
+     "screen_lock"
+    ]
+   }
+  },
+  {
+   "ref": "AC-12",
+   "section": "AC",
+   "title": "Session Termination",
+   "title_fa": "پایان نشست",
+   "mapping": {
+    "topics": [
+     "idle_session"
+    ]
+   }
+  },
+  {
+   "ref": "AC-17",
+   "section": "AC",
+   "title": "Remote Access",
+   "title_fa": "دسترسی از راه دور",
+   "mapping": {
+    "domains": [
+     "remote_access"
+    ]
+   }
+  },
+  {
+   "ref": "AT-2",
+   "section": "AT",
+   "title": "Literacy Training and Awareness",
+   "title_fa": "آموزش و آگاهی‌رسانی",
+   "mapping": {}
+  },
+  {
+   "ref": "AU-2",
+   "section": "AU",
+   "title": "Event Logging",
+   "title_fa": "ثبت رویدادها",
+   "mapping": {
+    "domains": [
+     "logging"
+    ]
+   }
+  },
+  {
+   "ref": "AU-3",
+   "section": "AU",
+   "title": "Content of Audit Records",
+   "title_fa": "محتوای سوابق ممیزی",
+   "mapping": {
+    "topics": [
+     "audit_content"
+    ]
+   }
+  },
+  {
+   "ref": "AU-4",
+   "section": "AU",
+   "title": "Audit Log Storage Capacity",
+   "title_fa": "ظرفیت ذخیرهٔ گزارش ممیزی",
+   "mapping": {
+    "topics": [
+     "log_capacity"
+    ]
+   }
+  },
+  {
+   "ref": "AU-6",
+   "section": "AU",
+   "title": "Audit Record Review, Analysis, and Reporting",
+   "title_fa": "بازبینی، تحلیل و گزارش سوابق ممیزی",
+   "mapping": {
+    "topics": [
+     "central_logging",
+     "monitoring"
+    ]
+   }
+  },
+  {
+   "ref": "AU-8",
+   "section": "AU",
+   "title": "Time Stamps",
+   "title_fa": "مهر زمانی",
+   "mapping": {
+    "domains": [
+     "time"
+    ]
+   }
+  },
+  {
+   "ref": "AU-9",
+   "section": "AU",
+   "title": "Protection of Audit Information",
+   "title_fa": "حفاظت از اطلاعات ممیزی",
+   "mapping": {
+    "domains": [
+     "logging+filesystem"
+    ],
+    "topics": [
+     "audit_protection"
+    ]
+   }
+  },
+  {
+   "ref": "AU-11",
+   "section": "AU",
+   "title": "Audit Record Retention",
+   "title_fa": "نگهداری سوابق ممیزی",
+   "mapping": {
+    "topics": [
+     "log_retention"
+    ]
+   }
+  },
+  {
+   "ref": "CM-2",
+   "section": "CM",
+   "title": "Baseline Configuration",
+   "title_fa": "پیکربندی پایه",
+   "mapping": {}
+  },
+  {
+   "ref": "CM-6",
+   "section": "CM",
+   "title": "Configuration Settings",
+   "title_fa": "تنظیمات پیکربندی",
+   "mapping": {
+    "all": true
+   }
+  },
+  {
+   "ref": "CM-7",
+   "section": "CM",
+   "title": "Least Functionality",
+   "title_fa": "کمترین کارکرد",
+   "mapping": {
+    "domains": [
+     "services"
+    ]
+   }
+  },
+  {
+   "ref": "CP-9",
+   "section": "CP",
+   "title": "System Backup",
+   "title_fa": "پشتیبان‌گیری سامانه",
+   "mapping": {
+    "topics": [
+     "backup"
+    ]
+   }
+  },
+  {
+   "ref": "IA-2",
+   "section": "IA",
+   "title": "Identification and Authentication (Organizational Users)",
+   "title_fa": "شناسایی و احراز هویت (کاربران سازمان)",
+   "mapping": {
+    "domains": [
+     "authentication"
+    ],
+    "topics": [
+     "mfa"
+    ]
+   }
+  },
+  {
+   "ref": "IA-5",
+   "section": "IA",
+   "title": "Authenticator Management",
+   "title_fa": "مدیریت ابزارهای احراز هویت",
+   "mapping": {
+    "topics": [
+     "password_quality",
+     "password_history",
+     "password_age"
+    ]
+   }
+  },
+  {
+   "ref": "IR-8",
+   "section": "IR",
+   "title": "Incident Response Plan",
+   "title_fa": "طرح پاسخ به رخداد",
+   "mapping": {}
+  },
+  {
+   "ref": "RA-5",
+   "section": "RA",
+   "title": "Vulnerability Monitoring and Scanning",
+   "title_fa": "پایش و پویش آسیب‌پذیری",
+   "mapping": {}
+  },
+  {
+   "ref": "SC-5",
+   "section": "SC",
+   "title": "Denial-of-Service Protection",
+   "title_fa": "حفاظت در برابر منع خدمت",
+   "mapping": {
+    "domains": [
+     "availability"
+    ]
+   }
+  },
+  {
+   "ref": "SC-7",
+   "section": "SC",
+   "title": "Boundary Protection",
+   "title_fa": "حفاظت از مرز",
+   "mapping": {
+    "domains": [
+     "network_filtering"
+    ],
+    "topics": [
+     "segmentation"
+    ]
+   }
+  },
+  {
+   "ref": "SC-8",
+   "section": "SC",
+   "title": "Transmission Confidentiality and Integrity",
+   "title_fa": "محرمانگی و یکپارچگی انتقال",
+   "mapping": {
+    "domains": [
+     "crypto"
+    ]
+   }
+  },
+  {
+   "ref": "SC-28",
+   "section": "SC",
+   "title": "Protection of Information at Rest",
+   "title_fa": "حفاظت از اطلاعات ذخیره‌شده",
+   "mapping": {
+    "domains": [
+     "data_protection"
+    ]
+   }
+  },
+  {
+   "ref": "SC-39",
+   "section": "SC",
+   "title": "Process Isolation",
+   "title_fa": "جداسازی فرایندها",
+   "mapping": {
+    "domains": [
+     "isolation"
+    ]
+   }
+  },
+  {
+   "ref": "SI-2",
+   "section": "SI",
+   "title": "Flaw Remediation",
+   "title_fa": "رفع نقص",
+   "mapping": {
+    "domains": [
+     "patching"
+    ]
+   }
+  },
+  {
+   "ref": "SI-3",
+   "section": "SI",
+   "title": "Malicious Code Protection",
+   "title_fa": "حفاظت در برابر کد مخرب",
+   "mapping": {
+    "domains": [
+     "malware"
+    ]
+   }
+  },
+  {
+   "ref": "SI-4",
+   "section": "SI",
+   "title": "System Monitoring",
+   "title_fa": "پایش سامانه",
+   "mapping": {
+    "topics": [
+     "monitoring"
+    ]
+   }
+  },
+  {
+   "ref": "SI-7",
+   "section": "SI",
+   "title": "Software, Firmware, and Information Integrity",
+   "title_fa": "یکپارچگی نرم‌افزار، میان‌افزار و اطلاعات",
+   "mapping": {
+    "domains": [
+     "integrity"
+    ]
+   }
+  },
+  {
+   "ref": "SI-16",
+   "section": "SI",
+   "title": "Memory Protection",
+   "title_fa": "حفاظت از حافظه",
+   "mapping": {
+    "topics": [
+     "memory_protection"
+    ]
+   }
+  }
+ ]
+}

@@ -51,6 +51,8 @@ def collect() -> Set[str]:
     from app.modules.reports import templates2
     found.update(label for _, label in templates2.CONTROLS)
     found.update(templates2.SW_SOURCE.values())
+    from app.modules.reports import templates3
+    found.update(templates3.STATUS.values())
     found.update(["System administrator", "Manager", "User", "Guest", "Redundancy", "Exposure", "Best practice", "Inventory",
                   "Topology", "Resilience", "Compliance"])
     from app.modules.alerts.events import EVENTS

@@ -1,0 +1,302 @@
+{
+ "key": "iso-27001-2022",
+ "name": "ISO/IEC 27001",
+ "name_fa": "ISO/IEC 27001",
+ "version": "2022",
+ "description": "Annex A controls of ISO/IEC 27001:2022: the technological controls audits can give evidence for, and the main organisational and people controls to assess by hand.",
+ "description_fa": "کنترل‌های پیوست الف ISO/IEC 27001:2022: کنترل‌های فناورانه‌ای که ممیزی‌ها برایشان شاهد می‌آورند، و کنترل‌های سازمانی و انسانی اصلی که دستی ارزیابی می‌شوند.",
+ "sections": [
+  {
+   "ref": "5",
+   "title": "Organisational controls",
+   "title_fa": "کنترل‌های سازمانی"
+  },
+  {
+   "ref": "6",
+   "title": "People controls",
+   "title_fa": "کنترل‌های افراد"
+  },
+  {
+   "ref": "8",
+   "title": "Technological controls",
+   "title_fa": "کنترل‌های فناورانه"
+  }
+ ],
+ "requirements": [
+  {
+   "ref": "5.1",
+   "section": "5",
+   "title": "Policies for information security",
+   "title_fa": "خط‌مشی‌های امنیت اطلاعات",
+   "mapping": {}
+  },
+  {
+   "ref": "5.15",
+   "section": "5",
+   "title": "Access control",
+   "title_fa": "کنترل دسترسی",
+   "mapping": {
+    "domains": [
+     "accounts",
+     "filesystem"
+    ]
+   }
+  },
+  {
+   "ref": "5.17",
+   "section": "5",
+   "title": "Authentication information",
+   "title_fa": "اطلاعات احراز هویت",
+   "mapping": {
+    "topics": [
+     "password_quality",
+     "password_history",
+     "password_age"
+    ]
+   }
+  },
+  {
+   "ref": "5.18",
+   "section": "5",
+   "title": "Access rights",
+   "title_fa": "حقوق دسترسی",
+   "mapping": {
+    "topics": [
+     "inactive_accounts"
+    ]
+   }
+  },
+  {
+   "ref": "5.24",
+   "section": "5",
+   "title": "Information security incident management planning and preparation",
+   "title_fa": "برنامه‌ریزی و آمادگی مدیریت رخدادهای امنیت اطلاعات",
+   "mapping": {}
+  },
+  {
+   "ref": "5.30",
+   "section": "5",
+   "title": "ICT readiness for business continuity",
+   "title_fa": "آمادگی فناوری اطلاعات برای تداوم کسب‌وکار",
+   "mapping": {}
+  },
+  {
+   "ref": "6.3",
+   "section": "6",
+   "title": "Information security awareness, education and training",
+   "title_fa": "آگاهی، آموزش و تمرین امنیت اطلاعات",
+   "mapping": {}
+  },
+  {
+   "ref": "8.2",
+   "section": "8",
+   "title": "Privileged access rights",
+   "title_fa": "حقوق دسترسی ممتاز",
+   "mapping": {
+    "topics": [
+     "privileged_access"
+    ]
+   }
+  },
+  {
+   "ref": "8.3",
+   "section": "8",
+   "title": "Information access restriction",
+   "title_fa": "محدودسازی دسترسی به اطلاعات",
+   "mapping": {
+    "domains": [
+     "filesystem"
+    ]
+   }
+  },
+  {
+   "ref": "8.5",
+   "section": "8",
+   "title": "Secure authentication",
+   "title_fa": "احراز هویت امن",
+   "mapping": {
+    "domains": [
+     "authentication"
+    ],
+    "topics": [
+     "logon_banner",
+     "lockout"
+    ]
+   }
+  },
+  {
+   "ref": "8.6",
+   "section": "8",
+   "title": "Capacity management",
+   "title_fa": "مدیریت ظرفیت",
+   "mapping": {
+    "domains": [
+     "availability"
+    ]
+   }
+  },
+  {
+   "ref": "8.7",
+   "section": "8",
+   "title": "Protection against malware",
+   "title_fa": "حفاظت در برابر بدافزار",
+   "mapping": {
+    "domains": [
+     "malware"
+    ]
+   }
+  },
+  {
+   "ref": "8.8",
+   "section": "8",
+   "title": "Management of technical vulnerabilities",
+   "title_fa": "مدیریت آسیب‌پذیری‌های فنی",
+   "mapping": {
+    "domains": [
+     "patching"
+    ]
+   }
+  },
+  {
+   "ref": "8.9",
+   "section": "8",
+   "title": "Configuration management",
+   "title_fa": "مدیریت پیکربندی",
+   "mapping": {
+    "all": true
+   }
+  },
+  {
+   "ref": "8.13",
+   "section": "8",
+   "title": "Information backup",
+   "title_fa": "پشتیبان‌گیری اطلاعات",
+   "mapping": {
+    "topics": [
+     "backup"
+    ]
+   }
+  },
+  {
+   "ref": "8.15",
+   "section": "8",
+   "title": "Logging",
+   "title_fa": "ثبت رویدادها",
+   "mapping": {
+    "domains": [
+     "logging"
+    ]
+   }
+  },
+  {
+   "ref": "8.16",
+   "section": "8",
+   "title": "Monitoring activities",
+   "title_fa": "فعالیت‌های پایش",
+   "mapping": {
+    "topics": [
+     "monitoring",
+     "central_logging"
+    ]
+   }
+  },
+  {
+   "ref": "8.17",
+   "section": "8",
+   "title": "Clock synchronisation",
+   "title_fa": "همگام‌سازی ساعت",
+   "mapping": {
+    "domains": [
+     "time"
+    ]
+   }
+  },
+  {
+   "ref": "8.18",
+   "section": "8",
+   "title": "Use of privileged utility programs",
+   "title_fa": "استفاده از برنامه‌های کمکی ممتاز",
+   "mapping": {
+    "topics": [
+     "privileged_utilities"
+    ]
+   }
+  },
+  {
+   "ref": "8.19",
+   "section": "8",
+   "title": "Installation of software on operational systems",
+   "title_fa": "نصب نرم‌افزار روی سامانه‌های عملیاتی",
+   "mapping": {
+    "domains": [
+     "integrity"
+    ]
+   }
+  },
+  {
+   "ref": "8.20",
+   "section": "8",
+   "title": "Networks security",
+   "title_fa": "امنیت شبکه‌ها",
+   "mapping": {
+    "domains": [
+     "network_filtering",
+     "network_hardening"
+    ]
+   }
+  },
+  {
+   "ref": "8.21",
+   "section": "8",
+   "title": "Security of network services",
+   "title_fa": "امنیت سرویس‌های شبکه",
+   "mapping": {
+    "domains": [
+     "services",
+     "remote_access"
+    ]
+   }
+  },
+  {
+   "ref": "8.22",
+   "section": "8",
+   "title": "Segregation of networks",
+   "title_fa": "جداسازی شبکه‌ها",
+   "mapping": {
+    "topics": [
+     "segmentation"
+    ]
+   }
+  },
+  {
+   "ref": "8.24",
+   "section": "8",
+   "title": "Use of cryptography",
+   "title_fa": "به‌کارگیری رمزنگاری",
+   "mapping": {
+    "domains": [
+     "crypto",
+     "data_protection"
+    ]
+   }
+  },
+  {
+   "ref": "8.26",
+   "section": "8",
+   "title": "Application security requirements",
+   "title_fa": "الزامات امنیتی برنامه‌ها",
+   "mapping": {
+    "domains": [
+     "web_hardening"
+    ]
+   }
+  },
+  {
+   "ref": "8.32",
+   "section": "8",
+   "title": "Change management",
+   "title_fa": "مدیریت تغییر",
+   "mapping": {}
+  }
+ ]
+}

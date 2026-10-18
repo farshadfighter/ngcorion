@@ -1,0 +1,91 @@
+/* Compliance with standards (components/Remediation/ComplianceStandardsPage.jsx); builds on BackupModule.css. */
+.cmp-head-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.cmp-scope { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: #475569; }
+.cmp-scope .bkm-select { min-width: 200px; }
+
+.cmp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.cmp-card { display: flex; flex-direction: column; gap: 8px; text-align: start; padding: 14px 16px; border: 1px solid #e5e7eb;
+    border-radius: 12px; background: #fff; cursor: pointer; font: inherit; min-width: 0; }
+.cmp-card:hover { border-color: #94a3b8; }
+.cmp-card.is-on { border-color: #1e3a5f; box-shadow: 0 0 0 2px rgba(30, 58, 95, .15); }
+.cmp-card-name { font-weight: 700; color: #0f172a; font-size: 14px; }
+.cmp-card-score { font-size: 28px; font-weight: 800; line-height: 1; }
+
+.cmp-bar { display: block; height: 6px; border-radius: 3px; background: #edf1f6; overflow: hidden; min-width: 60px; }
+.cmp-bar > span { display: block; height: 100%; border-radius: 3px; background: #94a3b8; }
+.cmp-good > span, .cmp-bar.cmp-good > span { background: #2f9e5b; }
+.cmp-fair > span, .cmp-bar.cmp-fair > span { background: #d9a514; }
+.cmp-poor > span, .cmp-bar.cmp-poor > span { background: #c0262d; }
+.cmp-card-score.cmp-good, .cmp-good-text { color: #1f7a45; }
+.cmp-card-score.cmp-fair, .cmp-fair-text { color: #a37a06; }
+.cmp-card-score.cmp-poor, .cmp-poor-text { color: #b0222a; }
+.cmp-card-score.cmp-none { color: #94a3b8; }
+
+.cmp-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: #e5e7eb; border: 1px solid #e5e7eb;
+    border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.cmp-summary > div { background: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.cmp-summary b { font-size: 18px; font-variant-numeric: tabular-nums; }
+
+.cmp-push { margin-inline-start: auto; }
+.cmp-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid #f1f5f9; }
+.cmp-search { margin-inline-start: auto; min-width: 220px; }
+.cmp-table td { vertical-align: top; }
+.cmp-section th { background: #f8fafc; text-align: start; font-size: 13px; color: #1e3a5f; padding: 8px 14px; }
+.cmp-row { cursor: pointer; }
+.cmp-row:hover td { background: #f8fafc; }
+.cmp-row:focus-visible { outline: 2px solid #1e3a5f; outline-offset: -2px; }
+.cmp-req { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+.cmp-req .bkm-mono { flex: 0 0 auto; color: #475569; }
+.cmp-score-cell { min-width: 110px; }
+.cmp-score-cell b { display: block; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.cmp-warn { color: #a16207; }
+.cmp-ok { color: #1f7a45; }
+.cmp-pad { padding: 10px 16px; }
+.cmp-pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 16px; }
+.cmp-sub td { background: #fafbfc; }
+
+.cmp-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.cmp-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: #eef2f7; color: #334155;
+    font-size: 12px; white-space: nowrap; }
+.cmp-chip-topic { background: #eef6ff; color: #1d4ed8; }
+.cmp-chip-check { background: #f1f5f9; color: #0f172a; }
+.cmp-chip-all { background: #ecfdf3; color: #166534; }
+.cmp-chip-set { background: #fff7ed; color: #9a3412; }
+.cmp-sev { font-size: 12px; font-weight: 700; }
+.cmp-sev-critical, .cmp-sev-high { color: #b0222a; }
+.cmp-sev-medium { color: #a37a06; }
+.cmp-sev-low, .cmp-sev-info { color: #475569; }
+
+.cmp-drawer { width: 620px; }
+.cmp-req-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.cmp-big { font-size: 22px; font-variant-numeric: tabular-nums; }
+.cmp-h3 { font-size: 13px; font-weight: 700; color: #1e3a5f; margin: 18px 0 8px; }
+.cmp-assess { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; }
+.cmp-assess.is-expired { border-color: #f59e0b; background: #fffbeb; }
+.cmp-assess p { margin: 0; white-space: pre-wrap; }
+.cmp-form { display: flex; flex-direction: column; gap: 10px; }
+.cmp-note { resize: vertical; min-height: 64px; }
+.cmp-row-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.cmp-evidence { list-style: none; margin: 0; padding: 0; border: 1px solid #e5e7eb; border-radius: 8px; }
+.cmp-evidence li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 9px 12px; border-bottom: 1px solid #f1f5f9; }
+.cmp-evidence li:last-child { border-bottom: 0; }
+.cmp-evidence li.is-fail { background: #fff8f8; }
+.cmp-evidence li > .cmp-assets { grid-column: 1 / -1; }
+.cmp-ev-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; }
+.cmp-ev-side { white-space: nowrap; }
+.cmp-assets { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cmp-assets li { display: flex; gap: 10px; align-items: baseline; padding: 0; border: 0; background: none; font-size: 13px; }
+.cmp-domain-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.cmp-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cmp-fs { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.cmp-fs legend { font-size: 13px; font-weight: 700; color: #374151; padding: 0 4px; }
+.cmp-fs-label { font-size: 12px; font-weight: 600; color: #475569; }
+
+@media (max-width: 900px) { .cmp-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 720px) {
+    .cmp-drawer { width: 100%; }
+    .cmp-domain-list, .cmp-two { grid-template-columns: 1fr; }
+    .cmp-search { margin-inline-start: 0; min-width: 0; width: 100%; }
+    .cmp-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.cmp-assess .bkm-pill { align-self: flex-start; }

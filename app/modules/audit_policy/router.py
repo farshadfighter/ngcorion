@@ -105,7 +105,7 @@ def _can_end(user: User, rule: AuditPolicyRule) -> bool:
 def _latest_session_ids(db: Session) -> List[int]:
     rows = (db.query(AuditSession.asset_id, func.max(AuditSession.id))
             .filter(AuditSession.status == "completed", AuditSession.asset_id.isnot(None))
-            .group_by(AuditSession.asset_id).all())
+            .group_by(AuditSession.asset_id, AuditSession.device_type).all())
     return [sid for _, sid in rows]
 
 

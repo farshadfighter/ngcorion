@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Compliance with standards
+
+- New page Remediation & hardening → Compliance with standards: how far the
+  latest audits meet PCI DSS 4.0, ISO/IEC 27001:2022 and NIST SP 800-53 Rev. 5,
+  for every asset or one asset group, with a score per standard and per
+  requirement, coverage, and the gaps (failing checks, the most urgent first,
+  with the assets that fail them).
+- Every check of the 17 audit modules is put in security domains from its
+  title (about 94% of the 2,044 checks land in at least one); a requirement is
+  evidenced by the checks of its domains, of narrower topics (e.g. lockout after
+  failed logons) or by check number. An administrator can correct the domains
+  of a check. Results the benchmark policy makes optional or excludes do not
+  count.
+- Requirements no check covers are assessed by hand (met, partly met, not met,
+  with a note and a validity date); a requirement with audit evidence can only
+  be marked not applicable by hand.
+- The organisation's own standards (e.g. national requirements): create and
+  edit them requirement by requirement, or import a definition file; any
+  standard can be exported in the same format and turned off.
+- New report "Compliance with a standard" (PDF and Excel): overview by section,
+  every requirement, gaps, what is assessed by hand, and every failed check of
+  every asset.
+- The benchmark policy's Benchmarks tab now counts each asset's latest audit of
+  every benchmark (an asset audited as a Linux server and a Docker host counts
+  in both).
+
 ### Benchmark policy
 
 - New page Remediation & hardening → Benchmark policy: the organisation's

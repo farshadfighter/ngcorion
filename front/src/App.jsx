@@ -57,6 +57,7 @@ const NotificationsPage = lazy(() => import("./components/Notifications/Notifica
 const RemediationPage = lazy(() => import("./components/Remediation/RemediationPage").then((m) => ({ default: m.RemediationPage })));
 const AcceptancesPage = lazy(() => import("./components/Remediation/AcceptancesPage").then((m) => ({ default: m.AcceptancesPage })));
 const BenchmarkPolicyPage = lazy(() => import("./components/Remediation/BenchmarkPolicyPage").then((m) => ({ default: m.BenchmarkPolicyPage })));
+const ComplianceStandardsPage = lazy(() => import("./components/Remediation/ComplianceStandardsPage").then((m) => ({ default: m.ComplianceStandardsPage })));
 const ReportsCatalog = lazy(() => import("./components/Reports/ReportsCatalog").then((m) => ({ default: m.ReportsCatalog })));
 const ReportBuilder = lazy(() => import("./components/Reports/ReportBuilder").then((m) => ({ default: m.ReportBuilder })));
 const ReportsArchive = lazy(() => import("./components/Reports/ReportsArchive").then((m) => ({ default: m.ReportsArchive })));
@@ -388,6 +389,11 @@ function AppContent() {
                         <Route path="/remediation/policy" element={
                             <RequirePermission module="auditing" name="Benchmark policy">
                                 <BenchmarkPolicyPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/compliance" element={
+                            <RequirePermission module="auditing" name="Compliance with standards">
+                                <ComplianceStandardsPage />
                             </RequirePermission>
                         } />
                         <Route path="/remediation/acceptances" element={

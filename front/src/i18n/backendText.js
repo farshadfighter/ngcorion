@@ -96,6 +96,20 @@ const TEMPLATES = [
     msg("Rejected excluding {{what}} of the {{bench}} benchmark"),
     msg("Ended the rule making {{what}} of the {{bench}} benchmark optional"),
     msg("Ended the rule excluding {{what}} of the {{bench}} benchmark"),
+    // compliance with standards (app/modules/compliance/router.py)
+    msg("Assessed requirement {{ref}} of {{name}} by hand"),
+    msg("Removed the assessment of requirement {{ref}} of {{name}}"),
+    msg("Created the standard {{name}}"),
+    msg("Imported the standard {{name}} with {{refs}} requirements"),
+    msg("Deleted the standard {{name}}"),
+    msg("Added requirement {{ref}} to the standard {{name}}"),
+    msg("Changed requirement {{ref}} of the standard {{name}}"),
+    msg("Deleted requirement {{ref}} of the standard {{name}}"),
+    msg("Changed the standard {{name}}"),
+    msg("Turned on the standard {{name}}"),
+    msg("Turned off the standard {{name}}"),
+    msg("Put the domains of check {{check}} ({{bench}}) back to automatic"),
+    msg("Set the domains of check {{check}} ({{bench}})"),
     // LLDP / CDP topology (app/modules/noc/topology_discovery.py)
     msg("{{a}} port {{pa}} to {{b}} port {{pb}} is no longer reported by LLDP/CDP"),
     msg("LLDP/CDP topology discovery turned on, every {{minutes}} minutes, links added to the map automatically"),
@@ -424,6 +438,18 @@ msg("Failed checks");
 msg("Every failed check of each asset");
 msg("Not audited in the period");
 msg("Include the evidence of each failed check");
+// reports: compliance with a standard (app/modules/reports/templates3.py)
+msg("Compliance with a standard");
+msg("Score of a standard (PCI DSS, ISO/IEC 27001, NIST SP 800-53 or the organisation's own), each requirement with its evidence, the gaps and what is assessed by hand.");
+msg("Requirements");
+msg("Status and score of each");
+msg("Gaps");
+msg("Failing checks, the most urgent first");
+msg("Assessed by hand");
+msg("And the requirements still to assess");
+msg("Every failed check of every asset");
+msg("Standard");
+msg("Asset group");
 msg("Vulnerabilities (CVE)");
 msg("Findings by asset and product, known exploited ones (KEV) and the chance of exploitation (EPSS).");
 msg("Fix first");

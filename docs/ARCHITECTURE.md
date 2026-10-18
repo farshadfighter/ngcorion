@@ -142,6 +142,16 @@ Device identity is pinned: SSH host keys on first use (or strictly, see
 (`tls_pins.py`); a changed key or certificate is refused before any
 credential is sent. See [SSH_HOST_KEY_VERIFICATION.md](SSH_HOST_KEY_VERIFICATION.md).
 
+**After the audit.** The organisation's benchmark policy (`app/modules/audit_policy`)
+marks results optional or excluded and rescores the session (the module's own
+score stays in `raw_*`). Compliance with standards (`app/modules/compliance`)
+reads the latest audit of every asset and benchmark without those results:
+every check is put in security domains from its title (`domains.py`), and a
+requirement of a standard (`standards/*.json`, or the organisation's own in
+the database) is evidenced by the checks of its domains, topics or numbers.
+Scores are computed on request, grouped by check in SQL; nothing is stored but
+the standards, the administrator's domain corrections and hand assessments.
+
 ## 5. Background work
 
 Started in the lifespan of `app/main.py`, each wrapped in a `SingletonTask`
