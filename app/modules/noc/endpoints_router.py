@@ -9,11 +9,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, aliased, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import require_admin, require_permission
-from app.models import User
+from app.models import Asset, User
 from app.models.noc import NetworkDiscoverySource, NetworkEndpoint
 from app.modules.noc import endpoints
 
@@ -146,9 +146,11 @@ def list_endpoints(
     query = _status_filter(base, status, now) if id is None else base.filter(NetworkEndpoint.id == id)
     if q:
         like = f"%{q.strip().lower()}%"
-        query = query.filter(or_(func.lower(NetworkEndpoint.mac).like(like), NetworkEndpoint.ip.like(like),
-                                 func.lower(NetworkEndpoint.vendor).like(like),
-                                 func.lower(NetworkEndpoint.seen_port).like(like)))
+        seen_on = aliased(Asset)                # the switch or router it was seen on, by name
+        query = query.outerjoin(seen_on, seen_on.id == NetworkEndpoint.seen_by_asset_id).filter(or_(
+            func.lower(NetworkEndpoint.mac).like(like), NetworkEndpoint.ip.like(like),
+            func.lower(NetworkEndpoint.vendor).like(like), func.lower(NetworkEndpoint.seen_port).like(like),
+            func.lower(seen_on.asset_name).like(like)))
     total = query.count()
     rows = (query.options(joinedload(NetworkEndpoint.seen_by), joinedload(NetworkEndpoint.matched_asset))
             .order_by(NetworkEndpoint.first_seen_at.desc(), NetworkEndpoint.id.desc())

@@ -148,6 +148,20 @@ def match_asset(row: NetworkEndpoint, by_mac: Dict[str, int], by_ip: Dict[str, i
 
 # --------------------------------------------------------------------------- sweep
 
+def vlan_client(c: AssetSnmpCredential, vlan: int):
+    """A client for one VLAN's bridge table on Cisco IOS: community "<community>@<vlan>" on SNMP v2c,
+    context "vlan-<vlan>" on SNMP v3 (the same user)."""
+    from puresnmp import V2C, Client, PyWrapper
+    from app.core.snmp_crypto import decrypt_secret
+    from app.modules.noc.snmp_client import _build_credentials
+
+    if c.version == "v3":
+        return PyWrapper(Client(c.asset.ip_address, _build_credentials(c), port=c.port,
+                                context_name=f"vlan-{vlan}".encode()))
+    community = decrypt_secret(c.community_encrypted) if c.community_encrypted else "public"
+    return PyWrapper(Client(c.asset.ip_address, V2C(f"{community}@{vlan}"), port=c.port))
+
+
 async def read_tables(db: Session) -> Tuple[Dict[int, neighbors.NeighborTables], Dict[int, str]]:
     """Read the tables of every reachable device with an SNMP credential. Returns the tables of the
     devices that answered and the error of those that did not."""
@@ -165,7 +179,7 @@ async def read_tables(db: Session) -> Tuple[Dict[int, neighbors.NeighborTables],
         async with semaphore:
             try:
                 client = PyWrapper(Client(c.asset.ip_address, _build_credentials(c), port=c.port))
-                t = await neighbors.collect(client)
+                t = await neighbors.collect(client, vlan_client=lambda vlan, c=c: vlan_client(c, vlan))
             except Exception as exc:  # noqa: BLE001 - one device must not stop the sweep
                 errors[c.asset_id] = f"{type(exc).__name__}: {exc}"
                 return

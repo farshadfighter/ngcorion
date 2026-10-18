@@ -46,6 +46,15 @@
   the map counts found and missing links. Interface names on links can be up to
   100 characters.
 
+### Unknown devices behind Cisco IOS switches, every VLAN
+
+- A Cisco IOS switch keeps one MAC table per VLAN and only VLAN 1's answered
+  before. NGCorion now reads the VLAN list (CISCO-VTP-MIB) and each VLAN's table
+  (community@VLAN on SNMP v2c, context vlan-<id> on v3, up to 64 VLANs), so the
+  devices of every VLAN are found with their switch port and VLAN.
+- The Unknown devices search also matches the name of the device an address
+  was seen on.
+
 ### Real ports on the Topology map
 
 - A device polled by NOC is drawn with its own physical ports (IF-MIB, up to

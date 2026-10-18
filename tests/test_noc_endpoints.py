@@ -178,6 +178,52 @@ def test_collect_reads_what_a_device_has():
     assert any("Q-BRIDGE" in e for e in t.errors)
 
 
+def test_cisco_mac_tables_of_every_vlan():
+    vtp = [(f"{N.VTP_VLAN_STATE}.1.1", 1), (f"{N.VTP_VLAN_STATE}.1.10", 1), (f"{N.VTP_VLAN_STATE}.1.20", 1),
+           (f"{N.VTP_VLAN_STATE}.1.30", 2), (f"{N.VTP_VLAN_STATE}.1.1002", 1)]
+    assert N.parse_vtp_vlans(vtp) == [1, 10, 20]                  # 30 suspended, 1002 reserved
+
+    def bridge(port, mac_octets, if_index):
+        return {N.BASE_PORT_IFINDEX: [(f"{N.BASE_PORT_IFINDEX}.{port}", if_index)],
+                N.DFDB_PORT: [(f"{N.DFDB_PORT}.{mac_octets}", port)],
+                N.DFDB_STATUS: [(f"{N.DFDB_STATUS}.{mac_octets}", 3)]}
+
+    default = {N.VTP_VLAN_STATE: vtp, **bridge(1, "0.17.34.51.68.1", 10101)}      # VLAN 1 only
+    per_vlan = {10: FakeClient(bridge(5, "0.17.34.51.68.10", 10105)),
+                20: FakeClient({N.DFDB_PORT: [], "fail": True})}
+    asked = []
+
+    def vlan_client(vlan):
+        asked.append(vlan)
+        if vlan == 20:
+            raise PermissionError("no access")
+        return per_vlan[vlan]
+
+    t = asyncio.run(N.collect(FakeClient(default), vlan_client=vlan_client))
+    assert asked == [10, 20]                     # VLAN 1 is the default context's own table
+    assert sorted((e.mac, e.if_index, e.vlan) for e in t.fdb) == [("00:11:22:33:44:01", 10101, 1),
+                                                                 ("00:11:22:33:44:0a", 10105, 10)]
+    assert t.errors == ["VLAN tables: 1 of 2 could not be read"]
+    # A switch without VLAN contexts (no VTP table): its own table stands, no extra reads.
+    asked.clear()
+    t = asyncio.run(N.collect(FakeClient(bridge(1, "0.17.34.51.68.1", 1)), vlan_client=vlan_client))
+    assert asked == [] and [(e.mac, e.vlan) for e in t.fdb] == [("00:11:22:33:44:01", None)]
+
+
+def test_vlan_client_uses_community_at_vlan_or_v3_context(db):
+    from app.core.snmp_crypto import encrypt_secret
+    from app.models.noc import AssetSnmpCredential
+    a = _asset(db, "10.90.0.1")
+    v2 = AssetSnmpCredential(asset_id=a.id, version="v2c", community_encrypted=encrypt_secret("s3cret"), port=161)
+    v2.asset = a
+    c = EP.vlan_client(v2, 30).client
+    assert c.credentials.community == "s3cret@30" and c.context.name == b""
+    v3 = AssetSnmpCredential(asset_id=a.id, version="v3", username="noc", port=161)
+    v3.asset = a
+    c = EP.vlan_client(v3, 30).client
+    assert c.credentials.username == "noc" and c.context.name == b"vlan-30"
+
+
 # ── recording a sweep ───────────────────────────────────────────────────────
 
 def _tables(*entries, own=()):
@@ -298,6 +344,8 @@ def test_list_ignore_and_unignore(db):
     _some_endpoints(db)
     page = R.list_endpoints(status="unknown", q="00:85", id=None, page=1, page_size=50, current_user=admin, db=db)
     assert page.total == 3 and page.counts.unknown >= 3 and page.items[0].seen_by.name == "core-sw"
+    by_switch = R.list_endpoints(status="all", q="CORE-SW", id=None, page=1, page_size=50, current_user=admin, db=db)
+    assert by_switch.total == 3                  # found by the name of the switch they are seen on
     new = R.list_endpoints(status="new", q="00:85", id=None, page=1, page_size=50, current_user=admin, db=db)
     assert {i.mac for i in new.items} == {"00:85:00:00:00:02", "00:85:00:00:00:03"}
     assert all(i.is_new for i in new.items)

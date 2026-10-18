@@ -362,9 +362,9 @@ function Settings({ data, isAdmin, onSaved }) {
                 <h2 className="bkm-h3">{t("What the devices must allow")}</h2>
                 <p className="bkm-small bkm-muted">{t("Read-only SNMP access to these tables (on net-snmp: the view of the community or user):")}</p>
                 <div className="sl-howto">
-                    <pre dir="ltr">{"IP-MIB ipNetToMediaTable      1.3.6.1.2.1.4.22\nIP-MIB ipNetToPhysicalTable   1.3.6.1.2.1.4.35\nBRIDGE-MIB / Q-BRIDGE-MIB     1.3.6.1.2.1.17\nIF-MIB ifPhysAddress          1.3.6.1.2.1.2.2.1.6"}</pre>
+                    <pre dir="ltr">{"IP-MIB ipNetToMediaTable      1.3.6.1.2.1.4.22\nIP-MIB ipNetToPhysicalTable   1.3.6.1.2.1.4.35\nBRIDGE-MIB / Q-BRIDGE-MIB     1.3.6.1.2.1.17\nIF-MIB ifPhysAddress          1.3.6.1.2.1.2.2.1.6\nCISCO-VTP-MIB (Cisco IOS)     1.3.6.1.4.1.9.9.46"}</pre>
                 </div>
-                <p className="bkm-small bkm-muted">{t("Cisco IOS switches answer the MAC table per VLAN only (community@VLAN); without it the devices are still found through the routers' ARP tables, only without the switch port.")}</p>
+                <p className="bkm-small bkm-muted">{t("Cisco IOS keeps one MAC table per VLAN: NGCorion reads the VLAN list and then each VLAN's table, as community@VLAN on SNMP v2c or in the context vlan-<VLAN> on SNMP v3 (allow the user those contexts).")}</p>
             </section>
         </div>
     );
@@ -491,7 +491,7 @@ export function UnknownDevicesPage() {
                             <form className="bkm-search" role="search" onSubmit={(e) => { e.preventDefault(); setQ(query.trim()); }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
                                 <input value={query} onChange={(e) => setQuery(e.target.value)} maxLength={100} dir="auto"
-                                       placeholder={t("Search MAC, IP, maker or port…")} aria-label={t("Search")} />
+                                       placeholder={t("Search MAC, IP, maker, device or port…")} aria-label={t("Search")} />
                             </form>
                         )}
                         <span className="sl-grow" />

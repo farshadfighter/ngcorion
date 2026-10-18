@@ -8,8 +8,10 @@ Which addresses a monitored router or switch sees on the network, read over SNMP
   Own MACs    IF-MIB ifPhysAddress: the device's own interface addresses, which then belong to
               the device itself rather than to an unknown neighbour.
 
-Cisco IOS answers the MAC table per VLAN only with "community@vlan" indexing; without it the
-VLAN-1 table (or nothing) comes back. The ARP table of the routers is then what finds devices.
+Cisco IOS keeps one BRIDGE-MIB table per VLAN and answers only the default VLAN's without
+"community@VLAN" (SNMP v2c) or the context "vlan-<id>" (SNMP v3). When a device has no Q-BRIDGE
+table but lists its VLANs in CISCO-VTP-MIB, every operational VLAN's table is read that way
+(`vlan_client`, up to MAX_VLANS).
 
 Parsing is kept apart from the SNMP calls (parse_* take (oid, value) pairs) so it can be tested
 without a device. Every table is capped and timed, so a core switch with a very large table
@@ -32,9 +34,13 @@ DFDB_PORT = "1.3.6.1.2.1.17.4.3.1.2"        # dot1dTpFdbPort.<6 MAC octets>
 DFDB_STATUS = "1.3.6.1.2.1.17.4.3.1.3"
 BASE_PORT_IFINDEX = "1.3.6.1.2.1.17.1.4.1.2"  # dot1dBasePortIfIndex.<bridge port>
 IF_PHYS = "1.3.6.1.2.1.2.2.1.6"             # ifPhysAddress.<ifIndex>
+VTP_VLAN_STATE = "1.3.6.1.4.1.9.9.46.1.3.1.1.2"  # CISCO-VTP-MIB vtpVlanState.<domain>.<vlan>: 1 operational
 
 MAX_ROWS = 50_000          # per table
 TABLE_TIMEOUT = 30.0       # seconds per table
+
+MAX_VLANS = 64             # per-VLAN MAC tables read from one device
+_RESERVED_VLANS = range(1002, 1006)   # Cisco's FDDI / Token Ring defaults, never carry Ethernet hosts
 
 _SKIP_ARP_TYPES = {2, 5}   # invalid, local
 _SKIP_FDB_STATUS = {2, 4}  # invalid, self
@@ -146,6 +152,16 @@ def parse_own_macs(rows) -> Set[str]:
     return out
 
 
+def parse_vtp_vlans(rows) -> List[int]:
+    """vtpVlanState rows -> the operational VLAN ids (without Cisco's reserved 1002-1005)."""
+    out = set()
+    for oid, value in rows:
+        s = _suffix(oid, VTP_VLAN_STATE)
+        if s and len(s) == 2 and _as_int(value) == 1 and 1 <= s[1] <= 4094 and s[1] not in _RESERVED_VLANS:
+            out.add(s[1])
+    return sorted(out)
+
+
 def valid_ipv4(ip: str) -> bool:
     try:
         addr = ipaddress.IPv4Address(ip)
@@ -167,14 +183,15 @@ async def _walk(client, base: str, timeout: float) -> List[Tuple[str, object]]:
     return rows
 
 
-async def collect(client, timeout: float = TABLE_TIMEOUT) -> NeighborTables:
+async def collect(client, timeout: float = TABLE_TIMEOUT, vlan_client=None) -> NeighborTables:
     """Read the ARP and MAC tables of one device. Never raises: a table the device does not have
-    is simply empty, one that fails is named in `errors`."""
+    is simply empty, one that fails is named in `errors`. `vlan_client(vlan)` gives a client for one
+    VLAN's context (Cisco IOS per-VLAN tables, see the module docstring)."""
     out = NeighborTables()
 
-    async def table(name: str, base: str) -> List[Tuple[str, object]]:
+    async def table(name: str, base: str, on=None) -> List[Tuple[str, object]]:
         try:
-            return await _walk(client, base, timeout)
+            return await _walk(on or client, base, timeout)
         except Exception as exc:  # noqa: BLE001 - timeouts, no such object, access denied
             out.errors.append(f"{name}: {type(exc).__name__}")
             return []
@@ -193,7 +210,42 @@ async def collect(client, timeout: float = TABLE_TIMEOUT) -> NeighborTables:
     if not fdb:
         fdb = parse_fdb(await table("BRIDGE MAC table", DFDB_PORT),
                         await table("BRIDGE status", DFDB_STATUS), port_map, qbridge=False)
+        if vlan_client is not None:
+            per_vlan = await _per_vlan_fdb(table, vlan_client, out.errors, fdb)
+            if per_vlan is not None:
+                fdb = per_vlan
     out.fdb = fdb
     # A device without a bridge (a router, a server) has no MAC table; that is not an error.
     out.errors = [e for e in out.errors if "NoSuchOID" not in e and "EndOfMib" not in e]
+    return out
+
+
+async def _per_vlan_fdb(table, vlan_client, errors: List[str], default: List[FdbEntry]) -> Optional[List[FdbEntry]]:
+    """Cisco IOS: the MAC table of every operational VLAN, each read in its own context, with the
+    VLAN filled in; the default context is VLAN 1's table (`default`). None when the device lists no
+    VLANs (not a Cisco IOS switch), so the default table stands as it is."""
+    vlans = parse_vtp_vlans(await table("VLAN list", VTP_VLAN_STATE))
+    if not vlans:
+        return None
+    out: List[FdbEntry] = [FdbEntry(mac=e.mac, if_index=e.if_index, vlan=1) for e in default] if 1 in vlans else []
+    others = [v for v in vlans if v != 1]
+    failed = 0
+    for vlan in others[:MAX_VLANS]:
+        before = len(errors)
+        try:
+            on = vlan_client(vlan)
+            port_map = parse_port_ifindex(await table(f"VLAN {vlan} bridge ports", BASE_PORT_IFINDEX, on))
+            if len(errors) > before:            # no answer in this context: do not wait on two more tables
+                raise LookupError(errors[-1])
+            entries = parse_fdb(await table(f"VLAN {vlan} MAC table", DFDB_PORT, on),
+                                await table(f"VLAN {vlan} MAC status", DFDB_STATUS, on), port_map, qbridge=False)
+        except Exception:  # noqa: BLE001 - no credential or no answer for this VLAN's context
+            failed += 1
+            entries = []
+        del errors[before:]                     # summarised below, not one line per VLAN
+        out.extend(FdbEntry(mac=e.mac, if_index=e.if_index, vlan=vlan) for e in entries)
+    if len(others) > MAX_VLANS:
+        errors.append(f"VLAN tables: only the first {MAX_VLANS} of {len(others)} VLANs read")
+    if failed:
+        errors.append(f"VLAN tables: {failed} of {min(len(others), MAX_VLANS)} could not be read")
     return out
