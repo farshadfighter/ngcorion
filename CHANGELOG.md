@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### In-app help
+
+- A help button ("?" in the header, or the "?" key) on every page opens that
+  page's help beside it: a summary, then foldable sections - main tasks step
+  by step, an example with real values, what the statuses mean, who may do
+  what, what to take care of, common problems and links to related pages -
+  with a search inside the help. Every menu page has it, in Persian and in
+  English; it ships with the product and works offline.
+- The global search finds help sections too and opens the page with its help
+  at that section (`?help=<section>` in the address, so it can be shared).
+- Header and phone-width fixes: the license badge no longer clips beside the
+  search box, the header steps down below 1280px instead of overlapping, four
+  pages no longer scroll sideways on a phone, and "Clear history" on Run
+  audits no longer covers "New audit".
+
 ### API keys
 
 - New tab Administration → Users → API keys (system administrators): keys

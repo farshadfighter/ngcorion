@@ -20,7 +20,8 @@ Bugs reported from testing on the customer test server go before everything else
 Phase D is done (items 9, 15, 10, 14, 11, 12), with the product overview and training course
 (b959ac1). The final verification is done (b3473cb): full test suite green, 54 pages checked in
 English and every main page at phone width in both languages; the header, table and button
-layout problems it found are fixed. Next: the bugs reported from testing.
+layout problems it found are fixed. In-app help for every page (fa and en, in the global search
+too) was added on request before the bug list. Next: the bugs reported from testing.
 
 ## Known limits (shipped, documented, not yet improved)
 
@@ -62,6 +63,7 @@ layout problems it found are fixed. Next: the bugs reported from testing.
 
 | Item | Commit |
 |---|---|
+| In-app help (every menu page, fa and en; search inside it and from the global search) | recorded with the next item |
 | 12 API keys (service account per key, scopes, expiry, address list, renew, revoke, expiry alert) | c7b6549 |
 | 11 Global search (assets, IP, MAC, CVE, devices, findings, certificates, software, groups, users, reports, pages) | d90ec0f |
 | 14 TLS certificates (scan, trust, expiry, weak key/signature, TLS 1.0/1.1, own CAs, remediation, risk, alerts, report) | d3edee3 |

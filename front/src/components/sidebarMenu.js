@@ -187,3 +187,10 @@ const PATHS = [
 ];
 
 export const menuFromPath = (pathname) => PATHS.find(([prefix]) => pathname.startsWith(prefix))?.[1] || "dashboard";
+
+/** The URL of the page with this key (for links to a page by its key, e.g. from the help search). */
+export const pathOfPage = (key) => PATHS.find(([, k]) => k === key)?.[0]
+    || [...TOP_ITEMS, ...MENU_GROUPS.flatMap((g) => g.items)].find((i) => i.key === key)?.path;
+
+/** Every page key a URL can give, including tabs and pages that are not in the menu. */
+export const PAGE_KEYS = [...new Set(["dashboard", ...PATHS.map(([, k]) => k)])];

@@ -132,14 +132,24 @@ migrations to that database first.
 2. Register it in `front/src/components/routePages.jsx` (lazy import) and
    add a `<Route>` in `front/src/App.jsx` inside
    `<RequirePermission module="..." name="...">`.
-3. Sidebar entry in `front/src/components/DashboardLayout.jsx`: a
-   `usePermission(module, "read")` gate, the item itself, its title in
-   `pageTitles`, and the path in `menuFromPath`.
+3. Sidebar entry in `front/src/components/sidebarMenu.js`: the item in
+   `MENU_GROUPS` (key, label, path, permission) and the path in `PATHS`; its
+   title in `pageTitles` (`DashboardLayout.jsx`).
 4. A new permission module also goes into `ModuleEnum`
    (`app/models/user_permission.py`) and
    `front/src/components/UserManagement/permissionModules.js`.
 5. `npm run i18n:extract`, then translate the new keys in
    `src/i18n/locales/fa/<area>.json`.
+6. In-app help: `front/src/help/fa/<page key>.md` and `front/src/help/en/<page key>.md`
+   (`# Title`, a summary, then `## Section`s: main tasks, an example, terms,
+   who may do what, take care, common problems, read more). Only paragraphs,
+   `-`/`1.` lists, `>` notes, `|` tables, fenced code, `**bold**`, `` `code` ``
+   and links to NGCorion pages (`[text](/path)`); a block indented 4 spaces
+   under a list item is shown after it. Quote UI labels exactly as the UI
+   shows them. A tab that shares a page's help goes into `ALIASES`
+   (`front/src/help/index.js`). `src/help/help.test.js` fails on a page
+   without help in either language, a different number of sections in the
+   two, or a link to a page that does not exist.
 
 ### 4.4 Add an audit/hardening target (benchmark module)
 

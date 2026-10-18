@@ -10,6 +10,7 @@ import { getLicenseStatusThunk } from "../store/licenseSlice";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import LicenseBadge from './License/LicenseBadge';
+import { HelpButton } from './HelpPanel';
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { TwoStepAccount, TwoStepSetup } from "./TwoStep";
 import { IdleLogout } from "./IdleLogout";
@@ -273,6 +274,7 @@ export const DashboardLayout = () => {
                         {currentModule && <LicenseBadge />}
                     </div>
                     <div className="header-right">
+                        <HelpButton pageKey={activeMenu} />
                         <AlertBell summary={alertSummary} onChanged={refreshAlerts} />
                         <div className="date-time">
                             <div className="current-date">{currentDate}</div>

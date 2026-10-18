@@ -1,7 +1,8 @@
 /**
  * The search box in the page header: assets (name, address, MAC, serial), CVE ids, unknown devices,
  * remediation findings, TLS certificates, software, asset groups, users, reports (GET /api/search, each
- * kind only with its read permission) and the menu's own pages.
+ * kind only with its read permission), the menu's own pages, and the sections of the pages' help (opened
+ * at that section).
  *
  * "/" or Ctrl+K focuses it from anywhere; ↑ ↓ choose, Enter opens, Esc closes. On a narrow screen it is an
  * icon that opens the box over the header.
@@ -11,9 +12,10 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 import api from "../config/api.js";
-import { n, t } from "../i18n";
+import { currentLanguage, n, t } from "../i18n";
 import { tv } from "../i18n/backendText";
-import { visibleMenu } from "./sidebarMenu";
+import { pathOfPage, visibleMenu } from "./sidebarMenu";
+import { loadAllHelp, searchHelp } from "../help";
 import { itemTitle } from "./Remediation/remediationFormat.js";
 import "../assets/GlobalSearch.css";
 
@@ -28,6 +30,7 @@ const KIND = {
     groups: t("Asset groups"),
     users: t("Users"),
     reports: t("Reports"),
+    help: t("Help"),
 };
 const SEVERITY = { critical: t("Critical"), high: t("High"), medium: t("Medium"), low: t("Low") };
 /** Persian and Arabic digits as ASCII ("۱۰.۲۰" -> "10.20"), as the server reads them too. */
@@ -54,6 +57,7 @@ export function GlobalSearch() {
     const [open, setOpen] = useState(false);
     const [expanded, setExpanded] = useState(false);     // narrow screens
     const [active, setActive] = useState(0);
+    const [helpPages, setHelpPages] = useState([]);
     const input = useRef(null);
     const box = useRef(null);
     const query = ascii(q).trim();
@@ -90,21 +94,39 @@ export function GlobalSearch() {
         return () => { alive = false; clearTimeout(timer); };
     }, [query]);
 
+    // the help of every page, loaded on the first search
+    const wantsHelp = query.length >= 2;
+    useEffect(() => {
+        if (!wantsHelp) return undefined;
+        let alive = true;
+        loadAllHelp(currentLanguage()).then((all) => alive && setHelpPages(all)).catch(() => {});
+        return () => { alive = false; };
+    }, [wantsHelp]);
+
+    const menu = useMemo(() => visibleMenu({ role, permissions }), [role, permissions]);
+
+    const helpHits = useMemo(() => {
+        const keys = [...menu.top, ...menu.groups.flatMap((g) => g.items)].flatMap((i) => [i.key, ...(i.keys || [])]);
+        return searchHelp(helpPages, query, keys).map((h) => ({
+            title: h.section, detail: h.page, link: `${pathOfPage(h.key)}?help=${encodeURIComponent(h.section)}`,
+        }));
+    }, [helpPages, query, menu]);
+
     const pages = useMemo(() => {
         const needle = query.toLowerCase();
         if (!needle) return [];
-        const menu = visibleMenu({ role, permissions });
         return [...menu.top, ...menu.groups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label })))]
             .filter((i) => i.label.toLowerCase().includes(needle) || (i.group || "").toLowerCase().includes(needle))
             .slice(0, 5)
             .map((i) => ({ title: i.label, detail: i.group || "", link: i.path }));
-    }, [query, role, permissions]);
+    }, [query, menu]);
 
     const fresh = result.query === query && query.length >= 2;
     const groups = useMemo(() => [
         ...(pages.length ? [{ kind: "pages", items: pages }] : []),
         ...(fresh ? result.groups : []),
-    ], [pages, fresh, result]);
+        ...(helpHits.length ? [{ kind: "help", items: helpHits }] : []),
+    ], [pages, fresh, result, helpHits]);
     const flat = groups.flatMap((g) => g.items.map((it) => ({ kind: g.kind, it })));
     const current = Math.min(active, Math.max(flat.length - 1, 0));
 
