@@ -43,3 +43,6 @@
     unicode-bidi: plaintext;
     text-align: right;
 }
+
+/* A one-word Latin value inside a translated sentence (i18n/BidiText.jsx) stays on one line. */
+.bidi-word { white-space: nowrap; }

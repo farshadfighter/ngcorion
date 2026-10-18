@@ -13,6 +13,7 @@ import { n, t } from "../../i18n";
 import { HealthBar } from "../NOC/Health.jsx";
 import { celsius, duration } from "../NOC/healthFormat.js";
 import { tb } from "../../i18n/backendText.js";
+import { BidiText } from "../../i18n/BidiText.jsx";
 import { formatDateTime, formatWhen, relativeDays } from "../../utils/dates.js";
 import { TECHS, errorText } from "../AssetGroups/groupFormat.js";
 import { AssetIcon } from "../shared/AssetIcon.jsx";
@@ -203,7 +204,7 @@ export function AssetDetailPage() {
                                 <Sev value={x.severity} />
                                 <span className="a360-grow">
                                     {x.link ? <Link to={x.link}><b>{tb(x.title)}</b></Link> : <b>{tb(x.title)}</b>}
-                                    {x.detail && <span className="bkm-sub" dir="auto">{tb(x.detail)}</span>}
+                                    {x.detail && <span className="bkm-sub" dir="auto"><BidiText text={tb(x.detail)} /></span>}
                                 </span>
                                 <span className="bkm-small bkm-muted bkm-nowrap">{formatWhen(x.since)}</span>
                             </li>

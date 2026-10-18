@@ -46,6 +46,15 @@
   the map counts found and missing links. Interface names on links can be up to
   100 characters.
 
+### Persian sentences with English names
+
+- In alerts, the audit trail, the asset page timeline and group runs, the
+  device, port, user and product names inside a Persian sentence stay whole and
+  in place (they used to be moved around by the right-to-left layout), a
+  one-word name such as `dist-switch-02` no longer breaks at its hyphen, and a
+  Persian sentence that starts with an English word (MAC, SNMP) reads right to
+  left.
+
 ### Nine new device icons
 
 - Camera, NVR, laptop, IP phone, UPS, PLC / industrial, WAF, IPS and VPN, with

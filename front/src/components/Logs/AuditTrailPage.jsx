@@ -11,6 +11,7 @@ import api from "../../config/api.js";
 import "../../assets/AuditTrail.css";
 import { t, uiLocale, n } from "../../i18n";
 import { tbDetail } from "../../i18n/backendText.js";
+import { BidiText } from "../../i18n/BidiText.jsx";
 import { DateInput } from "../shared/DateInput.jsx";
 import { LogsPage } from "./LogsPage.jsx";
 
@@ -218,7 +219,7 @@ export const AuditTrailPage = ({ initialTab = "events" }) => {
                                     <td>{e.target_id ?? "—"}</td>
                                     <td dir="ltr" className="at-mono">{e.ip_address || "—"}</td>
                                     <td><span className={`at-badge ${e.result === "success" ? "ok" : "fail"}`}>{resultLabel(e.result)}</span></td>
-                                    <td dir="auto" className="at-detail">{e.detail ? tbDetail(e.detail) : ""}</td>
+                                    <td dir="auto" className="at-detail">{e.detail ? <BidiText text={tbDetail(e.detail)} /> : ""}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -239,7 +240,7 @@ export const AuditTrailPage = ({ initialTab = "events" }) => {
                                     <td><span className={`at-badge ${e.success ? "ok" : "fail"}`}>{e.success ? t("Successful") : t("Failed")}</span></td>
                                     <td dir="ltr" className="at-mono">{e.ip_address || "—"}</td>
                                     <td dir="ltr" className="at-detail at-muted">{e.user_agent || "—"}</td>
-                                    <td dir="auto" className="at-detail">{e.message ? tbDetail(e.message) : ""}</td>
+                                    <td dir="auto" className="at-detail">{e.message ? <BidiText text={tbDetail(e.message)} /> : ""}</td>
                                 </tr>
                             ))}
                         </tbody>

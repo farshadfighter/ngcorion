@@ -901,6 +901,15 @@ const COMPILED = TEMPLATES.map((key) => {
 });
 COMPILED.push({ key: "Access Switch {{n}}", names: ["n"], re: /^Access Switch (\d+)$/ });
 
+// A value written in Latin letters (a device, port, user or product name) inside a Persian sentence:
+// first-strong isolated, so the bidi algorithm keeps it whole and in place instead of moving its
+// digits and punctuation ("core-sw-01 port Gi1/0/2" no longer reads "01 ... Gi1/0/2 core-sw").
+// Values with Persian in them, and ones n() already isolated, are left alone.
+const LATIN = /[A-Za-z]/;
+const PERSIAN = /[\u0600-\u06FF]/;
+const isolate = (value) => (currentLanguage() === "fa" && typeof value === "string" && LATIN.test(value)
+    && !PERSIAN.test(value) && !/^[\u2066-\u2068]/.test(value) ? `\u2068${value}\u2069` : value);
+
 /** Translate one English sentence from the API; unknown text comes back unchanged. */
 export function tb(text) {
     if (typeof text !== "string" || !text) return text;
@@ -909,7 +918,7 @@ export function tb(text) {
     for (const { key, names, re } of COMPILED) {
         const m = re.exec(text);
         if (!m) continue;
-        const values = Object.fromEntries(names.map((name, i) => [name, n(tb(m[i + 1]))]));
+        const values = Object.fromEntries(names.map((name, i) => [name, isolate(n(tb(m[i + 1])))]));
         return t(key, values);
     }
     return text;

@@ -8,6 +8,7 @@ import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
 import { t as tr, n } from "../../i18n";
 import { tb } from "../../i18n/backendText";
+import { BidiText } from "../../i18n/BidiText.jsx";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const STATUSES = [["open", tr("Active")], ["acknowledged", tr("Acknowledged")], ["resolved", tr("Resolved")]];
@@ -142,7 +143,7 @@ export function AlertsPage() {
                                     <td><span className={`bkm-pill ${SEVERITY[a.severity]?.pill || ""}`}>{SEVERITY[a.severity]?.label || a.severity}</span></td>
                                     <td>
                                         <b className="bkm-strong">{tb(a.title)}</b>
-                                        {a.detail && <span className="bkm-sub alr-detail bidi-auto">{tb(a.detail)}</span>}
+                                        {a.detail && <span className="bkm-sub alr-detail bidi-auto"><BidiText text={tb(a.detail)} /></span>}
                                     </td>
                                     <td>
                                         {MODULES[a.module] || a.module}

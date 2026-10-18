@@ -12,6 +12,7 @@ import api from "../../config/api.js";
 import { usePermission } from "../../hooks/usePermission";
 import { n, t } from "../../i18n";
 import { tb } from "../../i18n/backendText";
+import { BidiText } from "../../i18n/BidiText.jsx";
 import { formatDateTime } from "../../utils/dates.js";
 import { ITEM_STATUS, KINDS, REASONS, RUN_STATUS, TECHS, errorText } from "./groupFormat.js";
 import { FAMILY_LABELS } from "../Backup/restoreConstants.js";
@@ -351,7 +352,7 @@ function RunDetail({ runId, kind }) {
                                         ? <Link className="bkm-link" to={`/audit/sessions/${i.session_id}`}>{n(Math.round(i.compliance))}%</Link>
                                         : i.session_id ? <Link className="bkm-link" to={`/audit/sessions/${i.session_id}`}>{t("Open session")}</Link> : "—"}</td>
                                     <td>{i.reason ? <><b>{REASONS[i.reason] || i.reason}</b>
-                                        {i.detail && <div className="bkm-small bkm-muted ag-detail" dir="auto">{tb(i.detail)}</div>}</> : <span className="bkm-muted">—</span>}</td>
+                                        {i.detail && <div className="bkm-small bkm-muted ag-detail" dir="auto"><BidiText text={tb(i.detail)} /></div>}</> : <span className="bkm-muted">—</span>}</td>
                                     <td className="bkm-small">{i.finished_at ? formatDateTime(i.finished_at) : "—"}</td>
                                 </tr>
                             ))}
