@@ -160,6 +160,7 @@ export const DashboardLayout = () => {
         "noc-syslog":          t("Syslog"),
         "noc-unknown":         t("Unknown devices"),
         "user-management":     t("User Management"),
+        "api-keys":            t("API keys"),
         "system-logs":         t("Logs and audit trail"),
         "audit-trail":         t("Logs and audit trail"),
         "system-configuration": t("System Configuration"),

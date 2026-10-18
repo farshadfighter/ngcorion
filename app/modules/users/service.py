@@ -23,14 +23,16 @@ class UserService:
     # ==========================================
     
     def get_all_users(self) -> List[User]:
-        """Get all users"""
-        return self.db.query(User).all()
+        """Get all users (people: the service accounts of API keys are managed with their key)"""
+        return self.db.query(User).filter(User.auth_source != "apikey").all()
     
     def get_user_by_id(self, user_id: int) -> User:
         """Get user by ID with permissions"""
         user = self.db.query(User).filter(User.id == user_id).first()
-        
-        if not user:
+
+        # The service account of an API key is changed only through its key (app/modules/api_keys): its
+        # role and permissions must stay the key's scopes.
+        if not user or user.auth_source == "apikey":
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"User with id {user_id} not found"
@@ -405,7 +407,8 @@ class UserService:
         """Search users by username or email"""
         return self.db.query(User).filter(
             (User.username.ilike(f"%{query}%")) | 
-            (User.email.ilike(f"%{query}%"))
+            (User.email.ilike(f"%{query}%")),
+            User.auth_source != "apikey",
         ).all()
     
     # ==========================================

@@ -95,7 +95,7 @@ export const MENU_GROUPS = [
     {
         id: "admin", label: t("Administration"), icon: "/icons/administration.svg",
         items: [
-            { key: "user-management", label: t("Users"), path: "/settings/users", perm: "user_management" },
+            { key: "user-management", keys: ["api-keys"], label: t("Users"), path: "/settings/users", perm: "user_management" },
             { key: "system-configuration", label: t("System Configuration"), path: "/settings/system",
               perm: "system_config" },
             { key: "notifications", label: t("Alert and notification rules"), path: "/settings/notifications",
@@ -173,6 +173,7 @@ const PATHS = [
     ["/noc/syslog", "noc-syslog"],
     ["/noc/unknown-devices", "noc-unknown"],
     ["/settings/users", "user-management"],
+    ["/settings/api-keys", "api-keys"],
     ["/settings/logs", "system-logs"],
     ["/settings/audit-trail", "audit-trail"],
     ["/settings/license", "licence"],

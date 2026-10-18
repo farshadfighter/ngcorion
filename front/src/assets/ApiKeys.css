@@ -1,0 +1,35 @@
+/* API keys (components/UserManagement/ApiKeysPage.jsx); builds on BackupModule.css. */
+.ak-table td { vertical-align: top; }
+.ak-click { cursor: pointer; }
+.ak-click:hover td, .ak-click:focus-visible td { background: #f8fafc; }
+.ak-block { display: block; }
+.ak-key { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ak-nowrap { white-space: nowrap; }
+.ak-warn { color: #a37a06; }
+.ak-desc { max-width: 360px; }
+.ak-scope-cell { max-width: 380px; }
+.ak-drawer { width: 640px; }
+.ak-scopes { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.ak-scopes legend { font-size: 12px; font-weight: 600; color: #374151; padding: 0 4px; }
+.ak-scopes p { margin: 0 0 4px; }
+.ak-scope { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; flex-wrap: wrap; }
+.ak-seg { display: inline-flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+.ak-seg button { border: 0; background: #fff; padding: 4px 10px; font: inherit; font-size: 12px; color: #374151; cursor: pointer; }
+.ak-seg button + button { border-inline-start: 1px solid #d1d5db; }
+.ak-seg button.is-on { background: #1e3a5f; color: #fff; }
+.ak-seg button:disabled { color: #cbd5e1; cursor: not-allowed; }
+.ak-facts { display: flex; flex-direction: column; gap: 3px; color: #4b5563; }
+.ak-danger { border-color: #b0222a; color: #b0222a; }
+.ak-dialog {
+    position: relative; z-index: 2; margin: 10vh auto auto; align-self: flex-start; height: fit-content; width: min(620px, calc(100% - 32px)); background: #fff;
+    border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px rgba(15, 23, 42, .3);
+}
+.ak-dialog h2 { margin: 0; font-size: 17px; color: #1e3a5f; }
+.ak-token { display: flex; gap: 8px; align-items: center; background: #f1f5f9; border-radius: 8px; padding: 8px 10px; }
+.ak-token code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 12.5px; }
+.ak-example { margin: 0; background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 12px;
+    overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ak-dialog-foot { display: flex; justify-content: flex-end; }
+@media (max-width: 720px) {
+    .ak-drawer { width: 100%; }
+}

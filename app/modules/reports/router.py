@@ -352,7 +352,8 @@ def list_schedules(user: User = Depends(_read), db: Session = Depends(get_db)):
 
 @router.get("/schedules/recipients")
 def recipient_options(_user: User = Depends(_read), db: Session = Depends(get_db)):
-    users = db.query(User).filter(User.is_active.is_(True)).order_by(User.username).all()
+    users = (db.query(User).filter(User.is_active.is_(True), User.auth_source != "apikey")
+             .order_by(User.username).all())
     return [{"id": u.id, "username": u.username, "has_email": bool(u.email)} for u in users]
 
 

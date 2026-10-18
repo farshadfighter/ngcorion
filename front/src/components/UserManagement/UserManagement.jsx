@@ -12,6 +12,7 @@ import { EditUserModal } from "./EditUserModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { TempPasswordModal } from "./TempPasswordModal";
 import { ResetTwoStepModal } from "./ResetTwoStepModal";
+import { UsersTabs } from "./UsersTabs.jsx";
 import api from "../../config/api";
 import { t } from "../../i18n";
 import { formatDate } from "../../utils/dates";
@@ -92,6 +93,7 @@ export const UserManagement = () => {
                    {t("+ Add User")}
                 </button>
             </div>
+            <UsersTabs />
 
             {/* Success/Error Messages */}
             {successMessage && (

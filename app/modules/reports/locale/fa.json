@@ -675,5 +675,6 @@
   "Weak key": "کلید ضعیف",
   "Weak signature": "امضای ضعیف",
   "With other problems": "با مشکلات دیگر",
-  "on {n} assets": "روی {n} دارایی"
+  "on {n} assets": "روی {n} دارایی",
+  "API key expires soon": "کلید API به‌زودی منقضی می‌شود"
 }

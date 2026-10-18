@@ -42,7 +42,8 @@ class AuthService:
             False: If username not found or password doesn't match
         """
         user = self.db.query(User).filter(User.username == username).first()
-        if not user:
+        # The service account of an API key never signs in with a password (app/core/api_keys.py).
+        if not user or user.auth_source == "apikey":
             burn_password_check_time(password)
             return False
         if not verify_password(password, user.hashed_password):

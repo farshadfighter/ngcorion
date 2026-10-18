@@ -15,11 +15,10 @@ this file describes what is not (yet).
 
 Bugs reported from testing on the customer test server go before everything else here.
 
-## Next: phase D (agreed order)
+## Next
 
-| Order | # | Item | Scope |
-|---|---|---|---|
-| 1 | 12 | API keys | Keys for other systems (SIEM, CMDB, scripts): scoped permissions, expiry, audit trail |
+Phase D is done (items 9, 15, 10, 14, 11, 12). Next: the final verification (CI, English and narrow-width
+screenshots of the new pages), then the bugs reported from testing.
 
 ## Known limits (shipped, documented, not yet improved)
 
@@ -43,6 +42,10 @@ Bugs reported from testing on the customer test server go before everything else
 - Global search: remediation finding titles are stored in English, so a Persian word does not find them
   (CVE ids, check numbers and asset names do); results are plain substring matches, not ranked by
   relevance beyond exact and prefix matches first.
+- API keys: a key sees what a user with the same permissions sees, including ownership rules (a
+  non-administrator sees only the audit sessions it started); reads made with a key are not written to the
+  audit trail one by one (its last use and address are kept on the key); behind a reverse proxy the
+  address list sees the proxy's address.
 
 ## On the customer side
 
@@ -57,7 +60,8 @@ Bugs reported from testing on the customer test server go before everything else
 
 | Item | Commit |
 |---|---|
-| 11 Global search (assets, IP, MAC, CVE, devices, findings, certificates, software, groups, users, reports, pages) | recorded with the next item |
+| 12 API keys (service account per key, scopes, expiry, address list, renew, revoke, expiry alert) | recorded with the next item |
+| 11 Global search (assets, IP, MAC, CVE, devices, findings, certificates, software, groups, users, reports, pages) | d90ec0f |
 | 14 TLS certificates (scan, trust, expiry, weak key/signature, TLS 1.0/1.1, own CAs, remediation, risk, alerts, report) | d3edee3 |
 | 10 End of life (catalog from endoflife.date, own products, remediation, risk, alerts, report) | fe425bd |
 | Production image start: no plain methods on Pydantic models (guard test) | 6d7b258 |

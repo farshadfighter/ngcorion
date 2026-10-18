@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### API keys
+
+- New tab Administration → Users → API keys (system administrators): keys
+  other systems (SIEM, CMDB, scripts) call the API with, as
+  `Authorization: Bearer ngk_…`. The token is shown once; only the SHA-256 of
+  its secret is stored.
+- Each key acts as its own service account whose permissions are the key's
+  access (read, or read and write, per module), so every permission and
+  ownership rule applies and everything it does is in the audit trail under
+  that account. A key never gets user management or credential profiles,
+  only reads hardening, device backups, system settings and logs, never
+  deletes and is never an administrator.
+- Every key has an end date (90 days by default, 365 at most) and can be
+  limited to some addresses; renewing replaces the secret at once, revoking
+  is final. New alert event "API key expires soon".
+- Service accounts are kept out of the user list, alert and report
+  recipients and owner pickers, cannot sign in with a password and cannot
+  be edited from the users page.
+
 ### Global search
 
 - A search box in the header of every page ("/" or Ctrl+K): assets by name,

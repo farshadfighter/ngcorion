@@ -115,6 +115,7 @@ from app.modules.compliance.router import router as compliance_router
 from app.modules.eol.router import router as eol_router
 from app.modules.tls.router import router as tls_router
 from app.modules.search.router import router as search_router
+from app.modules.api_keys.router import router as api_keys_router
 
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
@@ -588,6 +589,7 @@ app.include_router(compliance_router)
 app.include_router(eol_router)
 app.include_router(tls_router)
 app.include_router(search_router)
+app.include_router(api_keys_router)
 
 # Architecture Validation routes
 app.include_router(architecture_validation_router)

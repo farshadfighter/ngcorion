@@ -112,6 +112,16 @@ const TEMPLATES = [
     msg("{{what}} on {{name}}: fixes only with paid extended support, until {{until}}"),
     msg("{{what}} on {{name}}: support ends {{until}}"),
     msg("Vendor support ends within {{days}} days"),
+    // API keys (app/modules/api_keys, alert system.api_key_expiring)
+    msg("Created the API key {{name}} (account {{account}})"),
+    msg("Changed the API key {{name}}"),
+    msg("Renewed the secret of the API key {{name}}"),
+    msg("Revoked the API key {{name}}"),
+    msg("The API key {{name}} stops working {{date}}"),
+    msg("An API key of another system stops working within {{days}} days"),
+    msg("An API key is valid for at most {{days}} days"),
+    msg("An API key cannot have the module {{module}}"),
+    msg("An API key can only read the module {{module}}"),
     // TLS certificates (app/modules/tls/router.py, remediation titles, alert details)
     msg("Scanned the TLS certificates of {{name}}"),
     msg("Added the TLS service {{what}} of {{name}}"),
@@ -1203,6 +1213,16 @@ msg("A product with this name already exists");
 msg("Product not found");
 msg("Entry not found");
 msg("Give the software names the product is found under");
+
+// API keys (app/modules/api_keys, app/core/api_keys.py)
+msg("API key expires soon");
+msg("API key not found");
+msg("A revoked key cannot be changed");
+msg("A revoked key cannot be renewed");
+msg("Give the key at least one module");
+msg("Invalid API key");
+msg("API key has expired");
+msg("This API key is not allowed from this address");
 
 // TLS certificates (app/modules/tls, alerts tls.certificate_*)
 msg("Asked for a scan of every TLS certificate");

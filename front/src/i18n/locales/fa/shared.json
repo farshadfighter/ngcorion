@@ -3,7 +3,6 @@
   "{{count}} results for \"{{query}}\"": "{{count, number}} نتیجه برای «{{query}}»",
   "{{displayPortCount}} ports": "{{displayPortCount}} پورت",
   "{{length}} supported targets": "{{length}} هدف پشتیبانی‌شده",
-  "Access": "دسترسی",
   "All supported targets": "همهٔ اهداف پشتیبانی‌شده",
   "All targets": "همهٔ اهداف",
   "Automatic:": "خودکار:",

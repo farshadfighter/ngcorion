@@ -14,7 +14,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 from sqlalchemy.orm import Session
-from app.core import mfa
+from app.core import api_keys, mfa
 from app.core.config import settings
 from app.core.sessions import touch as touch_session
 from app.core.database import get_db
@@ -80,6 +80,13 @@ def get_current_user(
         HTTPException: 403 if user account is disabled
     """
     token = credentials.credentials
+
+    # An API key of another system (app/core/api_keys.py): its service account, with the key's scopes as
+    # its permissions. Two-step sign-in, password and session rules are for people, not for a key.
+    if api_keys.is_api_key(token):
+        user = api_keys.authenticate(db, token, request)
+        check_storage(request, user)
+        return user
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

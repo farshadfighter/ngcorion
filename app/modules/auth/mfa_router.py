@@ -305,7 +305,7 @@ def users_state(_: User = Depends(require_admin), db: Session = Depends(get_db))
     policy = mfa.get_policy(db)
     rows = {r.user_id: r for r in db.query(mfa.UserMfa).all()}
     out = []
-    for user in db.query(User).order_by(User.id).all():
+    for user in db.query(User).filter(User.auth_source != "apikey").order_by(User.id).all():
         row = rows.get(user.id)
         required = mfa.is_required(policy, user)
         out.append({"user_id": user.id, "enabled": bool(row and row.enabled), "required": required,

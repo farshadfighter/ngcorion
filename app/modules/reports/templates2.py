@@ -967,7 +967,7 @@ def _users(ctx: Ctx) -> Dict[str, List[dict]]:
     logins = db.query(LoginLog).filter(LoginLog.timestamp >= start, LoginLog.timestamp < end).all()
     actions = [a for a in db.query(AuditLog).filter(AuditLog.timestamp >= start, AuditLog.timestamp < end)
                .order_by(AuditLog.timestamp) if _sensitive(a)]
-    users = db.query(User).all()
+    users = db.query(User).filter(User.auth_source != "apikey").all()     # API keys never sign in
     last_ok = dict(db.query(LoginLog.username, func.max(LoginLog.timestamp)).filter(LoginLog.success.is_(True))
                    .group_by(LoginLog.username).all())
     cutoff = _aware(ctx.now) - timedelta(days=90)

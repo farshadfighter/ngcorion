@@ -153,7 +153,8 @@ def _findings(db: Session, q: str, limit: int, user: User) -> List[Dict]:
 
 def _users(db: Session, q: str, limit: int, user: User) -> List[Dict]:
     like = _like(q)
-    rows = db.query(User).filter(or_(User.username.ilike(like), User.email.ilike(like))).limit(limit * 3).all()
+    rows = (db.query(User).filter(or_(User.username.ilike(like), User.email.ilike(like)), User.auth_source != "apikey")
+            .limit(limit * 3).all())
     rows.sort(key=lambda u: (_rank(u.username, q), u.username.lower()))
     return [{"id": u.id, "title": u.username, "detail": u.email or "",
              "role": u.role.value if hasattr(u.role, "value") else str(u.role), "active": bool(u.is_active),

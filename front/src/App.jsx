@@ -26,6 +26,7 @@ const AssetRequirement = lazy(() => import("./components/AssetRequirement/AssetR
 const AssetManagementDashboard = lazy(() => import("./components/AssetManagement/AssetManagementDashboard").then((m) => ({ default: m.AssetManagementDashboard })));
 const AuditingDashboard = lazy(() => import("./components/Auditing/AuditingDashboard").then((m) => ({ default: m.AuditingDashboard })));
 const AuditingList = lazy(() => import("./components/Auditing/AuditingList").then((m) => ({ default: m.AuditingList })));
+const ApiKeysPage = lazy(() => import("./components/UserManagement/ApiKeysPage").then((m) => ({ default: m.ApiKeysPage })));
 const UserManagement = lazy(() => import("./components/UserManagement/UserManagement").then((m) => ({ default: m.UserManagement })));
 const AuditTrailPage = lazy(() => import("./components/Logs/AuditTrailPage").then((m) => ({ default: m.AuditTrailPage })));
 const BackupPage = lazy(() => import("./components/Backup/BackupPage"));
@@ -446,6 +447,9 @@ function AppContent() {
                         } />
                         <Route path="/settings/license" element={
                             <RequireAdmin name="License Management"><License /></RequireAdmin>
+                        } />
+                        <Route path="/settings/api-keys" element={
+                            <RequireAdmin name="API keys"><ApiKeysPage /></RequireAdmin>
                         } />
                         <Route path="/settings/system" element={
                             <RequirePermission module="system_config" name="System Configuration">

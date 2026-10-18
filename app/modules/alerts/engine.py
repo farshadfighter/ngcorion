@@ -289,7 +289,7 @@ def _recipients(db: Session, rule: NotificationRule, alerts: List[Alert]) -> Tup
     if roles or ids:
         from app.models.user import UserRole
         role_values = [UserRole(x) for x in roles if x in {e.value for e in UserRole}]
-        q = db.query(User).filter(User.is_active.is_(True))
+        q = db.query(User).filter(User.is_active.is_(True), User.auth_source != "apikey")   # keys get no mail
         conds = []
         if role_values:
             conds.append(User.role.in_(role_values))

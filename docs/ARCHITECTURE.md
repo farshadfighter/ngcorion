@@ -56,7 +56,14 @@ Then the route's dependencies (`app/core/dependencies.py`):
   changed), then loads the user from the database. Role and permissions
   always come from the database, never from the token. An account whose
   password was chosen by someone else (`users.must_change_password`) only
-  reaches the password-change and session endpoints.
+  reaches the password-change and session endpoints. A bearer token that
+  starts with `ngk_` is an API key instead (`app/core/api_keys.py`): its
+  secret's SHA-256 is compared in constant time, revoked or expired keys and
+  addresses outside the key's list are refused, and the request continues
+  as the key's own service account (`users.auth_source = 'apikey'`, role
+  user), whose permission rows are the key's scopes - so every permission
+  and ownership rule applies unchanged. Two-step sign-in, password age and
+  idle sessions do not apply to a key; the license check does.
 - `require_permission(module, "read" | "write" | "delete")` checks the
   per-module permission table (`app/models/user_permission.py`, `ModuleEnum`).
   Admins pass every check. The frontend mirrors the same module list in

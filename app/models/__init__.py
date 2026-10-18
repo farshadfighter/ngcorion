@@ -361,3 +361,6 @@ from app.models.eol import EolAssetEntry, EolProduct  # noqa: E402,F401
 
 # TLS certificates of the services the assets run (see app/models/tls.py)
 from app.models.tls import TlsEndpoint, TlsTrustedCa  # noqa: E402,F401
+
+# API keys for other systems (see app/models/api_key.py)
+from app.models.api_key import ApiKey  # noqa: E402,F401

@@ -215,7 +215,8 @@ def sync_now(user: User = Depends(_write), db: Session = Depends(get_db)):
 def list_users(_user: User = Depends(_read), db: Session = Depends(get_db)):
     """People a finding can be assigned to."""
     return [{"id": u.id, "username": u.username, "role": u.role.value}
-            for u in db.query(User).filter(User.is_active.is_(True)).order_by(User.username)]
+            for u in db.query(User).filter(User.is_active.is_(True), User.auth_source != "apikey")
+            .order_by(User.username)]
 
 
 # ── risk acceptance ───────────────────────────────────────────────────────

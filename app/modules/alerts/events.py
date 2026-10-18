@@ -638,6 +638,18 @@ def _directory_unreachable(db: Session, params: Dict, now: datetime, since: date
                     source_label="Active Directory / LDAP", link="/settings/system")]
 
 
+def _api_key_expiring(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """API keys (app/modules/api_keys) that stop working within the chosen number of days, so the system
+    using one can get a renewed key in time; clears when the key is extended or revoked."""
+    from app.models.api_key import ApiKey
+    days = int(params.get("days", 14))
+    rows = (db.query(ApiKey).filter(ApiKey.revoked_at.is_(None), ApiKey.expires_at > now,
+                                    ApiKey.expires_at <= now + timedelta(days=days)).all())
+    return [Problem(key=f"api_key:{k.id}", title="API key expires soon",
+                    detail=f"The API key {k.name} stops working {k.expires_at.date().isoformat()}",
+                    link="/settings/api-keys") for k in rows]
+
+
 def _emergency_login(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
     from app.models.security_audit_log import AuditLog
     rows = (db.query(AuditLog).filter(AuditLog.action == "auth.emergency_login", AuditLog.timestamp >= since)
@@ -1088,6 +1100,9 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("system.credential_rotation", "system", "Credential profile due for a password change",
               "A credential profile's password is older than its change period", "state", 3600,
               _credential_rotation, severity="info", channels=["email"], repeat_minutes=10080),
+    EventType("system.api_key_expiring", "system", "API key expires soon",
+              "An API key of another system stops working within {days} days", "state", 3600, _api_key_expiring,
+              [Param("days", "Days before the end", 14, "days", 1, 90)], severity="warning", channels=["email"]),
     EventType("system.emergency_login", "system", "Local administrator signed in",
               "A local administrator account signs in while sign-in goes through the directory", "event", 60,
               _emergency_login, has_owner=True, severity="warning", channels=["email"]),

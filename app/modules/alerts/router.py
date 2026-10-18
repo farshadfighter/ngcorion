@@ -787,7 +787,8 @@ def editor_options(_user: User = Depends(require_permission("SYSTEM_CONFIG", "re
         "roles": [{"key": r.value, "label": {"admin": "Admins", "manager": "Managers", "user": "Users",
                                               "guest": "Guests"}[r.value]} for r in UserRole],
         "users": [{"id": u.id, "username": u.username, "email": u.email, "has_phone": bool(u.phone)}
-                  for u in db.query(User).filter(User.is_active.is_(True)).order_by(User.username)],
+                  for u in db.query(User).filter(User.is_active.is_(True), User.auth_source != "apikey")
+                  .order_by(User.username)],
         "asset_types": [{"id": t.id, "name": t.type_name} for t in db.query(AssetType).order_by(AssetType.type_name)],
         "zones": [{"id": z.id, "name": z.name} for z in db.query(RiskZone).order_by(RiskZone.name)],
         "assets": [{"id": a.id, "name": a.asset_name, "ip": a.ip_address}
