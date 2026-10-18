@@ -60,7 +60,7 @@ screenshots of the new pages), then the bugs reported from testing.
 
 | Item | Commit |
 |---|---|
-| 12 API keys (service account per key, scopes, expiry, address list, renew, revoke, expiry alert) | recorded with the next item |
+| 12 API keys (service account per key, scopes, expiry, address list, renew, revoke, expiry alert) | c7b6549 |
 | 11 Global search (assets, IP, MAC, CVE, devices, findings, certificates, software, groups, users, reports, pages) | d90ec0f |
 | 14 TLS certificates (scan, trust, expiry, weak key/signature, TLS 1.0/1.1, own CAs, remediation, risk, alerts, report) | d3edee3 |
 | 10 End of life (catalog from endoflife.date, own products, remediation, risk, alerts, report) | fe425bd |

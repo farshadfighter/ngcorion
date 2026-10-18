@@ -80,6 +80,8 @@ cd front && npm run lint && npm test && npm run i18n:check && npm run build
 
 Persian (for operators and the AFTA / Common Criteria evaluation):
 
+- [docs/fa/PRODUCT_OVERVIEW.md](docs/fa/PRODUCT_OVERVIEW.md): معرفی محصول و همهٔ ماژول‌ها.
+- [docs/fa/TRAINING_GUIDE.md](docs/fa/TRAINING_GUIDE.md): دورهٔ آموزشی گام‌به‌گام با مثال.
 - [docs/fa/USER_GUIDE.md](docs/fa/USER_GUIDE.md): راهنمای کاربر.
 - [docs/fa/ADMIN_GUIDE.md](docs/fa/ADMIN_GUIDE.md): راهنمای مدیر — نصب، پیکربندی امن و راهبری.
 - [docs/fa/ARCHITECTURE.md](docs/fa/ARCHITECTURE.md): سند معماری امنیتی.

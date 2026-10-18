@@ -7,7 +7,7 @@
 | نسخهٔ سند | 1.0 |
 | مخاطب | مدیران سامانه (نقش admin) و کارکنان زیرساختی که آن را نصب و نگهداری می‌کنند |
 | الزامات معیار مشترک | AGD_PRE.1 (روال‌های آماده‌سازی)، AGD_OPE.1 (راهنمای عملیاتی برای نقش‌های ممتاز) |
-| اسناد مرتبط | [راهنمای کاربر](USER_GUIDE.md)، [سند معماری](ARCHITECTURE.md)، [هدف امنیتی](../SECURITY_TARGET.md)، `appliance/README.md`، `docs/SSH_HOST_KEY_VERIFICATION.md` |
+| اسناد مرتبط | [معرفی محصول](PRODUCT_OVERVIEW.md)، [دورهٔ آموزشی](TRAINING_GUIDE.md)، [راهنمای کاربر](USER_GUIDE.md)، [سند معماری](ARCHITECTURE.md)، [هدف امنیتی](../SECURITY_TARGET.md)، `appliance/README.md`، `docs/SSH_HOST_KEY_VERIFICATION.md` |
 
 این راهنما همهٔ کارهایی را که نصب امن و نگهداری NGCorion لازم دارد، به ترتیب انجام، شرح می‌دهد:
 دریافت و راستی‌آزمایی بستهٔ تحویلی، نصب، پیکربندی امن، لایسنس، کاربران، دنبالهٔ ممیزی،
