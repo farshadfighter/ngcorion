@@ -110,6 +110,7 @@ from app.modules.topology.router import router as topology_router
 from app.modules.noc.router import router as noc_router
 from app.modules.noc.endpoints_router import router as noc_endpoints_router
 from app.modules.noc.topology_router import router as topology_discovery_router
+from app.modules.audit_policy.router import router as audit_policy_router
 
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
@@ -284,6 +285,7 @@ async def lifespan(app: FastAPI):
     from app.modules.cve.jobs import start_auto_updater, stop_auto_updater
     from app.modules.alerts.engine import start_alert_engine, stop_alert_engine
     from app.modules.remediation.engine import start_remediation_sync, stop_remediation_sync
+    from app.modules.audit_policy.worker import start_policy_worker, stop_policy_worker
     from app.modules.reports.engine import start_report_worker, stop_report_worker
     from app.modules.sysbackup.engine import start_backup_worker, stop_backup_worker
     from app.modules.directory.engine import start_directory_check, stop_directory_check
@@ -296,6 +298,7 @@ async def lifespan(app: FastAPI):
         SingletonTask("cve-auto-update", start_auto_updater, stop_auto_updater),
         SingletonTask("alert-engine", start_alert_engine, stop_alert_engine),
         SingletonTask("remediation-sync", start_remediation_sync, stop_remediation_sync),
+        SingletonTask("audit-policy", start_policy_worker, stop_policy_worker),
         SingletonTask("report-worker", start_report_worker, stop_report_worker),
         SingletonTask("system-backup", start_backup_worker, stop_backup_worker),
         SingletonTask("directory-check", start_directory_check, stop_directory_check),
@@ -574,6 +577,7 @@ app.include_router(topology_router)
 app.include_router(noc_router)
 app.include_router(noc_endpoints_router)
 app.include_router(topology_discovery_router)
+app.include_router(audit_policy_router)
 
 # Architecture Validation routes
 app.include_router(architecture_validation_router)

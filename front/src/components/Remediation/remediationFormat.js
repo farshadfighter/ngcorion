@@ -37,6 +37,7 @@ export const CLOSED_REASON = {
     fixed: t("No longer reported by its source"),
     asset_deleted: t("The asset was deleted"),
     no_data: t("Its audit history was cleared"),
+    by_policy: t("The benchmark policy does not require this check"),
 };
 
 const DAY = 86400000;

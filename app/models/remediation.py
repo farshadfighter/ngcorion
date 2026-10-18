@@ -78,7 +78,7 @@ class RemediationItem(Base):
     first_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     resolved_at = Column(DateTime, nullable=True)
-    closed_reason = Column(String(40), nullable=True)               # fixed | asset_deleted | accepted_in_source
+    closed_reason = Column(String(40), nullable=True)               # fixed | asset_deleted | no_data | by_policy
     reopened = Column(Integer, nullable=False, default=0)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 

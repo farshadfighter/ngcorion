@@ -161,17 +161,19 @@ def _latest_completed_sessions(db: Session) -> Dict[int, AuditSession]:
     return latest
 
 
-def _audit_found(db: Session) -> Tuple[List[Found], Set[int]]:
-    """Failed checks of each asset's latest completed audit, and the assets that have one."""
+def _audit_found(db: Session) -> Tuple[List[Found], Set[int], Set[str]]:
+    """Failed checks of each asset's latest completed audit, the assets that have one, and the item
+    keys of failed checks the benchmark policy makes optional or excludes (closed "by_policy")."""
     sessions = _latest_completed_sessions(db)
     if not sessions:
-        return [], set()
+        return [], set(), set()
     assets = {a.id: a for a in db.query(Asset).filter(Asset.id.in_(list(sessions)))}
     by_session = {s.id: s for s in sessions.values()}
     hardened = {aid for (aid,) in db.query(HardeningAction.audit_result_id)
                 .filter(HardeningAction.status == "success", HardeningAction.action_type != "preview",
                         HardeningAction.audit_session_id.in_(list(by_session)))}
     out = []
+    by_policy: Set[str] = set()
     for r in (db.query(AuditResult)
               .filter(AuditResult.session_id.in_(list(by_session)), AuditResult.status == CheckStatus.FAIL)):
         session = by_session[r.session_id]
@@ -181,6 +183,9 @@ def _audit_found(db: Session) -> Tuple[List[Found], Set[int]]:
         check = r.check_number or str(r.check_id or r.id)
         vdom = (r.vdom or "").strip()
         key = f"audit:{asset.id}:{check}" + (f":{vdom}" if vdom and vdom.lower() != "global" else "")
+        if r.policy:                    # optional or excluded by the benchmark policy: not to fix
+            by_policy.add(key)
+            continue
         out.append(Found(
             key=key, source="audit", ref=check, asset=asset, title=(r.check_title or check)[:500],
             severity=_severity(r.severity), hardened=r.id in hardened,
@@ -188,7 +193,7 @@ def _audit_found(db: Session) -> Tuple[List[Found], Set[int]]:
                     "session_id": session.id, "result_id": r.id,
                     "evidence": (r.evidence_snippet or "")[:400] or None},
         ))
-    return out, set(sessions)
+    return out, set(sessions), by_policy
 
 
 def _arch_found(db: Session) -> List[Found]:
@@ -264,7 +269,7 @@ def sync(db: Session, now: Optional[datetime] = None) -> Dict[str, int]:
     if cve is not None:
         found += cve
         checked.add("cve")
-    audit, audited_assets = _audit_found(db)
+    audit, audited_assets, by_policy = _audit_found(db)
     found += audit
     checked.add("audit")
     found += _arch_found(db)
@@ -345,6 +350,8 @@ def sync(db: Session, now: Optional[datetime] = None) -> Dict[str, int]:
             continue
         elif item.source == "audit" and item.asset_id not in audited_assets:
             reason = "no_data"
+        elif item.key in by_policy:
+            reason = "by_policy"
         else:
             reason = "fixed"
         was_accepted = item.status == ITEM_ACCEPTED

@@ -378,6 +378,8 @@ class AssetRiskCalculationService:
         for result in results:
             if result.status in (CheckStatus.NOT_APPLICABLE, CheckStatus.ERROR):
                 continue
+            if result.policy == "excluded":       # the benchmark policy: not applicable here
+                continue
             weight = self._severity_weight(result.severity, settings)
             applicable_weight += weight
 

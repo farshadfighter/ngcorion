@@ -158,6 +158,7 @@ over within 30 seconds.
 | cve-auto-update | `cve` | Daily CVE/KEV/EPSS and distribution-advisory updates |
 | alert-engine | `alerts` | Evaluates alert rules, sends notifications |
 | remediation-sync | `remediation` | Keeps remediation items in step with findings |
+| audit-policy | `audit_policy` | Scores completed audits under the benchmark policy, ends expired rules |
 | report-worker | `reports` | Builds queued and scheduled reports |
 | system-backup | `sysbackup` | Scheduled backups of the NGCorion database and files |
 | directory-check | `directory` | Checks directory (AD/LDAP) accounts every 15 minutes |

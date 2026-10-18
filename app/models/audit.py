@@ -130,8 +130,15 @@ class AuditSession(Base):
     error_checks = Column(Integer, default=0)
 
     # NEW: Compliance metrics
-    compliance_pct = Column(Float, nullable=True)  # Simple percentage
-    weighted_compliance_pct = Column(Float, nullable=True)  # Weighted by severity
+    compliance_pct = Column(Float, nullable=True)  # Simple percentage (under the benchmark policy)
+    weighted_compliance_pct = Column(Float, nullable=True)  # Weighted by severity (under the policy)
+    # The module's own scores, kept when the benchmark policy rescored the session
+    # (app/models/audit_policy.py); None until the policy first looked at it.
+    raw_compliance_pct = Column(Float, nullable=True)
+    raw_weighted_compliance_pct = Column(Float, nullable=True)
+    policy_optional = Column(Integer, nullable=False, default=0, server_default="0")
+    policy_excluded = Column(Integer, nullable=False, default=0, server_default="0")
+    policy_checked_at = Column(DateTime, nullable=True, index=True)  # None: (re)score under the policy
 
     # NEW: Error handling
     connection_error = Column(Text, nullable=True)  # SSH connection errors
@@ -170,6 +177,8 @@ class AuditResult(Base):
     vdom = Column(String(80), nullable=True)
 
     status = Column(SQLEnum(CheckStatus), nullable=False)
+    # The benchmark policy's decision on this check for this asset: optional | excluded | None (required)
+    policy = Column(String(10), nullable=True)
     evidence_snippet = Column(Text, nullable=True)  # NEW: Redacted evidence excerpt
     checked_at = Column(DateTime, default=datetime.utcnow)
 

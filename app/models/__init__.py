@@ -348,3 +348,6 @@ from app.models.asset_groups import (AssetGroup, AssetGroupMember, AssetTag, Cre
 
 # Syslog messages received from the assets (see app/models/syslog.py)
 from app.models.syslog import ConfigChangeEvent, SyslogMessage, SyslogSource, SyslogStatus  # noqa: E402,F401
+
+# Organisation policy on the audit benchmarks (see app/models/audit_policy.py)
+from app.models.audit_policy import AuditPolicyRule  # noqa: E402,F401

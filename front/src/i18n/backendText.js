@@ -87,6 +87,15 @@ const TEMPLATES = [
     msg("Ignored the unknown device {{mac}}"),
     msg("No longer ignoring the device {{mac}}"),
     msg("Unknown device discovery turned on, every {{minutes}} minutes"),
+    // benchmark policy (app/modules/audit_policy/router.py)
+    msg("Asked to make {{what}} of the {{bench}} benchmark optional"),
+    msg("Asked to exclude {{what}} of the {{bench}} benchmark"),
+    msg("Approved making {{what}} of the {{bench}} benchmark optional"),
+    msg("Approved excluding {{what}} of the {{bench}} benchmark"),
+    msg("Rejected making {{what}} of the {{bench}} benchmark optional"),
+    msg("Rejected excluding {{what}} of the {{bench}} benchmark"),
+    msg("Ended the rule making {{what}} of the {{bench}} benchmark optional"),
+    msg("Ended the rule excluding {{what}} of the {{bench}} benchmark"),
     // LLDP / CDP topology (app/modules/noc/topology_discovery.py)
     msg("{{a}} port {{pa}} to {{b}} port {{pb}} is no longer reported by LLDP/CDP"),
     msg("LLDP/CDP topology discovery turned on, every {{minutes}} minutes, links added to the map automatically"),
@@ -1070,6 +1079,20 @@ msg("Unknown device discovery turned off");
 msg("No such device");
 msg("This device is already an asset");
 msg("Unknown asset type");
+
+// benchmark policy (app/modules/audit_policy)
+msg("This rule is not waiting for a decision");
+msg("Only administrators and managers can decide on a policy rule");
+msg("You cannot decide on your own request");
+msg("Only an administrator can decide on a whole level or on excluding a high or critical check");
+msg("The expiry must be in the future");
+msg("No audit of this benchmark has reported this check");
+msg("A rule for this check and scope is already pending or in force");
+msg("No such rule");
+msg("You cannot end this rule");
+msg("Unknown benchmark");
+msg("Choose one check or one level");
+msg("Choose optional or excluded");
 
 // LLDP / CDP topology (app/modules/noc/topology_discovery.py)
 msg("Network link lost");

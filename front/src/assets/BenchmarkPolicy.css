@@ -1,0 +1,33 @@
+/* Benchmark policy page (components/Remediation/BenchmarkPolicyPage.jsx); builds on BackupModule.css. */
+.bp-drawer { width: 560px; }
+.bp-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.bp-stack.bp-end { align-items: flex-end; }
+.bp-stack .bkm-btn + .bkm-btn { margin-inline-start: 6px; }
+.bp-seg { display: inline-flex; gap: 4px; padding: 3px; border-radius: 10px; background: #eef2f7; align-self: flex-start; }
+.bp-seg-btn { border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; font: inherit; font-size: 13px;
+    font-weight: 600; color: #475569; cursor: pointer; }
+.bp-seg-btn.is-on { background: #fff; color: #1e3a5f; box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+.bp-checks { display: flex; flex-direction: column; gap: 8px; }
+.bp-check-list { max-height: 260px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+.bp-check { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border-bottom: 1px solid #f1f5f9;
+    cursor: pointer; font-size: 13px; }
+.bp-check:last-child { border-bottom: 0; }
+.bp-check.is-on { background: #eff6ff; }
+.bp-check input { margin-top: 3px; }
+.bp-check-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bp-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.bp-decision { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.bp-decision legend { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+.bp-choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid #e5e7eb;
+    border-radius: 8px; cursor: pointer; }
+.bp-choice.is-on { border-color: #1e3a5f; background: #f8fafc; }
+.bp-choice > span { display: flex; flex-direction: column; gap: 2px; }
+.bp-choice input { margin-top: 3px; }
+.bp-reason { resize: vertical; min-height: 70px; }
+.bp-reason-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; max-width: 320px; }
+.bp-why { max-width: 220px; text-align: end; white-space: normal; }
+@media (max-width: 720px) { .bp-drawer { width: 100%; } }
+.bkm-btn.bp-danger { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+
+/* An English check title under its number: its own line, isolated so the number never lands inside it. */
+.bp-title { display: block; text-align: match-parent; }

@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Benchmark policy
+
+- New page Remediation & hardening → Benchmark policy: the organisation's
+  decisions on the audit benchmarks. A rule names a benchmark and one check
+  (shown with whether it fails in the latest audits now) or a whole level
+  (e.g. L2), for every asset or one asset group, with a reason and an optional
+  end date, and decides the check is **optional** (recommended, out of the
+  compliance score and remediation, still in the risk score) or **excluded**
+  (not applicable: out of the score, remediation and the risk score).
+- Four eyes: a rule applies once someone other than the requester approves
+  it. Managers and administrators decide; a whole level, or excluding a high or
+  critical check, needs an administrator. Requests can be withdrawn, rules in
+  force ended, and rules with an end date expire on their own. Every step is in
+  the audit trail (`audit_policy.request/approve/reject/end`).
+- Audits are scored under the rules in force: approving or ending a rule
+  rescores that benchmark's audits at once, and new audits are scored by the
+  `audit-policy` background task. The module's own score is kept
+  (`audit_sessions.raw_compliance_pct`), and the Benchmarks tab compares the
+  two. Remediation items for checks the policy no longer requires close with
+  the reason "by policy".
+
 ### Unknown devices on the network
 
 - New page Network & monitoring → Unknown devices: the addresses the monitored

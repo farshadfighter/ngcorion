@@ -104,3 +104,18 @@ class TestSchedulerClaim:
     def test_jobs_not_due_are_left(self, db):
         job = _job(db, due=False)
         assert job.id not in SchedulingService.claim_due_jobs(db, datetime.utcnow())
+
+
+def test_transaction_locks_never_reuse_a_leader_lock_name():
+    """A leader holds its SingletonTask lock for the life of the process, so a pg_advisory_xact_lock on
+    the same name (lock_key("...") in a module) would wait forever. Keep the two sets of names apart."""
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "app"
+    leaders = set(re.findall(r'SingletonTask\("([^"]+)"', (root / "main.py").read_text()))
+    assert leaders
+    used = {name for path in root.rglob("*.py")
+            for name in re.findall(r'lock_key\("([^"]+)"\)', path.read_text())}
+    assert used
+    assert not leaders & used, f"lock names also used by a SingletonTask: {sorted(leaders & used)}"
