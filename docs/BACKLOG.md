@@ -17,8 +17,10 @@ Bugs reported from testing on the customer test server go before everything else
 
 ## Next
 
-Phase D is done (items 9, 15, 10, 14, 11, 12). Next: the final verification (CI, English and narrow-width
-screenshots of the new pages), then the bugs reported from testing.
+Phase D is done (items 9, 15, 10, 14, 11, 12), with the product overview and training course
+(b959ac1). The final verification is done (b3473cb): full test suite green, 54 pages checked in
+English and every main page at phone width in both languages; the header, table and button
+layout problems it found are fixed. Next: the bugs reported from testing.
 
 ## Known limits (shipped, documented, not yet improved)
 
