@@ -11,6 +11,9 @@ import { currentLanguage, t, n } from "../../i18n";
 
 const POLL_MS = 1500;
 
+/** A job's error ends its sentence before "The database was not changed." (most have no full stop). */
+const sentence = (text) => (/[.!?؟…]$/.test(String(text).trim()) ? text : `${text}.`);
+
 const TITLES = {
     online: [t("Updating the CVE database…"), "CVE database updated", t("Update failed"), t("Update cancelled")],
     full: [t("Downloading the full CVE database…"), "CVE database downloaded", t("Download failed"), t("Download cancelled")],
@@ -204,7 +207,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                     ))}
                     {job && ["failed", "cancelled"].includes(job.status) && (
                         <div className="cvx-note cvx-note-error">
-                            {job.error ? tb(job.error) : t("The job did not finish.")} {job.kind !== "export" && t("The database was not changed.")}
+                            {sentence(job.error ? tb(job.error) : t("The job did not finish."))} {job.kind !== "export" && t("The database was not changed.")}
                         </div>
                     )}
                     {error && <div className="cvx-note cvx-note-error">{error}</div>}

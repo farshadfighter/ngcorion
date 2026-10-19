@@ -604,6 +604,7 @@
   "OSV answered HTTP {{code}} for {{ecosystem}}": "OSV برای {{ecosystem}} پاسخ HTTP {{code}} داد",
   "OSV answered HTTP {{code}} for the change list of {{ecosystem}}": "OSV برای فهرست تغییرات {{ecosystem}} پاسخ HTTP {{code}} داد",
   "OSV.dev is not reachable: {{error}}": "OSV.dev در دسترس نیست: {{error}}",
+  "OSV.dev refused the download for {{ecosystem}} (HTTP {{code}}). Google, which hosts OSV.dev, refuses addresses in some countries: set HTTPS_PROXY or OSV_BASE_URL (a mirror) in .env, or download all.zip on another network and import it here.": "OSV.dev دانلود {{ecosystem}} را نپذیرفت (HTTP {{code}}). گوگل، که میزبان OSV.dev است، درخواست‌های برخی کشورها را رد می‌کند: در ‎.env یک پروکسی (HTTPS_PROXY) یا یک آینه (OSV_BASE_URL) تنظیم کنید، یا all.zip را در شبکهٔ دیگری دانلود کنید و همین‌جا درون‌ریزی کنید.",
   "Other problems": "مشکلات دیگر",
   "Outages": "قطعی‌ها",
   "Pass rate of each asset and each part of the benchmark, failed checks with evidence, and the change since the previous audit.": "درصد قبولی هر دارایی و هر بخش استاندارد، بررسی‌های ناموفق با شواهد، و تغییر نسبت به ممیزی قبلی.",

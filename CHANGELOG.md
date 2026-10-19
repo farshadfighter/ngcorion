@@ -4,6 +4,14 @@
 
 ### Fixes
 
+- Advisories update (OSV.dev): "OSV answered HTTP 403 for Ubuntu" said
+  nothing about what to do. The bucket is public, so a 403 is about where
+  the request comes from: Google, which hosts it, refuses addresses in some
+  countries. The message now says so and names the ways around it - a
+  proxy (HTTPS_PROXY) or a mirror (OSV_BASE_URL) in .env, or all.zip
+  downloaded on another network and imported. Both settings are now in
+  .env.example, and a job's error ends its sentence before "The database
+  was not changed.".
 - Linux over SSH on systemd 257 and later (Ubuntu 25.04+, Debian 13,
   Fedora 42+): every command failed with "Pattern not detected" - the
   software collection, Linux and Apache audits, hardening and the MongoDB

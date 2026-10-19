@@ -187,6 +187,7 @@ const TEMPLATES = [
     msg("EPSS is not reachable: {{error}}"),
     // distribution advisories (app/modules/advisories)
     msg("OSV.dev is not reachable: {{error}}"),
+    msg("OSV.dev refused the download for {{ecosystem}} (HTTP {{code}}). Google, which hosts OSV.dev, refuses addresses in some countries: set HTTPS_PROXY or OSV_BASE_URL (a mirror) in .env, or download all.zip on another network and import it here."),
     msg("OSV answered HTTP {{code}} for {{ecosystem}}"),
     msg("OSV answered HTTP {{code}} for the change list of {{ecosystem}}"),
     msg("The file is larger than the {{num}} MB limit."),

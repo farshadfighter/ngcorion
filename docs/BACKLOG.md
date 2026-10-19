@@ -63,7 +63,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Fix: Linux SSH on systemd 257+ (OSC 3008 prompt marks) failed every command with "Pattern not detected" | recorded with the next item |
+| Fix: OSV.dev HTTP 403 (refused by country) names a proxy, a mirror or an import | recorded with the next item |
+| Fix: Linux SSH on systemd 257+ (OSC 3008 prompt marks) failed every command with "Pattern not detected" | 47a3603 |
 | Fix: "Collect now" names a missing answer (timeout, server unreachable, 5xx without a message); a database error keeps its reason | 2133442 |
 | Fix: Software "Collect now" says why it failed (WinRM login, WinRM not answering, after sign-in) | 36dfa01, 8f09502 |
 | Fix: every page shows a refused request's own message (16 slices) | 6df50a8 |

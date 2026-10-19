@@ -16,6 +16,11 @@ describe("audit trail details in Persian", () => {
         expect(tb("Exported 12 security events; filters: none")).toBe("خروجی ۱۲ رویداد امنیتی گرفته شد؛ فیلترها: هیچ");
         expect(tb("Login successful (role=admin)")).toMatch(/^ورود موفق \(نقش: /);
     });
+    it("reads OSV.dev refusing the server, with what to do", () => {
+        const text = tb("OSV.dev refused the download for Ubuntu (HTTP 403). Google, which hosts OSV.dev, refuses addresses in some countries: set HTTPS_PROXY or OSV_BASE_URL (a mirror) in .env, or download all.zip on another network and import it here.");
+        expect(text).toMatch(/^OSV\.dev دانلود .*Ubuntu.* را نپذیرفت \(HTTP ۴۰۳\)/);
+        expect(text).toMatch(/HTTPS_PROXY.*OSV_BASE_URL.*درون‌ریزی کنید\.$/);
+    });
     it("prefers the most specific sentence", () => {
         expect(tb("Deleted rule 'Disk full'")).toBe("قاعدهٔ «\u2068Disk full\u2069» حذف شد");
     });

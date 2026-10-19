@@ -443,3 +443,32 @@ def test_settings_and_removing_a_release(db):
     assert service.remove_release(db, "debian:12") and "debian:12" not in store.tracked(db)
     st = service.status(db)
     assert [r["release"] for r in st["releases"]] == ["ubuntu:22.04"] and st["releases"][0]["assets"] == 1
+
+
+def test_osv_refusing_the_server_says_what_to_do(tmp_path):
+    """Reported from a server: "OSV answered HTTP 403 for Ubuntu". The bucket is public, so a 403 is about
+    where the request comes from (Google refuses some countries); the message names the ways around it."""
+    class Refused:
+        status_code = 403
+        headers = {}
+        content = b"<Error><Code>AccessDenied</Code></Error>"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    class Session_:
+        def get(self, url, **kw):
+            return Refused()
+
+    client = osv.OsvClient(session=Session_())
+    for call in (lambda: client.download("Ubuntu", str(tmp_path / "all.zip")),
+                 lambda: client.changed_since("Ubuntu", datetime(2026, 1, 1), 10),
+                 lambda: client.record("Ubuntu", "USN-1-1")):
+        with pytest.raises(osv.FeedError) as e:
+            call()
+        text = str(e.value)
+        assert text.startswith("OSV.dev refused the download for Ubuntu (HTTP 403).")
+        assert "HTTPS_PROXY" in text and "OSV_BASE_URL" in text and "import it here" in text

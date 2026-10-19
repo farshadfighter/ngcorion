@@ -45,6 +45,7 @@ CVSS says **how bad** a vulnerability is; KEV and the "Exploit likelihood" (EPSS
 | "CVE database not loaded" | A system administrator must load it in the [Vulnerability database](/cve/database). |
 | A finding does not close after patching | The software list is old; audit again or "Collect now" in Software. |
 | An asset has no finding at all | It may not be audited yet and so has no software list. |
+| Advisories update: "OSV.dev refused the download (HTTP 403)" | Google, which hosts OSV.dev, refuses addresses in some countries. A system administrator sets a proxy (`HTTPS_PROXY`) or a mirror (`OSV_BASE_URL`) in `.env`, or downloads `all.zip` on another network and imports it. |
 
 ## Read more
 

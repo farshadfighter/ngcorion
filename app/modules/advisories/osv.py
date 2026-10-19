@@ -230,6 +230,14 @@ def iter_zip(path: str) -> Iterator[dict]:
 
 # ── download ─────────────────────────────────────────────────────────────
 
+def _refused(code: int, ecosystem: str) -> FeedError:
+    """OSV.dev refusing the request (401/403): the bucket is public, so the refusal is about where the
+    request comes from - Google, which hosts it, refuses addresses in sanctioned countries."""
+    return FeedError(f"OSV.dev refused the download for {ecosystem} (HTTP {code}). Google, which hosts OSV.dev, "
+                     "refuses addresses in some countries: set HTTPS_PROXY or OSV_BASE_URL (a mirror) in .env, "
+                     "or download all.zip on another network and import it here.")
+
+
 class OsvClient:
     """HTTP client of the OSV.dev data bucket (archives per ecosystem and single records)."""
     def __init__(self, session: Optional[requests.Session] = None, base: str = OSV_BASE_URL):
@@ -248,6 +256,8 @@ class OsvClient:
             with self.s.get(url, timeout=TIMEOUT, stream=True) as resp:
                 if resp.status_code == 404:
                     return False
+                if resp.status_code in (401, 403):
+                    raise _refused(resp.status_code, ecosystem)
                 if resp.status_code != 200:
                     raise FeedError(f"OSV answered HTTP {resp.status_code} for {ecosystem}")
                 total = int(resp.headers.get("content-length") or 0)
@@ -274,6 +284,8 @@ class OsvClient:
         except requests.RequestException as exc:
             raise FeedError(f"OSV.dev is not reachable: {exc.__class__.__name__}") from exc
         with resp:
+            if resp.status_code in (401, 403):
+                raise _refused(resp.status_code, ecosystem)
             if resp.status_code != 200:
                 raise FeedError(f"OSV answered HTTP {resp.status_code} for the change list of {ecosystem}")
             out = []
@@ -301,6 +313,8 @@ class OsvClient:
             raise FeedError(f"OSV.dev is not reachable: {exc.__class__.__name__}") from exc
         if resp.status_code == 404:
             return None
+        if resp.status_code in (401, 403):
+            raise _refused(resp.status_code, ecosystem)
         if resp.status_code != 200 or len(resp.content) > MAX_RECORD_BYTES:
             raise FeedError(f"OSV answered HTTP {resp.status_code} for {rid}")
         try:
