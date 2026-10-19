@@ -30,6 +30,17 @@ Views: "Needs attention", "All", "Not in the catalog" and "Catalog". Click a pro
 
 `web-02` runs Ubuntu 20.04: standard support has ended and only paid ESM remains, so "Paid extended support only" and a medium finding in Remediation. After the upgrade to 22.04 or 24.04 and a new audit, the finding closes on its own.
 
+## When "Collect now" fails
+
+| Message | What to do |
+|---|---|
+| The username or password was not accepted | Check them; for Windows, a domain account is `DOMAIN\user`. |
+| WinRM on … did not answer: the connection was refused | WinRM is not enabled on that port, or a firewall blocks it: on the server run `winrm quickconfig` and allow 5985 (HTTP) or 5986 (HTTPS). |
+| … no answer in time | The address, the port or a firewall on the way. |
+| … the HTTPS certificate was not accepted | Use port 5985 (HTTP), or give the server a certificate NGCorion trusts. |
+| Cannot connect to … (SSH) | Nothing answers SSH on that address and port. |
+| Connected to …, but reading the software list failed | The sign-in worked; the reason after it is from the device (for example a command that did not finish in time). |
+
 ## Take care
 
 > The software list is built by Linux or Windows audits. An asset not audited yet has neither CVEs nor end-of-life results; "no finding" then means "no data", not "safe".

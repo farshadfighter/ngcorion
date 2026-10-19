@@ -63,7 +63,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Fix: every page shows a refused request's own message (16 slices) | recorded with the next item |
+| Fix: Software "Collect now" says why it failed (WinRM login, WinRM not answering, after sign-in) | recorded with the next item |
+| Fix: every page shows a refused request's own message (16 slices) | 6df50a8 |
 | Fix: new scheduled discovery turned the page white; error boundary for every page | c279c0d |
 | Fix: CVE update failed with DataError (NUL characters, long CPE criteria) | 192823c |
 | Hardening overview rebuilt (needs attention, missing controls, impact in risk terms, reach) | 020f70c |

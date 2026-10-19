@@ -129,11 +129,26 @@ class CollectIn(BaseModel):
     transport: Literal["ntlm", "kerberos", "basic", "credssp"] = "ntlm"
 
 
-def _connect_error(exc: Exception) -> HTTPException:
-    """A connection problem as the reason the person can act on. Never 401:
-    that is the app's own session expiring."""
+def _winrm_reason(text: str) -> str:
+    """Why WinRM did not answer, in words the person can act on."""
+    low = text.lower()
+    if "refused" in low:
+        return "the connection was refused (WinRM is not enabled on this port, or a firewall blocks it)"
+    if "timed out" in low or "timeout" in low:
+        return "no answer in time (check the address, the port and the firewall)"
+    if "ssl" in low or "certificate" in low:
+        return "the HTTPS certificate was not accepted (use port 5985 for HTTP, or a trusted certificate)"
+    if "name or service not known" in low or "resolve" in low or "getaddrinfo" in low:
+        return "the address could not be resolved"
+    return " ".join(text.split())[-200:]
+
+
+def _connect_error(exc: Exception, platform: str, address: str) -> HTTPException:
+    """A collection problem as the reason the person can act on: credentials refused, the asset not
+    answering (and why), or connected but the list could not be read. Never 401: that is the app's own
+    session expiring."""
     from app.core.ssh_exceptions import SSHAuthenticationError, SSHConnectionError
-    if isinstance(exc, SSHAuthenticationError):
+    if isinstance(exc, (SSHAuthenticationError, PermissionError)):    # PermissionError: WinRM refused the login
         return HTTPException(status_code=400, detail="The username or password was not accepted")
     if isinstance(exc, SSHConnectionError):
         status = exc.http_status if exc.http_status != 401 else 400
@@ -141,7 +156,11 @@ def _connect_error(exc: Exception) -> HTTPException:
     text = str(exc)
     if "401" in text or "credentials were rejected" in text.lower():
         return HTTPException(status_code=400, detail="The username or password was not accepted")
-    return HTTPException(status_code=502, detail="Could not connect to the asset")
+    if platform == "windows" and isinstance(exc, ConnectionError):
+        return HTTPException(status_code=502, detail=f"WinRM on {address} did not answer: {_winrm_reason(text)}")
+    # The SSH and WinRM clients map every failure to connect above; anything else came after it.
+    reason = " ".join(f"{type(exc).__name__}: {text}".split())[:200]
+    return HTTPException(status_code=502, detail=f"Connected to {address}, but reading the software list failed: {reason}")
 
 
 @router.post("/assets/{asset_id}/collect")
@@ -163,11 +182,14 @@ async def collect_now(asset_id: int, body: CollectIn, db: Session = Depends(get_
             col = await run_in_threadpool(hooks.collect_now_windows, db, asset, username=body.username,
                                           password=body.password, port=body.port or 5985,
                                           transport=body.transport, user_id=user.id)
-    except Exception as exc:  # noqa: BLE001 - every connection problem is reported the same way
-        logger.info("[software] collect-now on asset %s failed: %s", asset_id, type(exc).__name__)
+    except Exception as exc:  # noqa: BLE001 - reported as the reason the person can act on
+        # The exception, not the credentials: neither client puts the password in its messages.
+        logger.warning("[software] collect-now on asset %s (%s, %s) failed", asset_id, body.platform,
+                       asset.ip_address, exc_info=True)
+        error = _connect_error(exc, body.platform, f"{asset.ip_address}:{body.port or (22 if body.platform == 'linux' else 5985)}")
         _log(db, user, "software.collect", f"Software collection on {asset.asset_name} ({asset.ip_address}) "
-                                           f"failed: could not connect", target_id=asset_id, result="failed")
-        raise _connect_error(exc)
+                                           f"failed: {error.detail[:200]}", target_id=asset_id, result="failed")
+        raise error
     if col is None or col.status != "ok":
         reason = (col.error if col is not None else None) or "Nothing could be collected"
         _log(db, user, "software.collect", f"Software collection on {asset.asset_name} failed: {reason[:200]}",

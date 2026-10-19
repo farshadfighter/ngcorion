@@ -18,6 +18,14 @@
   numbers, and the page then rendered the API's list of errors, which
   crashed it. A discovery sends no audit fields now, and the scheduling
   pages show a refusal as text naming the field.
+- Software, "Collect now": every failure said "Could not connect to the
+  asset". A Windows password WinRM refused now says the username or
+  password was not accepted; WinRM not answering says why (connection
+  refused - WinRM not enabled on the port or a firewall -, no answer in
+  time, HTTPS certificate not accepted, address not resolved); a failure
+  after signing in says the connection worked and gives the reason. The
+  server log records the whole error, and the audit trail the reason.
+  The SSH connection errors are translated into Persian.
 - Every page shows a refused request's own message: the sixteen Redux
   slices that kept the API's error as it came (a FastAPI 422 list, or an
   {error_type, message} object) now keep text, e.g. "name: Field

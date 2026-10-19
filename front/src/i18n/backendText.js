@@ -202,6 +202,17 @@ const TEMPLATES = [
     msg("Set a temporary password for '{{username}}'; it must be changed at the next sign-in"),
     msg("Installed certificate from '{{source}}' (issued_to={{value}}, expires_at={{value2}}); traefik: {{value3}}"),
     msg("Software collection on {{asset_name}} ({{ip_address}}) failed: could not connect"),
+    msg("Software collection on {{asset_name}} ({{ip_address}}) failed: {{reason}}"),
+    // SSH connection errors (app/core/ssh_exceptions.py), shown by audits, hardening and collect now
+    msg("SSH connection failed to {{device}}: {{reason}}"),
+    msg("Authentication failed for {{device}}"),
+    msg("Connection timed out to {{device}}"),
+    msg("Cannot connect to {{device}}"),
+    msg("SSH algorithm negotiation failed with {{device}}"),
+    msg("Host key verification failed for {{device}}"),
+    // collect now (app/modules/software/router.py)
+    msg("WinRM on {{address}} did not answer: {{reason}}"),
+    msg("Connected to {{address}}, but reading the software list failed: {{reason}}"),
     msg("Asset ID: {{asset_id}}, Name: {{asset_name}}, IP: {{target_ip}}, Profile: {{profile}}, Compliance: {{compliance_pct}}%"),
     msg("Session: {{id}}, Asset: {{asset_name}}, IP: {{target_ip}}, Profile: {{profile}}, Compliance: {{compliance_pct}}%"),
     msg("Deleted session for Asset ID: {{asset_id}}, Name: {{asset_name}}, IP: {{target_ip}}"),
@@ -718,6 +729,10 @@ msg("Software installed by hand or from a repository new to the asset");
 msg("The asset has no IP address");
 msg("The username or password was not accepted");
 msg("Could not connect to the asset");
+msg("the connection was refused (WinRM is not enabled on this port, or a firewall blocks it)");
+msg("no answer in time (check the address, the port and the firewall)");
+msg("the HTTPS certificate was not accepted (use port 5985 for HTTP, or a trusted certificate)");
+msg("the address could not be resolved");
 msg("Nothing could be collected");
 msg("The package list could not be read");
 msg("No installed package was found in the output");

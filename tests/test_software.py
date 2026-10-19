@@ -429,3 +429,39 @@ def test_alert_new_software_outside_known_repositories(db):
     assert "acme-monitor" in problems[0].detail and "repo.zabbix.com" in problems[0].detail
     assert problems[0].link == f"/assets/software?asset={asset.id}"
     assert db.query(SoftwareCollection).filter_by(asset_id=asset.id).count() == 3
+
+
+def test_collect_now_says_why_it_failed(db, monkeypatch):
+    """Each failure as the reason the person can act on: WinRM refusing the login is a wrong password
+    (it was "could not connect"), WinRM not answering says why, and a failure after connecting says the
+    connection worked."""
+    user = _user(db)
+    asset = _asset(db)
+    monkeypatch.setattr(api, "_refresh_risk", lambda db_, aid: None)
+    win = api.CollectIn(platform="windows", username="CORP\\auditor", password="secret")
+    lin = api.CollectIn(platform="linux", username="auditor", password="secret", port=2222)
+
+    def fails(exc):
+        def run(*a, **kw):
+            raise exc
+        return run
+
+    cases = [
+        (win, "collect_now_windows", PermissionError("WinRM authentication failed for 10.0.0.1: logon failure"),
+         400, "The username or password was not accepted"),
+        (win, "collect_now_windows",
+         ConnectionError("WinRM connection failed to 10.0.0.1:5985 after 3 attempts: [Errno 111] Connection refused"),
+         502, "did not answer: the connection was refused"),
+        (win, "collect_now_windows", ConnectionError("... Read timed out. (read timeout=40)"),
+         502, "no answer in time"),
+        (lin, "collect_now_linux", TimeoutError("Pattern not detected after 120 seconds"),
+         502, "but reading the software list failed: TimeoutError: Pattern not detected"),
+    ]
+    for body, hook, exc, status, text in cases:
+        monkeypatch.setattr(hooks, hook, fails(exc))
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(api.collect_now(asset.id, body, db, user))
+        assert e.value.status_code == status, (exc, e.value.detail)
+        assert text in e.value.detail, e.value.detail
+        assert "secret" not in e.value.detail
+    assert f"{asset.ip_address}:2222" in e.value.detail          # the port that was tried
