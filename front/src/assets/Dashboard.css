@@ -636,3 +636,15 @@
 .dashboard-header { flex-wrap: wrap; row-gap: 12px; }
 .header-center { flex: 1 0 auto; }
 .header-right { margin-inline-start: auto; }
+
+/* A page that crashed (components/PageErrorBoundary.jsx): inside the layout, not a white window. */
+.page-crash { max-width: 640px; margin: 48px auto; padding: 24px 28px; background: #fff; border-radius: 12px;
+    border-inline-start: 4px solid #DC2626; box-shadow: 0 1px 3px rgba(20, 33, 61, 0.1); color: #14213D; }
+.page-crash h2 { margin: 0 0 8px; font-size: 18px; }
+.page-crash p { margin: 0 0 16px; line-height: 1.7; color: #3C4A63; }
+.page-crash-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.page-crash-btn { padding: 8px 16px; border-radius: 8px; border: 1px solid #CBD5E1; background: #fff; color: #14213D;
+    font: inherit; font-weight: 600; cursor: pointer; }
+.page-crash-btn.is-primary { background: #1E3A5F; border-color: #1E3A5F; color: #fff; }
+.page-crash details { font-size: 12.5px; color: #6C7A93; }
+.page-crash pre { white-space: pre-wrap; word-break: break-word; background: #F8FAFC; padding: 8px 10px; border-radius: 6px; text-align: left; }

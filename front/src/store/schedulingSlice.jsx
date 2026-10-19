@@ -4,6 +4,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";
+import { apiErrorText } from "../utils/apiError.js";
 
 // =====================
 // Thunks
@@ -16,7 +17,7 @@ export const fetchScheduledJobs = createAsyncThunk(
             const res = await api.get("/api/scheduling/jobs");
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to load scheduled jobs"));
+            return rejectWithValue(apiErrorText(err, t("Failed to load scheduled jobs")));
         }
     }
 );
@@ -28,7 +29,7 @@ export const createScheduledJob = createAsyncThunk(
             const res = await api.post("/api/scheduling/jobs", data);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to create scheduled job"));
+            return rejectWithValue(apiErrorText(err, t("Failed to create scheduled job")));
         }
     }
 );
@@ -40,7 +41,7 @@ export const updateScheduledJob = createAsyncThunk(
             const res = await api.patch(`/api/scheduling/jobs/${jobId}`, data);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to update scheduled job"));
+            return rejectWithValue(apiErrorText(err, t("Failed to update scheduled job")));
         }
     }
 );
@@ -52,7 +53,7 @@ export const deleteScheduledJob = createAsyncThunk(
             await api.delete(`/api/scheduling/jobs/${jobId}`);
             return jobId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to delete scheduled job"));
+            return rejectWithValue(apiErrorText(err, t("Failed to delete scheduled job")));
         }
     }
 );
@@ -64,7 +65,7 @@ export const runScheduledJobNow = createAsyncThunk(
             const res = await api.post(`/api/scheduling/jobs/${jobId}/run`);
             return { jobId, run: res.data };
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to run scheduled job"));
+            return rejectWithValue(apiErrorText(err, t("Failed to run scheduled job")));
         }
     }
 );
@@ -76,7 +77,7 @@ export const fetchJobRuns = createAsyncThunk(
             const res = await api.get(`/api/scheduling/jobs/${jobId}/runs`);
             return { jobId, runs: res.data };
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to load run history"));
+            return rejectWithValue(apiErrorText(err, t("Failed to load run history")));
         }
     }
 );

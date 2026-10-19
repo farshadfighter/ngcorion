@@ -24,6 +24,7 @@ import { currentLanguage, hasStoredLanguage, isRtl, LANGUAGES, setLanguage, t, u
 import { formatLongDate } from "../utils/dates";
 import { GlobalSearch } from "./GlobalSearch.jsx";
 import { SidebarNav } from "./SidebarNav";
+import { PageErrorBoundary } from "./PageErrorBoundary";
 import { menuFromPath } from "./sidebarMenu";
 
 export const DashboardLayout = () => {
@@ -287,12 +288,15 @@ export const DashboardLayout = () => {
                 </header>
 
                 {/* Active route renders here */}
-                {/* Pages are loaded on first visit; the layout stays while one loads. */}
-                <Suspense fallback={<div className="page-loading" role="status" aria-live="polite">{t("Loading…")}</div>}>
-                    {/* Until a password chosen by someone else is replaced, the
-                        backend refuses every page's requests: show none. */}
-                    {!mustChangePassword && !mfaEnrolmentDue && <Outlet />}
-                </Suspense>
+                {/* Pages are loaded on first visit; the layout stays while one loads. A page that
+                    crashes shows a message inside the layout instead of a white window. */}
+                <PageErrorBoundary key={pathname}>
+                    <Suspense fallback={<div className="page-loading" role="status" aria-live="polite">{t("Loading…")}</div>}>
+                        {/* Until a password chosen by someone else is replaced, the
+                            backend refuses every page's requests: show none. */}
+                        {!mustChangePassword && !mfaEnrolmentDue && <Outlet />}
+                    </Suspense>
+                </PageErrorBoundary>
             </main>
 
             {showChangePassword && !mustChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}

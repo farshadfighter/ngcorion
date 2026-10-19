@@ -12,6 +12,15 @@
   CPE columns are unbounded text (migration a3c5e7f9b1d2), and short labels
   (status, severity, KEV ransomware) are cut to their width. A failed job
   now names the database's reason, e.g. "DataError (value too long ...)".
+- Schedule discovery: saving a new scheduled discovery turned the page
+  white and saved nothing. The form sent the empty group-audit fields
+  ("" for a group and a credential profile), which the API refused as not
+  numbers, and the page then rendered the API's list of errors, which
+  crashed it. A discovery sends no audit fields now, and the scheduling
+  pages show a refusal as text naming the field.
+- A page that crashes while rendering now shows "This page ran into a
+  problem" with "Reload page" and "Go back" inside the layout, instead of
+  a white window; moving to another page clears it.
 
 ### Dashboard
 

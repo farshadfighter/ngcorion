@@ -205,9 +205,17 @@ export const ScheduledJobsPage = ({ jobType, footer = null }) => {
     const handleCreate = () => {
         const payload = { ...form };
         if (form.job_type === "discovery") {
+            // a discovery has none of the audit fields; the empty ones ("" for a group or a profile) were
+            // refused by the API as not a number
             payload.audit_params = undefined;
             payload.technology = undefined;
             payload.asset_id = undefined;
+            delete payload.target_kind;
+            payload.group_id = undefined;
+            payload.credential_profile_id = undefined;
+            payload.concurrency = undefined;
+            payload.audit_profile = undefined;
+            payload.ports = form.ports.trim() || undefined;
         } else {
             payload.target = undefined;
             payload.scan_type = undefined;
