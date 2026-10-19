@@ -6,8 +6,7 @@ import { t } from "../i18n";
  * Auditing KPI dashboard data.
  *
  * Six aggregate endpoints are fetched together; each is allowed to fail on its
- * own so one broken panel does not blank the page. Mirrors
- * hardeningDashboardSlice so the two dashboards behave the same way.
+ * own so one broken panel does not blank the page.
  */
 const ENDPOINTS = {
     overview: "/api/audit/dashboard/overview",

@@ -404,7 +404,6 @@
   "Exported {{value}} software products": "خروجی {{value}} محصول نرم‌افزاری گرفته شد",
   "Exported risk JSON for asset {{asset_id}} ('{{asset_name}}')": "خروجی JSON ریسک دارایی {{asset_id}} («{{asset_name}}») گرفته شد",
   "Exposure": "در معرض بودن",
-  "Failed changes": "تغییرهای ناموفق",
   "Failed logins before blocking": "تلاش ناموفق ورود پیش از مسدودسازی",
   "Failed logins by address": "ورودهای ناموفق به تفکیک نشانی",
   "Failed logons before lockout (CIS: 1-5)": "تعداد ورودهای ناموفق پیش از قفل‌شدن (CIS: ۱ تا ۵)",

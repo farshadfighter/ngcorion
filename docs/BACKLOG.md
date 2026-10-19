@@ -63,7 +63,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Risk overview rebuilt (factor shares, zone by level, trend, incomplete scores, filtered risk list) | recorded with the next item |
+| Hardening overview rebuilt (needs attention, missing controls, impact in risk terms, reach) | recorded with the next item |
+| Risk overview rebuilt (factor shares, zone by level, trend, incomplete scores, filtered risk list) | 1cab41f |
 | Assets overview rebuilt (missing details, coverage, mix, filtered asset list) | de30dcb |
 | Dashboard rebuilt (needs action, coverage, 90-day trends, top 10 with main factor) | 018d38a |
 | In-app help (every menu page, fa and en; search inside it and from the global search) | 20c931a |

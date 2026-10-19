@@ -5,7 +5,7 @@
 .amo-subtitle { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: #14213D; }
 
 
-.amo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.amo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; }
 .amo-bars ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .amo-bar {
     display: grid; grid-template-columns: minmax(110px, 1.6fr) minmax(60px, 2fr) 36px; align-items: center; gap: 10px;

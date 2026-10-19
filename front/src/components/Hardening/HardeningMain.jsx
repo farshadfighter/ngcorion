@@ -3,6 +3,7 @@
  * audit).
  */
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { HardeningWizard } from "./HardeningWizard";
 import { FixUnsuccessfulWizard } from "./FixUnsuccessfulWizard";
 import { useDispatch } from "react-redux";
@@ -11,9 +12,14 @@ import { getLicenseStatusThunk } from "../../store/licenseSlice";
 import "../../assets/hardening/FixAll.css";
 import { t } from "../../i18n";
 
+// ?mode=fix-all | fix-unsuccessful (the hardening overview's buttons) opens that wizard
+const MODES = ["fix-all", "fix-unsuccessful"];
+
 export const HardeningMain = ({ onNavigateToAuditing }) => {
-    const [showWizard, setShowWizard] = useState(false);
-    const [wizardMode, setWizardMode] = useState(null);
+    const [params] = useSearchParams();
+    const linked = MODES.includes(params.get("mode")) ? params.get("mode") : null;
+    const [showWizard, setShowWizard] = useState(Boolean(linked));
+    const [wizardMode, setWizardMode] = useState(linked);
     const handleFixAllClick = () => {
         console.log("Fix All clicked");
         setWizardMode("fix-all");

@@ -35,11 +35,11 @@
 
 /* ── Shared by the overview pages (components/Overview/DashboardParts.jsx and the pages) ─ */
 
-.ovd-figures-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 12px; }
+.ovd-figures-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(118px, 100%), 1fr)); gap: 12px; }
 .ovd-figures-row .ovd-figure { background: #fff; box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08); border-color: transparent; }
 .ovd-figures-row .is-static:hover { border-color: transparent; background: #fff; }
 
-.amo-quality { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.amo-quality { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 10px; }
 .ovd-tile {
     display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px;
     background: #fff; box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08); font-size: 13px; color: #14213D;
@@ -77,7 +77,7 @@
 .rio-cell-link:hover, .rio-cell-link:focus-visible { outline: 2px solid #14213D; outline-offset: 1px; }
 .rio-total { font-weight: 700; }
 .ovd-muted-inline { color: #6C7A93; }
-.rio-reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.rio-reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 10px; margin-bottom: 14px; }
 .rio-action { font-size: 12px; font-weight: 700; color: #1E3A5F; white-space: nowrap; }
 .rio-incomplete { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .rio-incomplete li { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; padding: 8px 4px; border-top: 1px solid #F3F4F6; font-size: 13px; }
@@ -135,7 +135,7 @@
 
 /* ── Row 2: needs action ─────────────────────────────────────────────────── */
 
-.ovd-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.ovd-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 12px; }
 .ovd-action {
     display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 12px;
     padding: 14px 16px; background: #fff; border-radius: 10px; text-decoration: none; color: #14213D;
@@ -163,7 +163,7 @@
 
 /* ── Row 3: coverage ─────────────────────────────────────────────────────── */
 
-.ovd-coverage { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.ovd-coverage { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px; }
 .ovd-cover { display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit; }
 .ovd-cover:hover, .ovd-cover:focus-visible { box-shadow: 0 2px 8px rgba(20, 33, 61, 0.16); }
 .ovd-cover-label { font-size: 13px; font-weight: 600; color: #3C4A63; }
@@ -177,7 +177,7 @@
 
 /* ── Row 4: trends ───────────────────────────────────────────────────────── */
 
-.ovd-trends { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.ovd-trends { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 12px; }
 .ovd-trend-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .ovd-trend-now { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .ovd-chart { width: 100%; min-width: 0; }

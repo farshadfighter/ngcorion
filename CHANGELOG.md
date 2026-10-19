@@ -58,6 +58,28 @@
   chip that removes it.
 - New endpoint `GET /api/dashboard/risk` (risk read access).
 
+### Hardening overview
+
+- Rebuilt in five parts, counting only changes that ran (previews left
+  out): figures (success rate - "Hardening Score" was this, under a
+  misleading name -, changes made - "Applied Policies" counted actions -,
+  changes in the last 30 days, assets hardened and never hardened, failures
+  not made good since, pending); needs attention (failed changes with the
+  device's error, a link to the backups taken before the change and "Try
+  again"; changes not verified or whose control still fails; assets hardened
+  since their last audit); controls still failing in each asset's latest
+  audit with no fix, with links to their remediation items and to hardening;
+  the impact (findings fixed, and the average risk of assets hardened in the
+  last 90 days before their first change and now); and the reach (by asset
+  type and benchmark level, latest changes). The duplicate "Automation
+  Success Rate" card is gone.
+- Missing controls are taken from each asset's latest audit only (an old
+  audit's failures counted before).
+- Run hardening opens a wizard from the address
+  (`?mode=fix-unsuccessful`, `?mode=fix-all`), and Remediation starts with
+  a search (`?q=`).
+- New endpoint `GET /api/dashboard/hardening` (hardening read access).
+
 ### In-app help
 
 - A help button ("?" in the header, or the "?" key) on every page opens that

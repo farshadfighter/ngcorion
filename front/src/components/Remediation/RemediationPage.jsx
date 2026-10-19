@@ -29,8 +29,9 @@ export function RemediationPage() {
     // ?view=overdue (the dashboard's "overdue" card) opens that view
     const [view, setView] = useState(() => (VIEWS.some(([v]) => v === params.get("view")) ? params.get("view") : "open"));
     const [source, setSource] = useState("");
-    const [search, setSearch] = useState("");
-    const [query, setQuery] = useState("");
+    // ?q=<check> (the hardening overview's missing controls) starts with that search
+    const [search, setSearch] = useState(() => params.get("q") || "");
+    const [query, setQuery] = useState(() => (params.get("q") || "").trim());
     const [offset, setOffset] = useState(0);
     const [page, setPage] = useState(null);
     const [summary, setSummary] = useState(null);
