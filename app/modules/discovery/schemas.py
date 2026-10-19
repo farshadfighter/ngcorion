@@ -105,30 +105,6 @@ class ScanRequest(BaseModel):
             return f'{start}-{end}'
         # Single port
         return str(port(v))
-        # Allow: "80,443,8080", "1-1000", or single port
-        # Validate comma-separated or range
-        if ',' in v:
-            # Comma-separated: "80,443,8080"
-            for port in v.split(','):
-                if not port.strip().isdigit() or not (1 <= int(port.strip()) <= 65535):
-                    raise ValueError(f'Invalid port: {port}')
-        elif '-' in v:
-            # Range: "1-1000"
-            parts = v.split('-')
-            if len(parts) != 2:
-                raise ValueError('Port range must be in format: 1-1000')
-            start, end = parts
-            if not (start.isdigit() and end.isdigit()):
-                raise ValueError('Port range must contain only numbers')
-            if not (1 <= int(start) <= 65535 and 1 <= int(end) <= 65535):
-                raise ValueError('Ports must be between 1-65535')
-            if int(start) >= int(end):
-                raise ValueError('Start port must be less than end port')
-        else:
-            # Single port
-            if not v.isdigit() or not (1 <= int(v) <= 65535):
-                raise ValueError('Port must be between 1-65535')
-        return v
 
 
 class DiscoveredPort(BaseModel):

@@ -45,7 +45,6 @@ class Connector:
     @contextmanager
     def open(self, ip: str, creds: Dict[str, Any]) -> Iterator[Any]:  # pragma: no cover - abstract
         raise NotImplementedError
-        yield
 
     def port_of(self, creds: Dict[str, Any]) -> Optional[int]:
         return None
