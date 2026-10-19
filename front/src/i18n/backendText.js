@@ -180,7 +180,8 @@ const TEMPLATES = [
     msg("A finding is not fixed {{days}} days after its deadline"),
     msg("An accepted risk ends within {{days}} days"),
     msg("This finding can be accepted for at most {{days}} days"),
-    // CVE database jobs (app/modules/cve/feeds.py)
+    // CVE database jobs (app/modules/cve/feeds.py, jobs.py)
+    msg("Unexpected error: {{error}}. The database was not changed."),
     msg("NVD is not reachable: {{error}}"),
     msg("CISA KEV is not reachable: {{error}}"),
     msg("EPSS is not reachable: {{error}}"),

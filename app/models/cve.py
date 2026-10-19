@@ -65,13 +65,14 @@ class CveCpeMatch(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     cve_id = Column(String(32), ForeignKey("cve_entries.cve_id", ondelete="CASCADE"), nullable=False, index=True)
     part = Column(String(1), nullable=True)             # a (application) | o (OS) | h (hardware)
-    vendor = Column(String(120), nullable=False)
-    product = Column(String(160), nullable=False)
-    version = Column(String(80), nullable=True)         # exact version, or "*" / "-" for "see range"
-    start_incl = Column(String(80), nullable=True)
-    start_excl = Column(String(80), nullable=True)
-    end_incl = Column(String(80), nullable=True)
-    end_excl = Column(String(80), nullable=True)
+    # Text: CPE 2.3 sets no length, and NVD has firmware versions and product names past any width.
+    vendor = Column(Text, nullable=False)
+    product = Column(Text, nullable=False)
+    version = Column(Text, nullable=True)               # exact version, or "*" / "-" for "see range"
+    start_incl = Column(Text, nullable=True)
+    start_excl = Column(Text, nullable=True)
+    end_incl = Column(Text, nullable=True)
+    end_excl = Column(Text, nullable=True)
 
 
 class AssetSoftware(Base):

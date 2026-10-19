@@ -237,6 +237,17 @@ def _summary(kind: str, status: str, stats: dict, error: Optional[str]) -> str:
             f"{stats.get('removed', 0)} removed, {stats.get('kev', 0)} KEV, {stats.get('epss', 0)} EPSS")
 
 
+def _reason(exc: Exception) -> str:
+    """The error class, and for a database error the database's own first line ("value too long for type
+    character varying(80)"), so a failed job says what to look at without the server log."""
+    from sqlalchemy.exc import DBAPIError
+    name = exc.__class__.__name__
+    if isinstance(exc, DBAPIError) and exc.orig is not None:
+        detail = str(exc.orig).strip().splitlines()[0][:200] if str(exc.orig).strip() else ""
+        return f"{name} ({detail})" if detail else name
+    return name
+
+
 def _run(job_id: int, session_factory: Callable, body: Callable[["_Job", Session], None]) -> None:
     j = _Job(job_id, session_factory)
     work = session_factory()
@@ -258,7 +269,7 @@ def _run(job_id: int, session_factory: Callable, body: Callable[["_Job", Session
     except Exception as exc:  # noqa: BLE001
         logger.exception("[CVE] job %s failed", job_id)
         work.rollback()
-        j.finish("failed", f"Unexpected error: {exc.__class__.__name__}. The database was not changed.")
+        j.finish("failed", f"Unexpected error: {_reason(exc)}. The database was not changed.")
     finally:
         work.close()
         j.close()

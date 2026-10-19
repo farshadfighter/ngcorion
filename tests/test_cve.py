@@ -978,3 +978,36 @@ class TestRiskAndDashboard:
         router_mod.add_software(web.id, SoftwareCreate(vendor="apache", product="http_server", version="2.4.49"), admin, db)
         score = db.query(AssetRiskScore).filter_by(asset_id=web.id).one()
         assert score.cve_kev_count == 1 and float(score.vulnerability_score) == 100
+
+
+def test_feed_values_postgres_would_refuse(db):
+    """A CPE field is unbounded in the CPE 2.3 standard (long firmware versions, product names) and a
+    NUL character cannot be stored in PostgreSQL text: either used to fail the whole update with a
+    DataError. Long CPE fields are kept whole; NUL characters are dropped."""
+    long_version = "5.0.0.1234-build-" + "x" * 120
+    long_product = "very_long_product_name_" + "p" * 200
+    nul = _nvd_cve("CVE-2099-90001", description="Overflow\u0000 in the parser", matches=[
+        _match(f"cpe:2.3:o:acme:{long_product}:{long_version}:*:*:*:*:*:*:*"),
+        _match("cpe:2.3:a:acme:tool:*:*:*:*:*:*:*:*", start_incl="1.0" + "\u0000", end_excl="9." + "9" * 150),
+    ])
+    assert _load(db, nul)["new"] == 1
+    entry = db.get(CveEntry, "CVE-2099-90001")
+    assert entry.description == "Overflow in the parser"
+    rows = db.query(CveCpeMatch).filter_by(cve_id="CVE-2099-90001").all()
+    assert {r.product for r in rows} == {long_product, "tool"}
+    assert any(r.version == long_version for r in rows)
+    tool = next(r for r in rows if r.product == "tool")
+    assert tool.start_incl == "1.0" and tool.end_excl == "9." + "9" * 150
+
+    kev = {"items": [{"id": "CVE-2099-90001", "added": "2099-01-02", "due": None,
+                      "ransomware": "Known, under investigation by several vendors", "action": "Patch\u0000 now"}]}
+    assert store.apply_kev(db, kev) == 1
+    db.refresh(entry)
+    assert entry.kev and entry.kev_action == "Patch now" and len(entry.kev_ransomware) <= 16
+
+
+def test_a_failed_job_names_the_database_reason():
+    from sqlalchemy.exc import DataError
+    exc = DataError("INSERT ...", {}, Exception("value too long for type character varying(80)\nDETAIL: x"))
+    assert jobs._reason(exc) == "DataError (value too long for type character varying(80))"
+    assert jobs._reason(ValueError("secret detail")) == "ValueError"

@@ -19,6 +19,24 @@ from app.modules.cve.feeds import safe_url
 BATCH = 1000
 
 
+def _clean(value):
+    """Feed text as PostgreSQL stores it: without NUL characters (which it refuses in text), recursively
+    through lists and dicts."""
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, list):
+        return [_clean(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _clean(v) for k, v in value.items()}
+    return value
+
+
+def _fit(value: Optional[str], column) -> Optional[str]:
+    """A short label (status, severity, ...) cut to its column's width rather than failing the update."""
+    width = getattr(column.type, "length", None)
+    return value[:width] if value and width else value
+
+
 def _dt(value: Optional[str]) -> Optional[datetime]:
     return datetime.fromisoformat(value) if value else None
 
@@ -32,6 +50,7 @@ def apply_cve_batch(db: Session, records: List[dict]) -> dict:
     stats = {"new": 0, "changed": 0, "removed": 0}
     if not records:
         return stats
+    records = [_clean(r) for r in records]
     ids = [r["id"] for r in records]
     existing = dict(db.execute(select(CveEntry.cve_id, CveEntry.last_modified).where(CveEntry.cve_id.in_(ids))).all())
 
@@ -48,10 +67,11 @@ def apply_cve_batch(db: Session, records: List[dict]) -> dict:
         return stats
     rows = [{
         "cve_id": r["id"], "published": _dt(r.get("published")), "last_modified": _dt(r.get("modified")),
-        "status": r.get("status"), "description": r.get("description") or "",
-        "cvss_score": r["cvss"].get("score"), "cvss_version": r["cvss"].get("version"),
-        "severity": r["cvss"].get("severity"), "cvss_vector": r["cvss"].get("vector"),
-        "cwe": r.get("cwe"), "references": [u for u in (r.get("refs") or []) if safe_url(u)][:8],
+        "status": _fit(r.get("status"), CveEntry.status), "description": r.get("description") or "",
+        "cvss_score": r["cvss"].get("score"), "cvss_version": _fit(r["cvss"].get("version"), CveEntry.cvss_version),
+        "severity": _fit(r["cvss"].get("severity"), CveEntry.severity),
+        "cvss_vector": _fit(r["cvss"].get("vector"), CveEntry.cvss_vector),
+        "cwe": _fit(r.get("cwe"), CveEntry.cwe), "references": [u for u in (r.get("refs") or []) if safe_url(u)][:8],
         "updated_at": datetime.utcnow(),
     } for r in live]
     stmt = insert(CveEntry).values(rows)
@@ -98,13 +118,13 @@ def apply_kev(db: Session, kev: dict) -> int:
     db.execute(update(CveEntry).where(CveEntry.kev.is_(True))
                .values(kev=False, kev_added=None, kev_due=None, kev_ransomware=None, kev_action=None))
     marked = 0
-    items = kev.get("items", [])
+    items = _clean(kev.get("items", []))
     for i in range(0, len(items), BATCH):
         chunk = items[i:i + BATCH]
         for item in chunk:
             res = db.execute(update(CveEntry).where(CveEntry.cve_id == item["id"]).values(
                 kev=True, kev_added=_d(item.get("added")), kev_due=_d(item.get("due")),
-                kev_ransomware=item.get("ransomware"), kev_action=item.get("action")))
+                kev_ransomware=_fit(item.get("ransomware"), CveEntry.kev_ransomware), kev_action=item.get("action")))
             marked += res.rowcount or 0
     return marked
 

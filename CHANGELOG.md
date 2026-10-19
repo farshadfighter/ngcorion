@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Fixes
+
+- CVE update: the online update (and a package import) failed at "review
+  and apply" with "Unexpected error: DataError" when NVD sent a description
+  with a NUL character, which PostgreSQL refuses in text, or a CPE
+  criterion longer than its column (CPE 2.3 sets no length; NVD has long
+  firmware versions and product names). NUL characters are dropped, the
+  CPE columns are unbounded text (migration a3c5e7f9b1d2), and short labels
+  (status, severity, KEV ransomware) are cut to their width. A failed job
+  now names the database's reason, e.g. "DataError (value too long ...)".
+
 ### Dashboard
 
 - The dashboard is rebuilt around what to do next, in five rows: the

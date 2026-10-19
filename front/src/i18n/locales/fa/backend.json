@@ -881,6 +881,7 @@
   "Type the number of assets to confirm the deletion": "برای تأیید حذف، تعداد دارایی‌ها را وارد کنید",
   "unexpected data after the end of the archive": "پس از پایان محتوا دادهٔ اضافه هست",
   "unexpected data after the end of the backup": "پس از پایان پشتیبان دادهٔ اضافه هست",
+  "Unexpected error: {{error}}. The database was not changed.": "خطای پیش‌بینی‌نشده: {{error}}. پایگاه داده تغییری نکرد.",
   "Unknown asset filter": "فیلتر دارایی ناشناخته است",
   "Unknown asset type": "نوع دارایی ناشناخته است",
   "Unknown backup content": "محتوای ناشناخته برای پشتیبان",
