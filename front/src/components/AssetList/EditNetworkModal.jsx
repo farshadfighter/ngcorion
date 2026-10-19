@@ -86,10 +86,10 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
         setIsSubmitting(true);
         setError(null);
         try {
-            const submitData = {
-                ...formData,
-                port_count: formData.port_count === "" ? null : Number(formData.port_count),
-            };
+            // An empty field is "not set": an empty serial stored as "" made the next asset without one
+            // collide with it (the serial is unique).
+            const submitData = Object.fromEntries(Object.entries(formData).map(([k, v]) => [k, v === "" ? null : v]));
+            if (submitData.port_count !== null) submitData.port_count = Number(submitData.port_count);
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 

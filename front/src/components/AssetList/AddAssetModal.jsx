@@ -527,10 +527,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>{tr("Last Audit Date")}</label>
-                        <DateInput name="last_audit_date" value={formData.last_audit_date} onChange={handleChange} disabled={isLoadingOptions} />
-                    </div>
-                    <div className="form-group">
                         <label>{tr("Last Patch Date")}</label>
                         <DateInput name="last_patch_date" value={formData.last_patch_date} onChange={handleChange} disabled={isLoadingOptions} />
                     </div>

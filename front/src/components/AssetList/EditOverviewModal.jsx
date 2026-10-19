@@ -67,7 +67,8 @@ export const EditOverviewModal = ({ asset, isOpen, onClose }) => {
         setIsSubmitting(true);
         setError(null);
         try {
-            const submitData = { ...formData };
+            // An empty field is "not set", not an empty text.
+            const submitData = Object.fromEntries(Object.entries(formData).map(([k, v]) => [k, v === "" && k !== "asset_name" ? null : v]));
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 

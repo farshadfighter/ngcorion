@@ -15,7 +15,6 @@ export const isAssetComplete = (asset) => {
         asset.status,
         asset.manufacturer,
         asset.model,
-        asset.serial_number,
     ];
 
     return requiredFields.every(

@@ -9,7 +9,7 @@ the Asset Requirement form (5 pages) and view in Asset List.
 """
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime, Text, Enum, Numeric
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, validates
 from datetime import datetime, date, timezone
 from typing import Optional, Dict, Any, List
 import re
@@ -203,7 +203,13 @@ class Asset(Base):
     last_audit_date = Column(
         Date,
         nullable=True,
-        comment="Date of last audit or review"
+        comment="Date of last audit or review; set when an audit of the asset completes"
+    )
+
+    last_hardening_date = Column(
+        Date,
+        nullable=True,
+        comment="Date of the last successful hardening change (app/models/asset_dates.py)"
     )
     
     last_patch_date = Column(
@@ -335,6 +341,13 @@ class Asset(Base):
         from app.core.asset_icons import icon_badge
         return icon_badge(self)
 
+    @validates("serial_number")
+    def _serial_blank_is_none(self, key, value):
+        """An empty serial is "none": it is unique, so "" would make the next asset without one collide."""
+        if isinstance(value, str):
+            value = value.strip()
+        return value or None
+
     def __repr__(self) -> str:
         """Developer-friendly representation: <Asset(id=1, name='...', type='...')>"""
         asset_type_name = self.asset_type.type_name if self.asset_type else 'Unknown'
@@ -420,6 +433,7 @@ class Asset(Base):
             'confidentiality': self.confidentiality_level.value if self.confidentiality_level else None,
             'risk_level': self.risk_level.value if self.risk_level else None,
             'last_audit_date': self.last_audit_date.strftime('%Y-%m-%d') if self.last_audit_date else None,
+            'last_hardening_date': self.last_hardening_date.strftime('%Y-%m-%d') if self.last_hardening_date else None,
             'last_patch_date': self.last_patch_date.strftime('%Y-%m-%d') if self.last_patch_date else None,
             'asset_value': float(self.asset_value) if self.asset_value else None,
             'description': self.description
@@ -583,6 +597,7 @@ class Asset(Base):
             'confidentiality_level': self.confidentiality_level.value if self.confidentiality_level else None,
             'risk_level': self.risk_level.value if self.risk_level else None,
             'last_audit_date': self.last_audit_date.isoformat() if self.last_audit_date else None,
+            'last_hardening_date': self.last_hardening_date.isoformat() if self.last_hardening_date else None,
             'last_patch_date': self.last_patch_date.isoformat() if self.last_patch_date else None,
             'asset_value': float(self.asset_value) if self.asset_value else None,
             'description': self.description,
@@ -650,6 +665,7 @@ class Asset(Base):
             'asset_id': self.id,
             'asset_name': self.asset_name,
             'last_audit_date': self.last_audit_date.isoformat() if self.last_audit_date else None,
+            'last_hardening_date': self.last_hardening_date.isoformat() if self.last_hardening_date else None,
             'needs_audit': self.needs_audit(),
             'days_since_audit': self.days_since_audit,
             'last_patch_date': self.last_patch_date.isoformat() if self.last_patch_date else None,

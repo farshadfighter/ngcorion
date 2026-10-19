@@ -7,6 +7,7 @@ import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { useAssetFormOptions } from "./useAssetFormOptions";
 import { t } from "../../i18n";
 import { DateInput } from "../shared/DateInput.jsx";
+import { formatDate } from "../../utils/dates";
 
 // Validation function
 const validateAssetValue = (value) => {
@@ -58,7 +59,8 @@ export const EditSecurityModal = ({ asset, isOpen, onClose }) => {
         setIsSubmitting(true);
         setError(null);
         try {
-            const submitData = { ...formData };
+            // An empty field is "not set" (an empty date or value was refused).
+            const submitData = Object.fromEntries(Object.entries(formData).map(([k, v]) => [k, v === "" ? null : v]));
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 
@@ -138,6 +140,12 @@ export const EditSecurityModal = ({ asset, isOpen, onClose }) => {
                                 <div className="form-group">
                                     <label>{t("Last Audit Date")}</label>
                                     <DateInput name="last_audit_date" value={formData.last_audit_date} onChange={handleChange} disabled={isSubmitting} />
+                                    <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>{t("Set when an audit of this asset completes; enter it only for an audit done outside NGCorion.")}</span>
+                                </div>
+                                <div className="form-group">
+                                    <label>{t("Last Hardening")}</label>
+                                    <input type="text" readOnly disabled value={asset.last_hardening_date ? formatDate(asset.last_hardening_date) : t("Not hardened yet")} />
+                                    <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>{t("Set when a hardening change on this asset succeeds.")}</span>
                                 </div>
                                 <div className="form-group">
                                     <label>{t("Last Patch Date")}</label>

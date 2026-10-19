@@ -3,7 +3,7 @@ Pydantic request/response models of the asset inventory API: assets, asset
 types, owners, locations, network zones, OS and vendor catalogs, dependencies
 and security status. Validation of user input (IP/MAC formats, lengths) lives here.
 """
-from pydantic import BaseModel, field_validator, EmailStr, ConfigDict, computed_field
+from pydantic import BaseModel, field_validator, model_validator, EmailStr, ConfigDict, computed_field
 from typing import Optional, Generic, TypeVar, List
 import re
 
@@ -69,6 +69,16 @@ class AssetTypeResponse(AssetTypeBase):
         return self.icon or suggest_icon(self.type_name)
 
 
+def _blank_to_none(data):
+    """An empty form field means "not set": a date, a number or the (unique) serial number sent as ""
+    was refused (422) or, for the serial, stored as "" so the next asset without one collided with it.
+    The name keeps its own check."""
+    if isinstance(data, dict):
+        return {k: (None if isinstance(v, str) and not v.strip() and k != "asset_name" else v)
+                for k, v in data.items()}
+    return data
+
+
 # Asset Schemas
 class AssetBase(BaseModel):
     """Fields shared by asset requests and responses."""
@@ -97,6 +107,11 @@ class AssetBase(BaseModel):
     last_patch_date: Optional[date] = None
     asset_value: Optional[float] = None
     description: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _empty_is_unset(cls, data):
+        return _blank_to_none(data)
 
 class AssetCreate(AssetBase):
     """Body of creating an asset; IP and MAC are format-checked, an admin may set the owner."""
@@ -188,6 +203,11 @@ class AssetUpdate(BaseModel):
     description: Optional[str] = None
     security_status: Optional[dict] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _empty_is_unset(cls, data):
+        return _blank_to_none(data)
+
     @field_validator('ip_address')
     @classmethod
     def validate_ip(cls, v):
@@ -249,6 +269,8 @@ class AssetUpdate(BaseModel):
 class AssetResponse(AssetBase):
     """An asset as the API returns it, with its related names and the inferred device family."""
     id: int
+    # Set by NGCorion when a hardening change on the asset succeeds (not editable).
+    last_hardening_date: Optional[date] = None
     # None once the user who owned it is deleted (the column is ON DELETE SET NULL).
     user_id: Optional[int] = None
     created_at: datetime

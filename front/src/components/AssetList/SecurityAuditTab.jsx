@@ -78,6 +78,7 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                         <th onClick={() => handleSort("confidentiality_level")} style={{ cursor: "pointer" }}>{t("Confidentiality")}{renderSortIcon("confidentiality_level")}</th>
                         <th onClick={() => handleSort("risk_level")} style={{ cursor: "pointer" }}>{t("Risk Level")}{renderSortIcon("risk_level")}</th>
                         <th onClick={() => handleSort("last_audit_date")} style={{ cursor: "pointer" }}>{t("Last Audit")}{renderSortIcon("last_audit_date")}</th>
+                        <th onClick={() => handleSort("last_hardening_date")} style={{ cursor: "pointer" }}>{t("Last Hardening")}{renderSortIcon("last_hardening_date")}</th>
                         <th onClick={() => handleSort("last_patch_date")} style={{ cursor: "pointer" }}>{t("Last Patch")}{renderSortIcon("last_patch_date")}</th>
                         <th onClick={() => handleSort("asset_value")} style={{ cursor: "pointer" }}>{t("Asset Value")}{renderSortIcon("asset_value")}</th>
                         <th>{t("Description")}</th>
@@ -108,6 +109,7 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                                 <td>{asset.confidentiality_level || "-"}</td>
                                 <td>{asset.risk_level || "-"}</td>
                                 <td>{asset.last_audit_date ? new Date(asset.last_audit_date).toLocaleDateString(uiLocale()) : "-"}</td>
+                                <td>{asset.last_hardening_date ? new Date(asset.last_hardening_date).toLocaleDateString(uiLocale()) : "-"}</td>
                                 <td>{asset.last_patch_date ? new Date(asset.last_patch_date).toLocaleDateString(uiLocale()) : "-"}</td>
                                 <td>{asset.asset_value == null ? "-" : n(asset.asset_value)}</td>
                                 <td>

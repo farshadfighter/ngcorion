@@ -4,6 +4,19 @@
 
 ### Fixes
 
+- Assets: an asset could not be saved without a serial number, a value or
+  the last audit and patch dates. The edit forms sent an empty field as
+  "", which the API refused for a date or a number (422) and stored for
+  the serial - unique, so the next asset without one failed (500). An
+  empty field is now "not set" in the API, the forms and the model, and
+  migration b5d7f9a1c3e4 clears stored "" serials. The serial number no
+  longer counts toward a complete asset.
+- Assets: the last audit date was only ever typed in, and there was no
+  last hardening date. Both are kept by NGCorion now: the last audit date
+  when an audit of the asset completes, the new last hardening date when a
+  hardening change on it succeeds (any family); the migration fills both
+  from what already ran. The Add asset form no longer asks for the last
+  audit date; the Security & Audit tab shows the last hardening.
 - Risk detail, Audit Findings: "Hardening Status" and "Verification
   Status" were always "-" - the table read the audit results, which carry
   no hardening. It now reads GET /api/risk/assets/{id}/findings (risk read,
