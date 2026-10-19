@@ -21,6 +21,7 @@ from app.core.database import engine as db_engine
 from app.models import Asset, User, UserRole
 from app.models.asset_log import AssetLog
 from app.models.asset_types import AssetType
+from app.models.security_audit_log import AuditLog
 from app.models.software import SoftwareChange, SoftwareCollection, SoftwareItem, SoftwareProductMap
 from app.modules.alerts import events as alert_events
 from app.modules.cve import cpe as cve_cpe
@@ -465,3 +466,27 @@ def test_collect_now_says_why_it_failed(db, monkeypatch):
         assert text in e.value.detail, e.value.detail
         assert "secret" not in e.value.detail
     assert f"{asset.ip_address}:2222" in e.value.detail          # the port that was tried
+
+
+def test_collect_now_reports_a_database_error_with_its_reason(db, monkeypatch):
+    """A database error during the collection leaves the session in a failed transaction; the audit trail
+    entry is still written and the person still gets the reason, not a bare 500."""
+    from sqlalchemy import text
+    from sqlalchemy.exc import DBAPIError
+    user = _user(db)
+    asset = _asset(db)
+    db.commit()     # what came before the request stays; the request's own work is what is rolled back
+    asset_id, name = asset.id, asset.asset_name
+
+    def breaks(db_, *a, **kw):
+        try:
+            db_.execute(text("SELECT 1/0"))
+        except DBAPIError as exc:
+            raise exc
+    monkeypatch.setattr(hooks, "collect_now_linux", breaks)
+    body = api.CollectIn(platform="linux", username="auditor", password="secret")
+    with pytest.raises(HTTPException) as e:
+        asyncio.run(api.collect_now(asset_id, body, db, user))
+    assert e.value.status_code == 502 and "division by zero" in e.value.detail, e.value.detail
+    logged = db.query(AuditLog).filter(AuditLog.action == "software.collect").all()
+    assert any(f"Software collection on {name}" in (r.detail or "") and r.result == "failed" for r in logged)

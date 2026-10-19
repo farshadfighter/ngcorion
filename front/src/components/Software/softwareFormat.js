@@ -1,5 +1,6 @@
 import { t, n } from "../../i18n";
 import { tb } from "../../i18n/backendText";
+import { apiErrorDetail, noAnswerText } from "../../utils/apiError.js";
 
 // Shared labels for the software inventory pages.
 
@@ -52,10 +53,8 @@ export const platformOf = (asset) => (/windows/i.test(`${asset?.os_name || ""} $
 export const count = (v) => (v == null ? "—" : n(v));
 
 export const errorText = (e, fallback) => {
-    const detail = e?.response?.data?.detail;
-    if (typeof detail === "string") return tb(detail);
-    if (Array.isArray(detail)) return detail.map((d) => d.msg).join("; ");
-    return fallback;
+    const text = apiErrorDetail(e, null);
+    return text ? tb(text) : noAnswerText(e) || fallback;
 };
 
 /** Save a blob the API sent as a file. */

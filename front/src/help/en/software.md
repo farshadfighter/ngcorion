@@ -40,6 +40,8 @@ Views: "Needs attention", "All", "Not in the catalog" and "Catalog". Click a pro
 | … the HTTPS certificate was not accepted | Use port 5985 (HTTP), or give the server a certificate NGCorion trusts. |
 | Cannot connect to … (SSH) | Nothing answers SSH on that address and port. |
 | Connected to …, but reading the software list failed | The sign-in worked; the reason after it is from the device (for example a command that did not finish in time). |
+| The server did not answer in time | The page stopped waiting after three minutes; the collection may still finish. Open the asset again in a minute before collecting again. |
+| The server answered with error … and no message | NGCorion itself failed, not the device. The administrator finds the cause in the backend log (`docker compose logs backend`). |
 
 ## Take care
 

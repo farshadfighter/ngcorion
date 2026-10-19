@@ -26,6 +26,14 @@
   after signing in says the connection worked and gives the reason. The
   server log records the whole error, and the audit trail the reason.
   The SSH connection errors are translated into Persian.
+- Software, "Collect now", when the server sends no message of its own:
+  the form said only "Could not collect the software list". It now says
+  which case it is: the page stopped waiting (the collection may still
+  finish), the server could not be reached, or the server answered with
+  an error code and no message (a 500 from NGCorion, or a 502/504 from
+  the proxy). A database error during a collection no longer turns into
+  such a bare 500: the audit trail entry is written on a fresh
+  transaction and the reason is returned.
 - Every page shows a refused request's own message: the sixteen Redux
   slices that kept the API's error as it came (a FastAPI 422 list, or an
   {error_type, message} object) now keep text, e.g. "name: Field

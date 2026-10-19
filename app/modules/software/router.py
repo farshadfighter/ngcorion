@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -188,8 +189,14 @@ async def collect_now(asset_id: int, body: CollectIn, db: Session = Depends(get_
                        asset.ip_address, exc_info=True)
         error = _connect_error(exc, body.platform, f"{asset.ip_address}:{body.port or (22 if body.platform == 'linux' else 5985)}")
         reason = error.detail[:200]
-        _log(db, user, "software.collect", f"Software collection on {asset.asset_name} ({asset.ip_address}) "
-                                           f"failed: {reason}", target_id=asset_id, result="failed")
+        failed = f"Software collection on {asset.asset_name} ({asset.ip_address}) failed: {reason}"
+        try:
+            _log(db, user, "software.collect", failed, target_id=asset_id, result="failed")
+        except SQLAlchemyError:
+            # A database error during the collection left the session unusable: write the entry on a
+            # fresh transaction, so the person still gets this reason and not a bare 500.
+            db.rollback()
+            _log(db, user, "software.collect", failed, target_id=asset_id, result="failed")
         raise error
     if col is None or col.status != "ok":
         reason = (col.error if col is not None else None) or "Nothing could be collected"

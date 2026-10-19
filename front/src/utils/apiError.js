@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { tb } from "../i18n/backendText";
 
 /**
@@ -32,4 +33,19 @@ export function apiErrorDetail(err, fallback) {
 export function apiErrorText(err, fallback) {
     const text = apiErrorDetail(err, fallback);
     return typeof text === "string" && text !== fallback ? tb(text) : text;
+}
+
+/**
+ * Why there is no message when the server sent none of its own: the request ran out of time (the work
+ * may still finish there), nothing answered, or a 5xx came back without a body the app wrote (an
+ * unexpected error, or the proxy in front). Translated; null when the server did answer.
+ */
+export function noAnswerText(err) {
+    if (err?.code === "ECONNABORTED" || err?.code === "ETIMEDOUT") {
+        return t("The server did not answer in time. The work may still finish there: look again in a minute.");
+    }
+    const status = err?.response?.status;
+    if (!status) return err?.request ? t("The server could not be reached. Check the connection and try again.") : null;
+    if (status >= 500) return t("The server answered with error {{status}} and no message. The server log has the cause.", { status });
+    return null;
 }
