@@ -5,6 +5,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 // =====================
 // HELPER FUNCTION
@@ -110,7 +111,7 @@ export const fetchAuditSessions = createAsyncThunk(
             // One request per family: put the merged list in date order, newest first.
             return sortNewestFirst(allSessions);
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to fetch audit sessions"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to fetch audit sessions")));
         }
     }
 );
@@ -122,7 +123,7 @@ export const fetchAuditSession = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to fetch audit session"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to fetch audit session")));
         }
     }
 );
@@ -134,7 +135,7 @@ export const fetchAuditResults = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}/results`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to fetch audit results"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to fetch audit results")));
         }
     }
 );
@@ -146,7 +147,7 @@ export const deleteAuditSession = createAsyncThunk(
             await api.delete(`/api/audit/sessions/${sessionId}`);
             return sessionId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to delete audit session"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to delete audit session")));
         }
     }
 );
@@ -183,7 +184,7 @@ export const clearAllAuditSessions = createAsyncThunk(
 
             return true;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to clear history"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to clear history")));
         }
     }
 );
@@ -195,7 +196,7 @@ export const fetchFortinetBenchmark = createAsyncThunk(
             const res = await api.get("/api/audit/fortinet/benchmark");
             return res.data; // { version, total, automated, manual, controls: [...] }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to load CIS benchmark"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to load CIS benchmark")));
         }
     }
 );
@@ -207,7 +208,7 @@ export const checkAuditStatus = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to check audit status"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to check audit status")));
         }
     }
 );

@@ -5,6 +5,7 @@
 import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 // ==================== ASSET TYPES ====================
 export const fetchAssetTypes = createAsyncThunk("requirements/fetchAssetTypes", async (_, { rejectWithValue }) => {
@@ -12,7 +13,7 @@ export const fetchAssetTypes = createAsyncThunk("requirements/fetchAssetTypes", 
         const response = await api.get("/api/asset-types/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch asset types"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to fetch asset types")));
     }
 });
 
@@ -21,7 +22,7 @@ export const createAssetType = createAsyncThunk("requirements/createAssetType", 
         const response = await api.post("/api/asset-types/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to create asset type"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to create asset type")));
     }
 });
 
@@ -30,7 +31,7 @@ export const updateAssetType = createAsyncThunk("requirements/updateAssetType", 
         const response = await api.put(`/api/asset-types/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to update asset type"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to update asset type")));
     }
 });
 
@@ -39,7 +40,7 @@ export const deleteAssetType = createAsyncThunk("requirements/deleteAssetType", 
         await api.delete(`/api/asset-types/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to delete asset type"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to delete asset type")));
     }
 });
 
@@ -49,7 +50,7 @@ export const fetchOwners = createAsyncThunk("requirements/fetchOwners", async (_
         const response = await api.get("/api/owners/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch owners"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to fetch owners")));
     }
 });
 
@@ -58,7 +59,7 @@ export const createOwner = createAsyncThunk("requirements/createOwner", async (d
         const response = await api.post("/api/owners/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to create owner"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to create owner")));
     }
 });
 
@@ -67,7 +68,7 @@ export const updateOwner = createAsyncThunk("requirements/updateOwner", async ({
         const response = await api.put(`/api/owners/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to update owner"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to update owner")));
     }
 });
 
@@ -76,7 +77,7 @@ export const deleteOwner = createAsyncThunk("requirements/deleteOwner", async (i
         await api.delete(`/api/owners/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to delete owner"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to delete owner")));
     }
 });
 
@@ -86,7 +87,7 @@ export const fetchLocations = createAsyncThunk("requirements/fetchLocations", as
         const response = await api.get("/api/locations/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch locations"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to fetch locations")));
     }
 });
 
@@ -95,7 +96,7 @@ export const createLocation = createAsyncThunk("requirements/createLocation", as
         const response = await api.post("/api/locations/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to create location"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to create location")));
     }
 });
 
@@ -104,7 +105,7 @@ export const updateLocation = createAsyncThunk("requirements/updateLocation", as
         const response = await api.put(`/api/locations/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to update location"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to update location")));
     }
 });
 
@@ -113,7 +114,7 @@ export const deleteLocation = createAsyncThunk("requirements/deleteLocation", as
         await api.delete(`/api/locations/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to delete location"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to delete location")));
     }
 });
 
@@ -123,7 +124,7 @@ export const fetchZones = createAsyncThunk("requirements/fetchZones", async (_, 
         const response = await api.get("/api/zones/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch zones"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to fetch zones")));
     }
 });
 
@@ -132,7 +133,7 @@ export const createZone = createAsyncThunk("requirements/createZone", async (dat
         const response = await api.post("/api/zones/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to create zone"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to create zone")));
     }
 });
 
@@ -141,7 +142,7 @@ export const deleteZone = createAsyncThunk("requirements/deleteZone", async (id,
         await api.delete(`/api/zones/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to delete zone"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to delete zone")));
     }
 });
 export const updateZone = createAsyncThunk("requirements/updateZone", async ({ id, data }, { rejectWithValue }) => {
@@ -149,7 +150,7 @@ export const updateZone = createAsyncThunk("requirements/updateZone", async ({ i
         const response = await api.put(`/api/zones/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to update zone"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to update zone")));
     }
 });
 
@@ -160,7 +161,7 @@ export const fetchOSCatalog = createAsyncThunk("requirements/fetchOSCatalog", as
         const response = await api.get("/api/os-catalog/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch OS catalog"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to fetch OS catalog")));
     }
 });
 
@@ -169,7 +170,7 @@ export const createOS = createAsyncThunk("requirements/createOS", async (data, {
         const response = await api.post("/api/os-catalog/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to create OS"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to create OS")));
     }
 });
 
@@ -178,7 +179,7 @@ export const updateOS = createAsyncThunk("requirements/updateOS", async ({ id, d
         const response = await api.put(`/api/os-catalog/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to update OS"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to update OS")));
     }
 });
 
@@ -187,7 +188,7 @@ export const deleteOS = createAsyncThunk("requirements/deleteOS", async (id, { r
         await api.delete(`/api/os-catalog/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to delete OS"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to delete OS")));
     }
 });
 
@@ -197,7 +198,7 @@ export const fetchVendors = createAsyncThunk("requirements/fetchVendors", async 
         const response = await api.get("/api/vendors/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch vendors"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to fetch vendors")));
     }
 });
 
@@ -206,7 +207,7 @@ export const createVendor = createAsyncThunk("requirements/createVendor", async 
         const response = await api.post("/api/vendors/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to create vendor"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to create vendor")));
     }
 });
 
@@ -215,7 +216,7 @@ export const updateVendor = createAsyncThunk("requirements/updateVendor", async 
         const response = await api.put(`/api/vendors/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to update vendor"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to update vendor")));
     }
 });
 
@@ -224,7 +225,7 @@ export const deleteVendor = createAsyncThunk("requirements/deleteVendor", async 
         await api.delete(`/api/vendors/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to delete vendor"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to delete vendor")));
     }
 });
 
@@ -235,7 +236,7 @@ export const fetchDependencies = createAsyncThunk("requirements/fetchDependencie
         const response = await api.get(url);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch dependencies"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to fetch dependencies")));
     }
 });
 
@@ -244,7 +245,7 @@ export const createDependency = createAsyncThunk("requirements/createDependency"
         const response = await api.post("/api/dependencies/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to create dependency"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to create dependency")));
     }
 });
 
@@ -253,7 +254,7 @@ export const deleteDependency = createAsyncThunk("requirements/deleteDependency"
         await api.delete(`/api/dependencies/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to delete dependency"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to delete dependency")));
     }
 });
 
@@ -263,7 +264,7 @@ export const fetchEnums = createAsyncThunk("requirements/fetchEnums", async (_, 
         const response = await api.get("/api/enums/all");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch enums"));
+        return rejectWithValue(apiErrorDetail(err, t("Failed to fetch enums")));
     }
 });
 

@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 /**
  * System Configuration sections (/api/system/*).
@@ -24,7 +25,7 @@ export const fetchSection = createAsyncThunk(
         } catch (err) {
             return rejectWithValue({
                 section,
-                message: err.response?.data?.detail || err.message,
+                message: apiErrorDetail(err, err.message),
             });
         }
     }
@@ -109,7 +110,7 @@ export const deleteCertificate = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || err.message
+                apiErrorDetail(err, err.message)
             );
         }
     }

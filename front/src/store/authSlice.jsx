@@ -7,6 +7,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";
 import { tb } from "../i18n/backendText";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 // ==========================================
 // Async Thunks
@@ -33,10 +34,7 @@ export const loginUser = createAsyncThunk(
                 return rejectWithValue(tb(err.response.data.detail));
             }
             if (err.response?.status === 429) {
-                return rejectWithValue(
-                    err.response?.data?.detail ||
-                    t("Too many failed login attempts. Please wait before trying again.")
-                );
+                return rejectWithValue(apiErrorDetail(err, t("Too many failed login attempts. Please wait before trying again.")));
             }
             if (err.response?.data?.detail) {
                 const detail = err.response.data.detail;

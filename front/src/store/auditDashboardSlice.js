@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 /**
  * Auditing KPI dashboard data.
@@ -53,7 +54,7 @@ export const fetchAuditDashboard = createAsyncThunk(
             }
             return { data, failed };
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || err.message);
+            return rejectWithValue(apiErrorDetail(err, err.message));
         }
     }
 );

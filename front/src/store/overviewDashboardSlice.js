@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 /**
  * Main dashboard data.
@@ -41,11 +42,7 @@ export const fetchOverviewDashboard = createAsyncThunk(
         // The overview answers everyone, so its failure is a real page-level error.
         if (!data.overview) {
             const first = results[0].reason;
-            return rejectWithValue(
-                first?.response?.data?.detail ||
-                    first?.message ||
-                    t("Dashboard data unavailable")
-            );
+            return rejectWithValue(apiErrorDetail(first, first?.message || t("Dashboard data unavailable")));
         }
         return { data, failed };
     }

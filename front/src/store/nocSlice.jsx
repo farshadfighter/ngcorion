@@ -4,6 +4,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 // =====================
 // Thunks
@@ -16,7 +17,7 @@ export const fetchHosts = createAsyncThunk(
             const res = await api.get("/api/noc/hosts");
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to load hosts"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to load hosts")));
         }
     }
 );
@@ -28,7 +29,7 @@ export const fetchHostDetail = createAsyncThunk(
             const res = await api.get(`/api/noc/hosts/${assetId}`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to load host"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to load host")));
         }
     }
 );
@@ -40,7 +41,7 @@ export const setHostCredential = createAsyncThunk(
             const res = await api.put(`/api/noc/hosts/${assetId}/credential`, payload);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to save SNMP credential"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to save SNMP credential")));
         }
     }
 );
@@ -52,7 +53,7 @@ export const deleteHostCredential = createAsyncThunk(
             await api.delete(`/api/noc/hosts/${assetId}/credential`);
             return assetId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to remove SNMP credential"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to remove SNMP credential")));
         }
     }
 );
@@ -65,7 +66,7 @@ export const pollHostNow = createAsyncThunk(
             await dispatch(fetchHostDetail(assetId));
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Poll failed"));
+            return rejectWithValue(apiErrorDetail(err, t("Poll failed")));
         }
     }
 );
@@ -78,7 +79,7 @@ export const pollAllNow = createAsyncThunk(
             await dispatch(fetchHosts());
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Poll-all failed"));
+            return rejectWithValue(apiErrorDetail(err, t("Poll-all failed")));
         }
     }
 );
@@ -96,7 +97,7 @@ export const fetchHostMetric = createAsyncThunk(
             });
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to load metric history"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to load metric history")));
         }
     }
 );

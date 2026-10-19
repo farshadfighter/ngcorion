@@ -5,6 +5,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from "../config/api.js";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 const STORAGE_KEY_SCAN = 'discovery_currentScan';
 const STORAGE_KEY_ASSETS = 'discoveryCreatedAssetIds';
@@ -95,7 +96,7 @@ export const startScan = createAsyncThunk(
             const response = await api.post('/api/discovery/scan', scanData);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to start scan"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to start scan")));
         }
     }
 );
@@ -107,7 +108,7 @@ export const checkScanStatus = createAsyncThunk(
             const response = await api.get(`/api/discovery/scan/${scanId}`);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to check scan status"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to check scan status")));
         }
     }
 );
@@ -119,7 +120,7 @@ export const fetchScanHistory = createAsyncThunk(
             const response = await api.get('/api/discovery/scans');
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to load scan history"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to load scan history")));
         }
     }
 );
@@ -131,7 +132,7 @@ export const deleteScan = createAsyncThunk(
             await api.delete(`/api/discovery/scan/${scanId}`);
             return scanId;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to delete scan"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to delete scan")));
         }
     }
 );
@@ -144,7 +145,7 @@ export const fetchPendingHosts = createAsyncThunk(
             const response = await api.get(url);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to fetch pending hosts"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to fetch pending hosts")));
         }
     }
 );
@@ -156,7 +157,7 @@ export const checkHostMatches = createAsyncThunk(
             const response = await api.get(`/api/discovery/hosts/${hostId}/check-matches`);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to check matches"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to check matches")));
         }
     }
 );
@@ -171,7 +172,7 @@ export const approveHost = createAsyncThunk(
             const response = await api.post(`/api/discovery/hosts/${hostId}/approve`, requestBody);
             return { ...response.data, hostId, createdAsset: action === 'create_new' ? response.data.asset_id : null };
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to approve host"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to approve host")));
         }
     }
 );
@@ -183,7 +184,7 @@ export const rejectHost = createAsyncThunk(
             const response = await api.post(`/api/discovery/hosts/${hostId}/reject`);
             return { ...response.data, hostId };
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to reject host"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to reject host")));
         }
     }
 );
@@ -197,7 +198,7 @@ export const previewDiscoveryApplication = createAsyncThunk(
             const response = await api.get(url);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to preview application"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to preview application")));
         }
     }
 );
@@ -218,7 +219,7 @@ export const applyDiscoveryWithMode = createAsyncThunk(
             const response = await api.post(`/api/discovery/hosts/${hostId}/apply`, requestBody);
             return { ...response.data, hostId, createdAsset: mode === 'create_new' ? response.data.asset_id : null };
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to apply discovery"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to apply discovery")));
         }
     }
 );
@@ -233,7 +234,7 @@ export const bulkApproveHosts = createAsyncThunk(
             const response = await api.post('/api/discovery/bulk-approve', requestBody);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to bulk approve"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to bulk approve")));
         }
     }
 );
@@ -247,7 +248,7 @@ export const addPortsToAsset = createAsyncThunk(
             const response = await api.post('/api/discovery/ports/add', requestBody);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to add ports"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to add ports")));
         }
     }
 );
@@ -261,7 +262,7 @@ export const overwriteAssetPorts = createAsyncThunk(
             const response = await api.post('/api/discovery/ports/overwrite', requestBody);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to overwrite ports"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to overwrite ports")));
         }
     }
 );
@@ -273,7 +274,7 @@ export const fetchAssetPorts = createAsyncThunk(
             const response = await api.get(`/api/discovery/assets/${assetId}/ports`);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to fetch asset ports"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to fetch asset ports")));
         }
     }
 );
@@ -285,7 +286,7 @@ export const fetchScanLogs = createAsyncThunk(
             const response = await api.get(`/api/discovery-logs/scan/${scanId}?limit=100`);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to fetch scan logs"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to fetch scan logs")));
         }
     }
 );
@@ -297,7 +298,7 @@ export const deletePort = createAsyncThunk(
             await api.delete(`/api/discovery/ports/${portId}`);
             return portId;
         } catch (error) {
-            return rejectWithValue(error.response?.data?.detail || t("Failed to delete port"));
+            return rejectWithValue(apiErrorDetail(error, t("Failed to delete port")));
         }
     }
 );

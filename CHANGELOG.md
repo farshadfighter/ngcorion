@@ -18,6 +18,12 @@
   numbers, and the page then rendered the API's list of errors, which
   crashed it. A discovery sends no audit fields now, and the scheduling
   pages show a refusal as text naming the field.
+- Every page shows a refused request's own message: the sixteen Redux
+  slices that kept the API's error as it came (a FastAPI 422 list, or an
+  {error_type, message} object) now keep text, e.g. "name: Field
+  required". Before, requirements, NOC hosts, topology, architecture
+  validation and design suggestion crashed on such an answer, and the
+  others showed nothing.
 - A page that crashes while rendering now shows "This page ran into a
   problem" with "Reload page" and "Go back" inside the layout, instead of
   a white window; moving to another page clears it.

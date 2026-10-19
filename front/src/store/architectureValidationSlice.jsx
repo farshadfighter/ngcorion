@@ -4,6 +4,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 // =====================
 // Thunks
@@ -19,7 +20,7 @@ export const fetchFindings = createAsyncThunk(
             const res = await api.get("/api/architecture-validation/findings", { params });
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to load findings"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to load findings")));
         }
     }
 );
@@ -31,7 +32,7 @@ export const runAnalysis = createAsyncThunk(
             const res = await api.post("/api/architecture-validation/analyze");
             return res.data; // { findings, asset_count, finding_count }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to run analysis"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to run analysis")));
         }
     }
 );
@@ -43,7 +44,7 @@ export const acceptFinding = createAsyncThunk(
             const res = await api.post(`/api/architecture-validation/findings/${findingId}/accept`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to accept finding"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to accept finding")));
         }
     }
 );
@@ -55,7 +56,7 @@ export const ignoreFinding = createAsyncThunk(
             const res = await api.post(`/api/architecture-validation/findings/${findingId}/ignore`, { reason });
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to ignore finding"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to ignore finding")));
         }
     }
 );

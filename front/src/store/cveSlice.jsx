@@ -4,8 +4,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
-const detail = (err, fallback) => err.response?.data?.detail || fallback;
+const detail = (err, fallback) => apiErrorDetail(err, fallback);
 
 export const fetchCveFindings = createAsyncThunk(
     "cve/fetchFindings",

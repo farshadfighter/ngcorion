@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 /**
  * Per-asset risk detail: GET /api/risk/assets/{id}, plus the audit findings
@@ -36,11 +37,11 @@ export const fetchAssetRiskDetail = createAsyncThunk(
                     findingsError:
                         status === 403
                             ? t("Audit findings need the Auditing module permission.")
-                            : err.response?.data?.detail || err.message,
+                            : apiErrorDetail(err, err.message),
                 };
             }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || err.message);
+            return rejectWithValue(apiErrorDetail(err, err.message));
         }
     }
 );
@@ -59,7 +60,7 @@ export const fetchAssetRiskHistory = createAsyncThunk(
             });
             return res.data || [];
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || err.message);
+            return rejectWithValue(apiErrorDetail(err, err.message));
         }
     }
 );
@@ -75,7 +76,7 @@ export const fetchZonesForDetail = createAsyncThunk(
             const res = await api.get("/api/risk/zones");
             return res.data || [];
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || err.message);
+            return rejectWithValue(apiErrorDetail(err, err.message));
         }
     }
 );
@@ -106,7 +107,7 @@ export const updateAssetProfile = createAsyncThunk(
             );
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || err.message);
+            return rejectWithValue(apiErrorDetail(err, err.message));
         }
     }
 );

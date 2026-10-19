@@ -9,6 +9,7 @@ import {
     clearLicenseFromStorage,
 } from "../components/License/licenseService";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 // =====================
 // Thunks
@@ -23,7 +24,7 @@ export const getLicenseStatusThunk = createAsyncThunk(
             return data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || err.message || t("Failed to get license status")
+                apiErrorDetail(err, err?.message || t("Failed to get license status"))
             );
         }
     }
@@ -36,7 +37,7 @@ export const getLicenseUsageThunk = createAsyncThunk(
         try {
             return await getLicenseUsage();
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || err.message);
+            return rejectWithValue(apiErrorDetail(err, err.message));
         }
     }
 );
@@ -50,7 +51,7 @@ export const activateLicenseThunk = createAsyncThunk(
             return data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || err.message || t("Failed to activate license")
+                apiErrorDetail(err, err?.message || t("Failed to activate license"))
             );
         }
     }

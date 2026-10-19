@@ -4,6 +4,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 // =====================
 // Thunks
@@ -16,7 +17,7 @@ export const fetchTopology = createAsyncThunk(
             const res = await api.get("/api/topology/");
             return res.data; // { nodes: [...], links: [...] }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to load topology"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to load topology")));
         }
     }
 );
@@ -28,7 +29,7 @@ export const createTopologyLink = createAsyncThunk(
             const res = await api.post("/api/topology/links", payload);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to create link"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to create link")));
         }
     }
 );
@@ -40,7 +41,7 @@ export const updateTopologyLink = createAsyncThunk(
             const res = await api.patch(`/api/topology/links/${linkId}`, changes);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to update link"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to update link")));
         }
     }
 );
@@ -52,7 +53,7 @@ export const deleteTopologyLink = createAsyncThunk(
             await api.delete(`/api/topology/links/${linkId}`);
             return linkId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to delete link"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to delete link")));
         }
     }
 );
@@ -67,7 +68,7 @@ export const saveNodePosition = createAsyncThunk(
             // A failed position save shouldn't interrupt the user - the node
             // still visually stays where it was dropped for this session, it
             // just won't be remembered on the next visit.
-            return rejectWithValue(err.response?.data?.detail || t("Failed to save node position"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to save node position")));
         }
     }
 );
@@ -79,7 +80,7 @@ export const validateTopology = createAsyncThunk(
             const res = await api.post("/api/topology/validate");
             return res.data; // { findings: [...], asset_count, link_count }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || t("Failed to validate topology"));
+            return rejectWithValue(apiErrorDetail(err, t("Failed to validate topology")));
         }
     }
 );

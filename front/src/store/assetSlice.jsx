@@ -4,6 +4,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 const getAssetId = (asset) => {
     if (asset == null) return asset;
@@ -23,7 +24,7 @@ export const fetchAssets = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || t("Failed to fetch assets")
+                apiErrorDetail(err, t("Failed to fetch assets"))
             );
         }
     }
@@ -38,7 +39,7 @@ export const fetchAsset = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || t("Failed to fetch asset")
+                apiErrorDetail(err, t("Failed to fetch asset"))
             );
         }
     }
@@ -58,7 +59,7 @@ export const fetchAssetChangeHistory = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || t("Failed to load change history")
+                apiErrorDetail(err, t("Failed to load change history"))
             );
         }
     }
@@ -73,7 +74,7 @@ export const fetchAssetTypes = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || t("Failed to fetch asset types")
+                apiErrorDetail(err, t("Failed to fetch asset types"))
             );
         }
     }
@@ -207,7 +208,7 @@ export const fetchAssetPorts = createAsyncThunk(
             return [];
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || t("Failed to fetch ports")
+                apiErrorDetail(err, t("Failed to fetch ports"))
             );
         }
     }
@@ -223,7 +224,7 @@ export const createAssetPort = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || t("Failed to create port")
+                apiErrorDetail(err, t("Failed to create port"))
             );
         }
     }
@@ -240,7 +241,7 @@ export const updateAssetPort = createAsyncThunk(
             return { portId, newPort: res.data };
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || t("Failed to update port")
+                apiErrorDetail(err, t("Failed to update port"))
             );
         }
     }
@@ -255,7 +256,7 @@ export const deleteAssetPort = createAsyncThunk(
             return portId;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || t("Failed to delete port")
+                apiErrorDetail(err, t("Failed to delete port"))
             );
         }
     }

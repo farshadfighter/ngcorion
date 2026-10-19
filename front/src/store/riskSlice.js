@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";
+import { apiErrorDetail } from "../utils/apiError.js";
 
 // The backend emits five levels (router.py::_RISK_LEVEL_ORDER), matching the
 // NGCorion Risk Score spec's bands (app/modules/risk/levels.py).
@@ -68,7 +69,7 @@ export const fetchRiskDashboard = createAsyncThunk(
         if (listRes.status === "rejected") {
             const err = listRes.reason;
             return rejectWithValue(
-                err?.response?.data?.detail || err?.message || t("Risk data unavailable")
+                apiErrorDetail(err, err?.message || t("Risk data unavailable"))
             );
         }
 
@@ -99,7 +100,7 @@ export const recalculateAssetRisk = createAsyncThunk(
         } catch (err) {
             return rejectWithValue({
                 assetId,
-                message: err.response?.data?.detail || err.message,
+                message: apiErrorDetail(err, err.message),
             });
         }
     }
@@ -112,7 +113,7 @@ export const fetchRiskZones = createAsyncThunk(
             const res = await api.get("/api/risk/zones");
             return res.data || [];
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || err.message);
+            return rejectWithValue(apiErrorDetail(err, err.message));
         }
     }
 );
