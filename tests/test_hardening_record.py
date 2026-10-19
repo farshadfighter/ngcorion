@@ -186,3 +186,51 @@ def test_a_verified_fix_still_failing_waits_for_the_reaudit(db, audit):
     db.commit()
     impact = _impact(db, asset)
     assert (impact["findings_before"], impact["findings_now"], impact["awaiting_reaudit"]) == (3, 3, 1)
+
+
+def test_findings_table_statuses(db, audit, monkeypatch):
+    """The risk detail's Audit Findings: every control that failed in the audit, with where its hardening
+    stands. They were always "—": the table read the audit results, which carry no hardening."""
+    from app.modules.risk.router import get_asset_findings
+    user, asset, session = audit
+    risk_calculation_service.calculate(asset_id=asset.id, db=db, trigger_type="audit_completed")
+    monkeypatch.setattr(linux_service, "LinuxHardeningBatchExecutor", FakeExecutor)
+    linux_service.LinuxHardeningService.batch_execute_selected(
+        db=db, session_id=session.id, asset_id=asset.id, ssh_username="u", ssh_password="p", sudo_password=None,
+        checks=[{"check_id": "LNX-1", "parameters": {}}, {"check_id": "LNX-2", "parameters": {}}], user_id=user.id)
+    risk_calculation_service.calculate(asset_id=asset.id, db=db, trigger_type="hardening_verified")
+    db.commit()
+
+    out = get_asset_findings(asset.id, user, db)
+    assert out["audit_session_id"] == session.id and out["actual_value_shown"] is True     # an admin
+    rows = {f["check_number"]: f for f in out["findings"]}
+    assert set(rows) == {"LNX-1", "LNX-2", "LNX-3"}                     # LNX-1 passes now, still listed
+    assert (rows["LNX-1"]["audit_status"], rows["LNX-1"]["hardening_status"], rows["LNX-1"]["verification_status"]) \
+        == ("pass", "applied", "verified")
+    assert (rows["LNX-2"]["audit_status"], rows["LNX-2"]["hardening_status"], rows["LNX-2"]["verification_status"]) \
+        == ("fail", "failed", "still_failing")
+    assert rows["LNX-2"]["hardening_error"].startswith("verification reported FAIL")
+    assert (rows["LNX-3"]["hardening_status"], rows["LNX-3"]["verification_status"]) == ("not_hardened", None)
+    assert rows["LNX-1"]["last_update"]
+
+    # A Cisco/FortiGate-style fix: verified, the finding still FAIL until the re-audit.
+    record_fix_results(db, session_id=session.id, asset_id=asset.id, user_id=user.id, results=[_fixed("LNX-3")])
+    lnx3 = {f["check_number"]: f for f in get_asset_findings(asset.id, user, db)["findings"]}["LNX-3"]
+    assert (lnx3["audit_status"], lnx3["verification_status"]) == ("fail", "awaiting_reaudit")
+
+
+def test_findings_actual_value_needs_the_audit(db, audit):
+    """The actual value is device configuration: only for who may read the audit (Auditing read and the
+    session's owner, or an admin)."""
+    from app.modules.risk.router import get_asset_findings
+    user, asset, session = audit
+    for r in db.query(AuditResult).filter(AuditResult.session_id == session.id):
+        r.evidence_snippet = "PermitRootLogin yes"
+    viewer = User(username=f"hrec_v{_n()}", email=f"hrecv{_seq[0]}@corp.example", hashed_password="x",
+                  role=UserRole.USER, is_active=True)
+    db.add(viewer)
+    db.commit()
+    shown = get_asset_findings(asset.id, user, db)
+    hidden = get_asset_findings(asset.id, viewer, db)
+    assert shown["actual_value_shown"] and shown["findings"][0]["actual_value"] == "PermitRootLogin yes"
+    assert not hidden["actual_value_shown"] and all(f["actual_value"] is None for f in hidden["findings"])

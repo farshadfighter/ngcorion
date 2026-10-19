@@ -25,7 +25,7 @@ from app.core.database import SessionLocal, get_db
 from app.core.dependencies import require_permission
 from app.models import User, log_action, log_asset_updated
 from app.models.asset import Asset
-from app.models.audit import AuditCheck, AuditResult, AuditSession, CheckStatus
+from app.models.audit import AuditResult, AuditSession, CheckStatus
 from app.models.hardening import HardeningAction
 from app.models.enums import ConfidentialityLevelEnum
 from app.models.risk import (
@@ -778,83 +778,103 @@ def get_asset_risk_detail(
 @router.get("/assets/{asset_id}/findings")
 def get_asset_findings(
     asset_id: int,
-    _current_user: User = Depends(require_permission("RISK", "read")),
+    current_user: User = Depends(require_permission("RISK", "read")),
     db: Session = Depends(get_db),
 ):
-    """Failed audit findings for the asset's latest valid audit session, each
-    annotated with its hardening/remediation status.
+    """The findings of the audit the risk score reads (the latest audit when
+    there is no score yet): the controls that failed in it - failing now, or
+    fixed since by hardening - each with where its hardening stands.
 
-    A finding is `is_resolved` only when a non-preview hardening action ran
-    successfully *and* its post-fix verification passed — the same rule the
-    risk engine uses to drop a failure from the active count (service.py).
+    hardening_status   not_hardened | previewed | running | applied | failed
+                       (the latest non-preview change; previews alone are
+                       "previewed")
+    verification_status
+                       verified          the fix was checked and holds
+                       awaiting_reaudit  checked and holds, but the finding
+                                         reads FAIL until the next audit
+                                         (Cisco, FortiGate)
+                       not_verified      ran, nothing checked it afterwards
+                       still_failing     ran, the check still fails
+                       null              nothing ran, or it failed to run
+    The actual value comes from the device's configuration: it is returned
+    only to who may read the audit itself (Auditing read, and the session's
+    owner or an admin), as GET /api/audit/sessions/{id}/results does.
     """
-    _get_asset_or_404(db, asset_id)
+    from app.modules.remediation.service import accepted_refs, audit_ref
+    from app.modules.reports.service import can_read
 
-    # Latest non-running audit session (matches the risk engine's selection).
+    _get_asset_or_404(db, asset_id)
+    score = db.query(AssetRiskScore).filter(AssetRiskScore.asset_id == asset_id).first()
     session = (
+        db.query(AuditSession).filter(AuditSession.id == score.audit_id).first()
+        if score is not None and score.audit_id is not None else None
+    ) or (
         db.query(AuditSession)
-        .filter(AuditSession.asset_id == asset_id,
-                AuditSession.status != "running")
+        .filter(AuditSession.asset_id == asset_id, AuditSession.status != "running")
         .order_by(AuditSession.started_at.desc())
         .first()
     )
     if session is None:
-        return {"audit_session_id": None, "findings": []}
+        return {"audit_session_id": None, "actual_value_shown": False, "findings": []}
 
-    # LEFT JOIN so failed findings with no hardening action are still returned.
-    # AuditCheck is joined for the remediation text (runtime CIS results may
-    # have no check_id, so it's an outer join too).
-    rows = (
-        db.query(AuditResult, HardeningAction, AuditCheck)
-        .outerjoin(
-            HardeningAction, HardeningAction.audit_result_id == AuditResult.id
-        )
-        .outerjoin(AuditCheck, AuditCheck.id == AuditResult.check_id)
-        .filter(AuditResult.session_id == session.id,
-                AuditResult.status == CheckStatus.FAIL)
-        .order_by(AuditResult.id, HardeningAction.created_at.desc())
+    show_actual = can_read(db, current_user, "AUDITING") and (
+        current_user.role.value == "admin" or session.user_id == current_user.id
+    )
+    results = (
+        db.query(AuditResult)
+        .filter(AuditResult.session_id == session.id)
+        .order_by(AuditResult.id)
         .all()
     )
-
-    # Collapse the join to one entry per finding. Keep the most recent
-    # hardening action for the displayed status, but derive is_resolved from
-    # *any* qualifying action for that finding.
-    findings: Dict[int, dict] = {}
-    for result, action, check in rows:
-        entry = findings.get(result.id)
-        if entry is None:
-            entry = {
-                "control_id": result.check_number,
-                "control_name": result.check_title
-                or (check.title if check else None),
-                "severity": result.severity,
-                "audit_status": result.status.value if result.status else None,
-                "hardening_status": None,
-                "verification_passed": None,
-                "is_resolved": False,
-                "remediation": check.remediation if check else None,
-                "_seen_action": False,
-            }
-            findings[result.id] = entry
-
-        if action is not None:
-            # Rows are ordered newest-first per finding, so the first action
-            # we see is the latest one — use it for the displayed status.
-            if not entry["_seen_action"]:
-                entry["hardening_status"] = action.status
-                entry["verification_passed"] = action.verification_passed
-                entry["_seen_action"] = True
-            if (action.action_type != "preview"
-                    and action.status == "success"
-                    and action.verification_passed is True):
-                entry["is_resolved"] = True
+    actions_of: Dict[int, list] = {}
+    if results:
+        for action in (
+            db.query(HardeningAction)
+            .filter(HardeningAction.audit_result_id.in_([r.id for r in results]))
+            .order_by(HardeningAction.created_at.desc(), HardeningAction.id.desc())
+        ):
+            actions_of.setdefault(action.audit_result_id, []).append(action)
+    accepted = accepted_refs(db, asset_id, "audit")
 
     items = []
-    for entry in findings.values():
-        entry.pop("_seen_action", None)
-        items.append(entry)
+    for r in results:
+        actions = actions_of.get(r.id, [])
+        changes = [a for a in actions if a.action_type != "preview"]
+        failing = r.status == CheckStatus.FAIL
+        if not failing and not changes:
+            continue
+        latest = changes[0] if changes else None
+        if latest is None:
+            hardening = "previewed" if actions else "not_hardened"
+            verification = None
+        else:
+            hardening = {"success": "applied", "failed": "failed", "blocked": "failed"}.get(latest.status, "running")
+            if latest.verification_passed is False:
+                verification = "still_failing"
+            elif latest.status != "success":
+                verification = None
+            elif latest.verification_passed is None:
+                verification = "not_verified"
+            else:
+                verification = "awaiting_reaudit" if failing else "verified"
+        when = (latest.completed_at or latest.executed_at or latest.created_at) if latest else r.checked_at
+        items.append({
+            "id": r.id,
+            "check_number": r.check_number,
+            "check_title": r.check_title,
+            "severity": r.severity,
+            "level": r.level,
+            "vdom": r.vdom,
+            "audit_status": r.status.value if r.status else None,
+            "actual_value": r.evidence_snippet if show_actual else None,
+            "hardening_status": hardening,
+            "verification_status": verification,
+            "hardening_error": latest.error_message if latest is not None and hardening == "failed" else None,
+            "risk_accepted": bool(accepted and audit_ref(r.check_number, r.vdom) in accepted),
+            "last_update": _dt(when),
+        })
 
-    return {"audit_session_id": session.id, "findings": items}
+    return {"audit_session_id": session.id, "actual_value_shown": show_actual, "findings": items}
 
 
 # ======================================================================

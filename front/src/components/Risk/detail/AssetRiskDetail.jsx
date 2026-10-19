@@ -23,7 +23,7 @@ export const AssetRiskDetail = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const {
-        detail, findings, findingsError, isLoading, error,
+        detail, findings, findingsActualShown, findingsError, isLoading, error,
         history, historyError, isLoadingHistory,
     } = useSelector((state) => state.riskDetail);
 
@@ -77,7 +77,7 @@ export const AssetRiskDetail = () => {
             <ConfidentialityZone asset={detail.asset} score={score} />
             <OpenPortsTable ports={detail.open_ports || []} />
             <AuditSummary score={score} auditSummary={detail.audit_summary} />
-            <AuditFindingsTable findings={findings} error={findingsError} />
+            <AuditFindingsTable findings={findings} error={findingsError} actualShown={findingsActualShown} />
             <HardeningImpact impact={detail.hardening_impact} />
             <RiskHistory
                 history={history}

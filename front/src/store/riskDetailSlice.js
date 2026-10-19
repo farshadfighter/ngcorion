@@ -1,16 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
-import { t } from "../i18n";
 import { apiErrorDetail } from "../utils/apiError.js";
 
 /**
- * Per-asset risk detail: GET /api/risk/assets/{id}, plus the audit findings
- * list chained off the audit_id that response carries.
- *
- * The findings live in the auditing module and are guarded by AUDITING read —
- * a user with only RISK permission gets a 403 there. That is not a failure of
- * the page, so findings errors are captured separately and the rest still
- * renders.
+ * Per-asset risk detail: GET /api/risk/assets/{id}, plus its audit findings with where the hardening of
+ * each stands (GET /api/risk/assets/{id}/findings, RISK read like the page). A findings failure is not a
+ * failure of the page: it is kept apart and the rest still renders.
  */
 export const fetchAssetRiskDetail = createAsyncThunk(
     "riskDetail/fetch",
@@ -18,27 +13,13 @@ export const fetchAssetRiskDetail = createAsyncThunk(
         try {
             const res = await api.get(`/api/risk/assets/${assetId}`);
             const detail = res.data || {};
-
-            const auditId = detail.risk_score?.audit_id;
-            if (!auditId) {
-                return { detail, findings: [], findingsError: null };
-            }
-
             try {
-                const findingsRes = await api.get(
-                    `/api/audit/sessions/${auditId}/results`
-                );
-                return { detail, findings: findingsRes.data || [], findingsError: null };
+                const { data } = await api.get(`/api/risk/assets/${assetId}/findings`);
+                return { detail, findings: data?.findings || [], findingsActualShown: !!data?.actual_value_shown,
+                         findingsError: null };
             } catch (err) {
-                const status = err.response?.status;
-                return {
-                    detail,
-                    findings: [],
-                    findingsError:
-                        status === 403
-                            ? t("Audit findings need the Auditing module permission.")
-                            : apiErrorDetail(err, err.message),
-                };
+                return { detail, findings: [], findingsActualShown: false,
+                         findingsError: apiErrorDetail(err, err.message) };
             }
         } catch (err) {
             return rejectWithValue(apiErrorDetail(err, err.message));
@@ -117,6 +98,7 @@ const riskDetailSlice = createSlice({
     initialState: {
         detail: null,
         findings: [],
+        findingsActualShown: false,
         findingsError: null,
         isLoading: false,
         error: null,
@@ -151,6 +133,7 @@ const riskDetailSlice = createSlice({
                 state.isLoading = false;
                 state.detail = action.payload.detail;
                 state.findings = action.payload.findings;
+                state.findingsActualShown = action.payload.findingsActualShown;
                 state.findingsError = action.payload.findingsError;
             })
             .addCase(fetchAssetRiskDetail.rejected, (state, action) => {

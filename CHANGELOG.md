@@ -4,6 +4,17 @@
 
 ### Fixes
 
+- Risk detail, Audit Findings: "Hardening Status" and "Verification
+  Status" were always "-" - the table read the audit results, which carry
+  no hardening. It now reads GET /api/risk/assets/{id}/findings (risk read,
+  like the page): the controls that failed in the audit the score reads,
+  failing still or fixed since, with the hardening status (not hardened,
+  previewed only, running, applied, failed - the error on hover), the
+  verification status (verified, holds and awaiting re-audit, not verified,
+  check still fails), the state now, a risk acceptance, and the time of the
+  last change. The actual value is configuration from the device: it is
+  returned only to who may read that audit (Auditing read, its owner or an
+  admin), as before.
 - Risk detail, Hardening Impact: the card showed only the number of
   fixed findings, "before" values that were always empty, and a note to
   developers. It now compares, since the audit the score reads, the failed
