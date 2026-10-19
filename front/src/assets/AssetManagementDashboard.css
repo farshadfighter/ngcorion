@@ -1,151 +1,37 @@
-/* ============================================
-   ASSET MANAGEMENT DASHBOARD - STYLES
-   ============================================ */
+/* Assets overview (components/AssetManagement/AssetManagementDashboard.jsx). Cards, figures and coverage
+   tiles are the main dashboard's (.ovd-*, OverviewDashboard.css); this file adds what only this page has. */
 
-.amd-container {
-    padding: 32px 40px;
+.amo-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.amo-subtitle { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: #14213D; }
+
+.amo-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.amo-figures .ovd-figure { background: #fff; box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08); border-color: transparent; }
+.amo-figure-detail { font-size: 12px; color: #B45309; font-weight: 600; }
+.amo-static { cursor: default; }
+.amo-figures .amo-static:hover { border-color: transparent; background: #fff; }
+
+.amo-quality { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.amo-quality-item {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px;
+    background: #fff; box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08); font-size: 13px; color: #14213D;
+    text-decoration: none; border-inline-start: 4px solid transparent;
 }
+.amo-quality-item.is-missing { border-inline-start-color: #EAB308; }
+.amo-quality-item.is-missing:hover, .amo-quality-item.is-missing:focus-visible { box-shadow: 0 2px 8px rgba(20, 33, 61, 0.16); }
+.amo-quality-item.is-missing span:nth-child(2) { flex: 1; }
+.amo-quality-count { font-size: 20px; font-weight: 800; color: #A16207; font-variant-numeric: tabular-nums; }
+.amo-quality-item.is-done { color: #3C4A63; box-shadow: none; background: #F0FDF4; border-inline-start-color: #16A34A; }
+.amo-quality-item.is-done i { color: #16A34A; }
 
-.amd-title {
-    font-size: 26px;
-    font-weight: 700;
-    color: #1f2937;
-    margin-bottom: 28px;
+.amo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.amo-bars ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.amo-bar {
+    display: grid; grid-template-columns: minmax(110px, 1.6fr) minmax(60px, 2fr) 36px; align-items: center; gap: 10px;
+    padding: 6px 8px; border-radius: 6px; text-decoration: none; color: #14213D; font-size: 13px;
 }
-
-/* ── کارت‌های آماری ── */
-.amd-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
-    margin-bottom: 32px;
-}
-
-.amd-stat-card {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 20px 16px;
-    text-align: center;
-    transition: box-shadow 0.2s;
-}
-
-.amd-stat-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.amd-stat-value {
-    font-size: 32px;
-    font-weight: 700;
-    margin-bottom: 6px;
-}
-
-.amd-stat-label {
-    font-size: 13px;
-    color: #6b7280;
-    font-weight: 500;
-}
-
-/* ── چارت‌ها ── */
-.amd-charts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-bottom: 24px;
-}
-
-.amd-chart-card {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 24px;
-}
-
-.amd-chart-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-/* Legend */
-.amd-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 20px;
-    justify-content: center;
-    margin-top: 12px;
-}
-
-.amd-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-}
-
-.amd-legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.amd-legend-text {
-    color: #374151;
-}
-
-/* Empty State */
-.amd-empty {
-    text-align: center;
-    color: #9ca3af;
-    padding: 40px 0;
-    font-size: 14px;
-}
-
-/* Loading */
-.amd-loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 400px;
-    flex-direction: column;
-    gap: 12px;
-    color: #6b7280;
-    font-size: 14px;
-}
-
-.amd-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid #e5e7eb;
-    border-top-color: #1e3a5f;
-    border-radius: 50%;
-    animation: amd-spin 0.8s linear infinite;
-}
-
-@keyframes amd-spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ── Responsive ── */
-@media (max-width: 1024px) {
-    .amd-stats-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-@media (max-width: 768px) {
-    .amd-container {
-        padding: 16px 20px;
-    }
-
-    .amd-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .amd-charts-grid {
-        grid-template-columns: 1fr;
-    }
-}
+a.amo-bar:hover, a.amo-bar:focus-visible { background: #F3F6FA; }
+.amo-bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.amo-bar-track { height: 8px; border-radius: 4px; background: #EEF0F4; overflow: hidden; }
+.amo-bar-track > span { display: block; height: 100%; border-radius: 4px; background: #1E3A5F; }
+.amo-bar-count { text-align: end; font-weight: 700; font-variant-numeric: tabular-nums; }
+.amo-unset { margin: 8px 8px 0; font-size: 12px; color: #6C7A93; }

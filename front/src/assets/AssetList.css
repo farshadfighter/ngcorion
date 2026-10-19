@@ -100,6 +100,16 @@
     margin-bottom: 20px;
 }
 
+/* Filters from the address (?missing=owner, ?type=3 …): one removable chip each. */
+.al-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-inline-end: auto; }
+.al-filter-chip {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 16px;
+    border: 1px solid #1e3a5f; background: #eef3f9; color: #1e3a5f; font: inherit; font-size: 13px;
+    font-weight: 600; cursor: pointer;
+}
+.al-filter-chip:hover, .al-filter-chip:focus-visible { background: #dde7f3; }
+.al-filter-chip span { font-size: 15px; line-height: 1; }
+
 .search-box {
     position: relative;
     flex: 0 0 350px;

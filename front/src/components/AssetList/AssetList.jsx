@@ -5,6 +5,7 @@
  */
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { fetchAssets, deleteAsset, clearMessages } from "../../store/assetSlice";
 import { getLicenseUsageThunk } from "../../store/licenseSlice";
 import { usePermission } from "../../hooks/usePermission";
@@ -23,11 +24,13 @@ import { AddAssetModal } from "./AddAssetModal";
 import { ChangeHistoryModal } from "./ChangeHistoryModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
 import { BulkBar } from "./BulkActions";
+import { filterLabel, matchesFilters, readFilters } from "./assetFilters";
 
 import "../../assets/AssetList.css"
 // Pagination's styles live with the Logs page it was first built for.
 import "../../assets/LogsPage.css"
 import { t as tr } from "../../i18n";
+import { tv } from "../../i18n/backendText";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 
@@ -48,6 +51,9 @@ export const AssetList = () => {
 
     const [activeTab, setActiveTab]           = useState("overview");
     const [searchQuery, setSearchQuery]       = useState("");
+    // ?missing=owner, ?type=3, ?vendor=… (the assets overview's cards and charts)
+    const [urlParams, setUrlParams]           = useSearchParams();
+    const urlFilters                          = readFilters(urlParams);
     const [sortDir]                           = useState("asc");
     const [page, setPage]                     = useState(1);
     const [pageSize, setPageSize]             = useState(25);
@@ -93,10 +99,11 @@ export const AssetList = () => {
     }, [successMessage, error, bulkError, bulkNotice, dispatch]);
 
     // ── Filtering & sorting ────────────────────────────────────────────────────
+    const now = new Date();
     const filteredAssets = Array.isArray(assets)
         ? assets.filter((asset) => {
             const q = searchQuery.toLowerCase();
-            return (
+            return matchesFilters(asset, urlFilters, now) && (
                 asset.asset_name?.toLowerCase().includes(q) ||
                 asset.hostname?.toLowerCase().includes(q) ||
                 asset.ip_address?.toLowerCase().includes(q) ||
@@ -344,6 +351,18 @@ export const AssetList = () => {
                            value={searchQuery}
                            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }} />
                 </div>
+                {urlFilters.length > 0 && (
+                    <div className="al-filters" role="group" aria-label={tr("Filters")}>
+                        {urlFilters.map((f) => (
+                            <button key={f.key} type="button" className="al-filter-chip"
+                                    title={tr("Remove this filter")}
+                                    onClick={() => { setUrlParams((p) => { p.delete(f.key); return p; }); setPage(1); }}>
+                                {filterLabel(f, (id) => tv(assetTypes.find((x) => String(x.id) === String(id))?.type_name || id), tv)}
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
 
             </div>
 

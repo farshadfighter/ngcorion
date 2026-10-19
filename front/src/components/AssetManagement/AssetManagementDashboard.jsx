@@ -1,231 +1,181 @@
 /**
- * Asset Management dashboard: inventory totals and charts by type, status, location and
- * criticality.
+ * Assets overview (GET /api/dashboard/assets): what the inventory holds, which details are missing,
+ * how much of it the other modules cover, breakdowns by type, vendor, operating system, zone and
+ * status, and the newest assets. Every figure, row and bar opens the list it counts.
  */
-import React, { useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchAssets } from "../../store/assetSlice";
-import { useAssetFormOptions } from "../AssetList/useAssetFormOptions";
-import {
-    PieChart, Pie, Cell, Tooltip,
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer
-} from "recharts";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import api from "../../config/api";
+import { formatDate } from "../../utils/dates";
+import { tb, tv } from "../../i18n/backendText";
+import { t, n } from "../../i18n";
+import { coverageRows } from "../Overview/overviewMetrics";
+import "../../assets/OverviewDashboard.css";
 import "../../assets/AssetManagementDashboard.css";
-import { t as tr, n } from "../../i18n";
-import { tv } from "../../i18n/backendText";
 
-const COLORS = ["#1e3a5f", "#2d9cdb", "#27ae60", "#8e44ad", "#f39c12", "#e74c3c", "#16a085", "#d35400"];
+const hasValue = (v) => v !== null && v !== undefined;
 
-const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-    if (percent < 0.05) return null;
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+const QUALITY_LABELS = {
+    no_owner: t("No owner"),
+    no_ip: t("No IP address"),
+    no_os: t("No operating system"),
+    no_location: t("No location"),
+    no_zone: t("Network zone not chosen (risk uses a default)"),
+};
+
+const STATUS_ORDER = ["active", "standby", "inactive", "unknown", "decommissioned"];
+
+/** A figure that opens the page behind it (a plain box without a link). */
+const Figure = ({ label, value, to, detail }) => {
+    const body = (
+        <>
+            <span className="ovd-figure-value">{hasValue(value) ? n(value) : "—"}</span>
+            <span className="ovd-figure-label">{label}</span>
+            {detail && <span className="amo-figure-detail">{detail}</span>}
+        </>
+    );
+    return to ? <Link to={to} className="ovd-figure">{body}</Link> : <div className="ovd-figure amo-static">{body}</div>;
+};
+
+/** Values with bars to scale, each a link to the filtered asset list; the rest as "Other". */
+const BarList = ({ title, rows, unset, unsetLabel, name = (r) => r.name }) => {
+    const max = Math.max(1, ...rows.map((r) => r.count));
     return (
-        <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
-            {n(`${(percent * 100).toFixed(0)}%`)}
-        </text>
+        <section className="ovd-card amo-bars">
+            <h3 className="amo-subtitle">{title}</h3>
+            {rows.length === 0 ? <p className="ovd-muted">{t("No data")}</p> : (
+                <ul>
+                    {rows.map((r, i) => {
+                        const inner = (
+                            <>
+                                <span className="amo-bar-name" title={r.other ? undefined : name(r)}><bdi>{r.other ? t("Other") : name(r)}</bdi></span>
+                                <span className="amo-bar-track" aria-hidden="true"><span style={{ width: `${(100 * r.count) / max}%` }} /></span>
+                                <span className="amo-bar-count">{n(r.count)}</span>
+                            </>
+                        );
+                        return <li key={r.key ?? `other-${i}`}>{r.link ? <Link to={r.link} className="amo-bar">{inner}</Link>
+                            : <div className="amo-bar amo-static">{inner}</div>}</li>;
+                    })}
+                </ul>
+            )}
+            {unset > 0 && <p className="amo-unset">{unsetLabel}: <b>{n(unset)}</b></p>}
+        </section>
     );
 };
 
 export const AssetManagementDashboard = () => {
-    const dispatch = useDispatch();
-    const { assets, isLoading } = useSelector((state) => state.assets);
-    const { assetTypes } = useAssetFormOptions();
+    const [data, setData] = useState(null);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        dispatch(fetchAssets());
-    }, [dispatch]);
+        let alive = true;
+        api.get("/api/dashboard/assets")
+            .then(({ data: d }) => alive && setData(d))
+            .catch((e) => alive && setError(e.response?.data?.detail || t("Could not load the assets overview")));
+        return () => { alive = false; };
+    }, []);
 
-    const stats = useMemo(() => {
-        if (!assets || assets.length === 0) return null;
+    if (error) return <div className="ovd-page"><p className="ovd-state ovd-state-error">{tb(error)}</p></div>;
+    if (!data) return <div className="ovd-page"><p className="ovd-state">{t("Loading dashboard…")}</p></div>;
 
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
-
-        const total     = assets.length;
-        const active    = assets.filter(a => a.status === "active").length;
-        const inactive  = assets.filter(a => a.status !== "active").length;
-        const newAssets = assets.filter(a => a.created_at && new Date(a.created_at) >= thirtyDaysAgo).length;
-        const critical  = assets.filter(a => a.risk_level === "critical").length;
-
-        // Asset Type chart — با resolve از assetTypes
-        const typeMap = {};
-        assets.forEach(a => {
-            const assetType = assetTypes.find(t => t.id === a.asset_type_id);
-            const key = assetType?.type_name || a.asset_type_name || tr("Unknown");
-            typeMap[key] = (typeMap[key] || 0) + 1;
-        });
-        const typeData = Object.entries(typeMap)
-            .filter(([k]) => k !== "Unknown")
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 8);
-
-        // Vendor chart
-        const vendorMap = {};
-        assets.forEach(a => {
-            const key = a.manufacturer || tr("Unknown");
-            vendorMap[key] = (vendorMap[key] || 0) + 1;
-        });
-        const vendorData = Object.entries(vendorMap)
-            .filter(([k]) => k !== "Unknown")
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 8);
-
-        // OS chart
-        const osMap = {};
-        assets.forEach(a => {
-            if (a.os_name) {
-                osMap[a.os_name] = (osMap[a.os_name] || 0) + 1;
-            }
-        });
-        const osData = Object.entries(osMap)
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 6);
-
-        return { total, active, inactive, newAssets, critical, typeData, vendorData, osData };
-    }, [assets, assetTypes]);
-
-    if (isLoading) {
-        return (
-            <div className="amd-loading">
-                <div className="amd-spinner" />
-                <p>{tr("Loading dashboard…")}</p>
-            </div>
-        );
-    }
-
-    const statCards = [
-        { label: tr("Total Assets"),        value: stats?.total     ?? 0, color: "#1e3a5f" },
-        { label: tr("Active Assets"),        value: stats?.active    ?? 0, color: "#27ae60" },
-        { label: tr("Inactive Assets"),      value: stats?.inactive  ?? 0, color: "#e74c3c" },
-        { label: tr("New Assets (30 Days)"), value: stats?.newAssets ?? 0, color: "#f39c12" },
-        {
-            label: tr("Critical Assets"),
-            value: stats?.critical ?? 0,
-            color: "#8e44ad",
-            // Every other card on this page counts asset_inventory, and this is
-            // the value the user picks in the asset form. The risk engine's own
-            // computed level is a different number with its own card on the
-            // Risk Intelligence screen.
-            hint: tr("Assets marked Critical in the asset form"),
-        },
-    ];
+    const { totals, license, unknown_devices: unknown } = data;
+    const licenseText = license.unlimited ? t("Unlimited")
+        : license.max_assets ? t("{{used}} of {{max}}", { used: n(license.used), max: n(license.max_assets) }) : null;
+    const coverage = coverageRows({ coverage: data.coverage });
+    const statusRows = STATUS_ORDER.filter((s) => totals.by_status[s])
+        .map((s) => ({ key: s, name: tv(s), count: totals.by_status[s], link: `/assets/inventory?status=${s}` }));
 
     return (
-        <div className="amd-container">
-            <h1 className="amd-title">{tr("Asset Management Dashboard")}</h1>
-
-            {/* ── کارت‌های آماری ── */}
-            <div className="amd-stats-grid">
-                {statCards.map((card) => (
-                    <div key={card.label} className="amd-stat-card" title={card.hint}>
-                        <div className="amd-stat-value" style={{ color: card.color }}>
-                            {n(card.value)}
-                        </div>
-                        <div className="amd-stat-label">{card.label}</div>
-                    </div>
-                ))}
+        <div className="ovd-page">
+            <div className="amo-head">
+                <Link to="/assets/inventory" className="ovd-more">{t("Open the asset list")}</Link>
             </div>
 
-            {/* ── دو Pie Chart ── */}
-            <div className="amd-charts-grid">
-
-                {/* Asset Type */}
-                <div className="amd-chart-card">
-                    <h3 className="amd-chart-title">{tr("Asset Type")}</h3>
-                    {stats?.typeData?.length > 0 ? (
-                        <>
-                            <ResponsiveContainer width="100%" height={200}>
-                                <PieChart>
-                                    <Pie
-                                        data={stats.typeData}
-                                        cx="50%" cy="50%"
-                                        innerRadius={55} outerRadius={90}
-                                        dataKey="value"
-                                        labelLine={false}
-                                        label={renderCustomLabel}
-                                    >
-                                        {stats.typeData.map((_, i) => (
-                                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip formatter={(value, name) => [n(value), tv(name)]} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                            <div className="amd-legend">
-                                {stats.typeData.map((item, i) => (
-                                    <div key={item.name} className="amd-legend-item">
-                                        <div className="amd-legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
-                                        <span className="amd-legend-text"><bdi>{tv(item.name)}</bdi>: <strong>{n(item.value)}</strong></span>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    ) : (
-                        <div className="amd-empty">{tr("No data")}</div>
-                    )}
-                </div>
-
-                {/* Vendor */}
-                <div className="amd-chart-card">
-                    <h3 className="amd-chart-title">{tr("Vendor")}</h3>
-                    {stats?.vendorData?.length > 0 ? (
-                        <>
-                            <ResponsiveContainer width="100%" height={200}>
-                                <PieChart>
-                                    <Pie
-                                        data={stats.vendorData}
-                                        cx="50%" cy="50%"
-                                        innerRadius={55} outerRadius={90}
-                                        dataKey="value"
-                                        labelLine={false}
-                                        label={renderCustomLabel}
-                                    >
-                                        {stats.vendorData.map((_, i) => (
-                                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip formatter={(value, name) => [n(value), tv(name)]} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                            <div className="amd-legend">
-                                {stats.vendorData.map((item, i) => (
-                                    <div key={item.name} className="amd-legend-item">
-                                        <div className="amd-legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
-                                        <span className="amd-legend-text"><bdi>{tv(item.name)}</bdi>: <strong>{n(item.value)}</strong></span>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    ) : (
-                        <div className="amd-empty">{tr("No data")}</div>
-                    )}
-                </div>
-            </div>
-
-            {/* ── Bar Chart OS ── */}
-            <div className="amd-chart-card">
-                <h3 className="amd-chart-title">{tr("Operating Systems")}</h3>
-                {stats?.osData?.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={stats.osData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                            <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#6b7280" }} angle={-20} textAnchor="end" interval={0} />
-                            <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} allowDecimals={false} tickFormatter={(v) => n(v)} />
-                            <Tooltip formatter={(value) => n(value)} />
-                            <Bar dataKey="value" fill="#1e3a5f" radius={[6, 6, 0, 0]}
-                                 label={{ position: "inside", fill: "white", fontSize: 12, fontWeight: 600, formatter: (v) => n(v) }} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <div className="amd-empty">{tr("No OS data available")}</div>
+            <div className="amo-figures">
+                <Figure label={t("Assets in the inventory")} value={totals.total} to="/assets/inventory" />
+                <Figure label={t("Added in the last 7 days")} value={totals.new_7d} to="/assets/inventory?added=7" />
+                <Figure label={t("Added in the last 30 days")} value={totals.new_30d} to="/assets/inventory?added=30" />
+                {licenseText && (
+                    <Figure label={t("License use")} value={license.unlimited ? null : license.used}
+                            detail={license.over_limit ? t("Over the license: some assets are not covered") : licenseText} />
+                )}
+                {unknown && (
+                    <Figure label={t("Unknown devices on the network")} value={unknown.open} to={unknown.link}
+                            detail={unknown.new_7d ? t("{{count}} new this week", { count: n(unknown.new_7d) }) : null} />
                 )}
             </div>
+
+            <section className="ovd-section">
+                <h2 className="ovd-title">{t("Missing details")}</h2>
+                <div className="amo-quality">
+                    {data.quality.map((q) => (q.count ? (
+                        <Link key={q.key} to={q.link} className="amo-quality-item is-missing">
+                            <span className="amo-quality-count">{n(q.count)}</span>
+                            <span>{QUALITY_LABELS[q.key] || q.key}</span>
+                            <i className="fa-solid fa-chevron-right ovd-action-go" aria-hidden="true" />
+                        </Link>
+                    ) : (
+                        <div key={q.key} className="amo-quality-item is-done">
+                            <i className="fa-solid fa-circle-check" aria-hidden="true" />
+                            <span>{QUALITY_LABELS[q.key] || q.key}: {t("none")}</span>
+                        </div>
+                    )))}
+                </div>
+            </section>
+
+            {coverage.length > 0 && (
+                <section className="ovd-section">
+                    <h2 className="ovd-title">{t("Coverage")}</h2>
+                    <div className="ovd-coverage">
+                        {coverage.map((c) => (
+                            <Link key={c.key} to={c.link} className="ovd-card ovd-cover">
+                                <span className="ovd-cover-label">{c.label}</span>
+                                <span className="ovd-cover-value">{hasValue(c.pct) ? n(`${c.pct}%`) : "—"}</span>
+                                <span className="ovd-cover-bar" aria-hidden="true">
+                                    <span style={{ width: `${c.pct ?? 0}%` }} className={c.pct >= 80 ? "is-good" : c.pct >= 50 ? "is-mid" : "is-low"} />
+                                </span>
+                                <span className="ovd-cover-detail">
+                                    {t("{{covered}} of {{total}}", { covered: n(c.covered), total: n(c.total) })} {c.unit}
+                                </span>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <section className="ovd-section">
+                <h2 className="ovd-title">{t("What the inventory holds")}</h2>
+                <div className="amo-grid">
+                    <BarList title={t("Asset Type")} rows={data.by_type} name={(r) => tv(r.name)}
+                             unset={data.unclassified.type} unsetLabel={t("No type")} />
+                    <BarList title={t("Vendor")} rows={data.by_vendor} unset={data.unclassified.vendor} unsetLabel={t("No vendor")} />
+                    <BarList title={t("Operating Systems")} rows={data.by_os} unset={data.unclassified.os} unsetLabel={t("No operating system")} />
+                    <BarList title={t("Status")} rows={statusRows} />
+                    {data.by_zone.length > 0 && <BarList title={t("Zone")} rows={data.by_zone} name={(r) => tv(r.name)} />}
+                </div>
+            </section>
+
+            <section className="ovd-card">
+                <h2 className="ovd-title">{t("Added last")}</h2>
+                <div className="ovd-table-wrap">
+                    <table className="ovd-table">
+                        <thead>
+                            <tr><th>{t("Asset")}</th><th>{t("Type")}</th><th>{t("IP address")}</th><th>{t("Added")}</th></tr>
+                        </thead>
+                        <tbody>
+                            {data.newest.length === 0 && <tr><td colSpan={4} className="ovd-empty">{t("No assets yet.")}</td></tr>}
+                            {data.newest.map((a) => (
+                                <tr key={a.id}>
+                                    <td><Link to={`/assets/inventory/${a.id}`} className="ovd-asset">{a.name}</Link></td>
+                                    <td>{a.type ? tv(a.type) : "—"}</td>
+                                    <td><span dir="ltr">{a.ip_address || "—"}</span></td>
+                                    <td>{formatDate(a.created_at)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     );
 };

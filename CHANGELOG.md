@@ -27,6 +27,21 @@
   (`?view=overdue`).
 - New endpoint `GET /api/dashboard/overview`.
 
+### Assets overview
+
+- Rebuilt around the state of the inventory: assets added in the last 7
+  and 30 days, license use and unknown devices NOC saw on the network;
+  missing details (no owner, IP address, operating system, location, or a
+  risk zone never chosen); coverage by audits, configuration backups, SNMP
+  monitoring and end-of-life data; the mix by type, vendor, operating
+  system, status and zone; and the assets added last.
+- Every figure, card and bar opens the asset list filtered to what it
+  counts. The asset list reads its filters from the address
+  (`?missing=owner|ip|os|location`, `?type=`, `?vendor=`, `?os=`,
+  `?status=`, `?added=<days>`) and shows each as a chip that removes it.
+- New endpoint `GET /api/dashboard/assets` (asset list read access; the
+  coverage of other modules and the unknown devices need their own).
+
 ### In-app help
 
 - A help button ("?" in the header, or the "?" key) on every page opens that

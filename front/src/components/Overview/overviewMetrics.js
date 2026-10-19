@@ -104,6 +104,7 @@ export const COVERAGE_LABELS = {
     audited: { label: t("Audited in the last 90 days"), unit: t("of all assets") },
     backed_up: { label: t("Configuration backed up in the last 30 days"), unit: t("of the devices that can be backed up") },
     monitored: { label: t("Monitored over SNMP"), unit: t("of all assets") },
+    eol_known: { label: t("End-of-life status known"), unit: t("of all assets") },
 };
 
 /** Coverage rows with their share; a module with nothing to cover shows no share, not 0%. */
