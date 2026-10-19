@@ -240,68 +240,99 @@ def _get_asset_or_404(db: Session, asset_id: int) -> Asset:
 def _hardening_impact(
     db: Session, asset_id: int, score: Optional[AssetRiskScore]
 ) -> dict:
-    """Baseline-vs-current risk comparison around this asset's first hardening.
+    """What hardening changed since the audit the score reads.
 
-    Baseline = the last risk history snapshot recorded *before* the earliest
-    hardening execution. Lets the UI show how much hardening reduced risk.
-    All fields are null when the asset has never been hardened, and only the
-    baseline fields are null when no history predates the first hardening.
+    Before = just after that audit, now = today:
+      findings   failed applicable controls: before, those failing now plus
+                 those a change was run for (a fix that set its finding to
+                 PASS - Linux, Windows, ... - or a FortiGate/Cisco finding
+                 that still reads FAIL until a re-audit);
+      audit risk the AF formula on those findings (weights by severity);
+      risk score the last score recorded before the first change, and now.
+    Risk acceptances, NOT_APPLICABLE/ERROR and excluded controls are left
+    out as in the score. `hardened` is False when nothing ran since the
+    audit; `last_hardened_at` then still says when the asset last was.
     """
-    empty = {
-        "baseline_score": None,
-        "baseline_level": None,
-        "baseline_date": None,
-        "current_score": None,
-        "current_level": None,
-        "reduction": None,
-        "reduction_percent": None,
-    }
+    from app.modules.remediation.service import accepted_refs, audit_ref
+    from app.modules.risk.service import risk_calculation_service as calc
 
-    # Earliest hardening execution for this asset. min() ignores NULL
-    # executed_at values (preview rows), so this is the first real change.
-    first_hardening_date = (
-        db.query(func.min(HardeningAction.executed_at))
-        .filter(HardeningAction.asset_id == asset_id)
+    session_id = score.audit_id if score else None
+    last_ever = (
+        db.query(func.max(HardeningAction.executed_at))
+        .filter(HardeningAction.asset_id == asset_id, HardeningAction.action_type != "preview")
         .scalar()
     )
-    if first_hardening_date is None:
-        return empty
+    out = {
+        "audit_session_id": session_id,
+        "hardened": False,
+        "last_hardened_at": _dt(last_ever),
+        "changes": 0, "verified": 0, "failed": 0, "awaiting_reaudit": 0,
+        "first_change_at": None, "last_change_at": None,
+        "findings_before": None, "findings_now": None,
+        "audit_risk_before": None, "audit_risk_now": None,
+        "risk_before": None, "risk_before_level": None, "risk_before_at": None,
+        "risk_now": _num(score.final_risk_score) if score else None,
+        "risk_now_level": score.risk_level if score else None,
+    }
+    if session_id is None:
+        return out
+    actions = (
+        db.query(HardeningAction)
+        .filter(HardeningAction.audit_session_id == session_id,
+                HardeningAction.action_type != "preview",
+                HardeningAction.executed_at.isnot(None))
+        .all()
+    )
+    if not actions:
+        return out
 
-    current_score = _num(score.final_risk_score) if score else None
-    current_level = score.risk_level if score else None
+    settings = calc._load_settings(db)
+    accepted = accepted_refs(db, asset_id, "audit")
+    acted = {a.audit_result_id for a in actions}
+    verified = {a.audit_result_id for a in actions if a.status == "success" and a.verification_passed is True}
+    applicable = weight_before = weight_now = 0.0
+    before = now = awaiting = 0
+    for r in db.query(AuditResult).filter(AuditResult.session_id == session_id):
+        if r.status in (CheckStatus.NOT_APPLICABLE, CheckStatus.ERROR) or r.policy == "excluded":
+            continue
+        weight = calc._severity_weight(r.severity, settings)
+        applicable += weight
+        if accepted and audit_ref(r.check_number, r.vdom) in accepted:
+            continue
+        failing = r.status == CheckStatus.FAIL
+        if failing:
+            now += 1
+            weight_now += weight
+            if r.id in verified:
+                awaiting += 1
+        if failing or r.id in acted:
+            before += 1
+            weight_before += weight
 
-    baseline_row = (
+    first = min(a.executed_at for a in actions)
+    baseline = (
         db.query(AssetRiskHistory)
-        .filter(
-            AssetRiskHistory.asset_id == asset_id,
-            AssetRiskHistory.calculated_at < first_hardening_date,
-        )
+        .filter(AssetRiskHistory.asset_id == asset_id, AssetRiskHistory.calculated_at < first)
         .order_by(AssetRiskHistory.calculated_at.desc())
         .first()
     )
-
-    baseline_score = _num(baseline_row.risk_score) if baseline_row else None
-    baseline_level = baseline_row.risk_level if baseline_row else None
-    baseline_date = _dt(baseline_row.calculated_at) if baseline_row else None
-
-    reduction = None
-    reduction_percent = None
-    if baseline_score is not None and current_score is not None:
-        reduction = round(baseline_score - current_score, 2)
-        if baseline_score != 0:
-            reduction_percent = round(
-                100.0 * (baseline_score - current_score) / baseline_score, 2
-            )
-
-    return {
-        "baseline_score": baseline_score,
-        "baseline_level": baseline_level,
-        "baseline_date": baseline_date,
-        "current_score": current_score,
-        "current_level": current_level,
-        "reduction": reduction,
-        "reduction_percent": reduction_percent,
-    }
+    out.update(
+        hardened=True,
+        changes=len(actions),
+        verified=len(verified),
+        failed=sum(1 for a in actions if a.status == "failed"),
+        awaiting_reaudit=awaiting,
+        first_change_at=_dt(first),
+        last_change_at=_dt(max(a.executed_at for a in actions)),
+        findings_before=before,
+        findings_now=now,
+        audit_risk_before=round(100.0 * weight_before / applicable, 2) if applicable else None,
+        audit_risk_now=round(100.0 * weight_now / applicable, 2) if applicable else None,
+        risk_before=_num(baseline.risk_score) if baseline else None,
+        risk_before_level=baseline.risk_level if baseline else None,
+        risk_before_at=_dt(baseline.calculated_at) if baseline else None,
+    )
+    return out
 
 
 def _settings_dict(db: Session) -> Dict[str, Any]:

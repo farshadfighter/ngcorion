@@ -143,3 +143,46 @@ def test_what_is_not_recorded(db, audit):
                               results=[unverified, manual, unknown]) == 1
     action = _actions(db, session)["LNX-1"]
     assert (action.status, action.verification_passed) == ("success", None)   # ran, but nothing verified it
+
+
+def _impact(db, asset):
+    from app.models.risk import AssetRiskScore
+    from app.modules.risk.router import _hardening_impact
+    score = db.query(AssetRiskScore).filter(AssetRiskScore.asset_id == asset.id).one()
+    return _hardening_impact(db, asset.id, score)
+
+
+def test_hardening_impact_before_and_now(db, audit, monkeypatch):
+    """The risk detail's Hardening Impact: findings and audit risk just after the audit and now, the risk score
+    before the first change and now."""
+    user, asset, session = audit
+    risk_calculation_service.calculate(asset_id=asset.id, db=db, trigger_type="audit_completed")
+    db.commit()
+    assert _impact(db, asset)["hardened"] is False
+
+    monkeypatch.setattr(linux_service, "LinuxHardeningBatchExecutor", FakeExecutor)
+    linux_service.LinuxHardeningService.batch_execute_selected(
+        db=db, session_id=session.id, asset_id=asset.id, ssh_username="u", ssh_password="p", sudo_password=None,
+        checks=[{"check_id": "LNX-1", "parameters": {}}, {"check_id": "LNX-2", "parameters": {}}], user_id=user.id)
+    risk_calculation_service.calculate(asset_id=asset.id, db=db, trigger_type="hardening_verified")
+    db.commit()
+
+    impact = _impact(db, asset)
+    assert impact["hardened"] is True and impact["audit_session_id"] == session.id
+    assert (impact["changes"], impact["verified"], impact["failed"], impact["awaiting_reaudit"]) == (2, 1, 1, 0)
+    assert (impact["findings_before"], impact["findings_now"]) == (3, 2)        # LNX-1 now passes
+    assert impact["audit_risk_before"] == 100.0
+    assert 0 < impact["audit_risk_now"] < 100.0                                 # the high one is fixed
+    assert impact["risk_before"] is not None and impact["risk_now"] < impact["risk_before"]
+    assert impact["first_change_at"] and impact["last_hardened_at"]
+
+
+def test_a_verified_fix_still_failing_waits_for_the_reaudit(db, audit):
+    """Cisco and FortiGate fixes leave the finding FAIL until the next audit: it counts in both, and is named."""
+    user, asset, session = audit
+    risk_calculation_service.calculate(asset_id=asset.id, db=db, trigger_type="audit_completed")
+    record_fix_results(db, session_id=session.id, asset_id=asset.id, user_id=user.id, results=[_fixed("LNX-3")])
+    risk_calculation_service.calculate(asset_id=asset.id, db=db, trigger_type="hardening_verified")
+    db.commit()
+    impact = _impact(db, asset)
+    assert (impact["findings_before"], impact["findings_now"], impact["awaiting_reaudit"]) == (3, 3, 1)

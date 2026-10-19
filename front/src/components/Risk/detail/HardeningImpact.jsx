@@ -1,78 +1,83 @@
 import React from "react";
+import { Link } from "react-router-dom";
+
+import { barWidths, impactDelta, impactRows } from "./hardeningImpact";
+import { formatDate, formatDateTime } from "../../../utils/dates";
 import { t, n } from "../../../i18n";
 
 /**
- * "Hardening Impact": three before/after comparisons, each with a progress bar.
- * Figma: 12px track rx=6 (#DBDBDB) with a #14213D fill at 90% opacity.
- *
- * The "prior to hardening" figures have no backend source — asset_risk_history
- * records score changes but nothing marks which row predates hardening — so the
- * right-hand column and the bars render as pending. See
- * RISK_FRONTEND_BACKEND_REQUIREMENTS.md.
+ * "Hardening Impact": what hardening changed since the audit the score reads - failed controls and audit
+ * risk just after that audit and now, the risk score before the first change and now. Without a change
+ * since the audit, says so and opens hardening.
  */
-const Row = ({ label, value, priorLabel, priorValue }) => {
-    const hasPrior = priorValue !== null && priorValue !== undefined;
-    const ratio =
-        hasPrior && Number(priorValue) > 0
-            ? Math.min(100, (Number(value) / Number(priorValue)) * 100)
-            : 0;
-
+const Row = ({ label, before, now, missing, rose }) => {
+    const delta = impactDelta(before, now);
+    const [wBefore, wNow] = barWidths(before, now);
+    const tone = delta === null ? "" : delta < 0 ? "is-good" : delta > 0 ? "is-bad" : "is-flat";
     return (
-        <div className="ard-impact-row">
-            <div className="ard-impact-cols">
-                <div className="ard-impact-box">
-                    <span className="ard-impact-label">{label}</span>
-                    <span className="ard-impact-value">
-                        {value === null || value === undefined ? "-" : n(value)}
-                    </span>
-                </div>
-                <div className="ard-impact-prior">
-                    <span className="ard-impact-label">{priorLabel}</span>
-                    <span className="ard-impact-value ard-cell-pending">
-                        {hasPrior ? n(priorValue) : "—"}
-                    </span>
-                </div>
+        <div className="hri-row">
+            <span className="hri-label">{label}</span>
+            <div className="hri-values">
+                <span className="hri-value is-before">
+                    <small>{t("Before")}</small>
+                    <b>{before === null ? "—" : n(before)}</b>
+                </span>
+                <i className="fa-solid fa-arrow-right hri-arrow" aria-hidden="true" />
+                <span className="hri-value is-now">
+                    <small>{t("Now")}</small>
+                    <b>{now === null ? "—" : n(now)}</b>
+                </span>
+                {delta !== null && <span className={`hri-delta ${tone}`} dir="ltr">{n(delta > 0 ? `+${delta}` : `${delta}`)}</span>}
             </div>
-            <div className="ard-progress" role="presentation">
-                <div className="ard-progress-fill" style={{ width: `${ratio}%` }} />
+            <div className="hri-bars" aria-hidden="true">
+                <span className="hri-bar is-before" style={{ width: `${wBefore}%` }} />
+                <span className="hri-bar is-now" style={{ width: `${wNow}%` }} />
             </div>
+            {missing && <p className="hri-muted">{missing}</p>}
+            {rose && impactDelta(before, now) > 0 && <p className="hri-muted">{rose}</p>}
         </div>
     );
 };
 
-export const HardeningImpact = ({ score, auditSummary, impact }) => (
-    <section className="ard-card">
-        <h3 className="ard-card-title">{t("Hardening Impact")}</h3>
-
-        <Row
-            label={t("Number of Fixed Findings")}
-            value={
-                auditSummary?.resolved_by_hardening ??
-                score?.resolved_by_hardening_count ??
-                null
-            }
-            priorLabel={t("Number of Findings prior to Hardening")}
-            priorValue={null}
-        />
-        <Row
-            label={t("Current Audit Risk")}
-            value={score?.audit_risk_score ?? null}
-            priorLabel={t("Audit Risk Prior to Hardening")}
-            priorValue={null}
-        />
-        <Row
-            label={t("Current Risk Score")}
-            value={impact?.current_score ?? score?.final_risk_score ?? null}
-            priorLabel={t("Risk Score Before Hardening")}
-            priorValue={impact?.baseline_score ?? null}
-        />
-
-        {/* GET /api/risk/assets/{id} baselines the risk score only; findings
-            and audit-risk have no pre-hardening snapshot yet. */}
-        <p className="ard-notice ard-notice-inline">
-            {t("Findings and audit-risk comparisons still need a pre-hardening baseline from the backend.")}
-        </p>
-    </section>
-);
+export const HardeningImpact = ({ impact }) => {
+    const i = impact || {};
+    return (
+        <section className="ard-card hri">
+            <h3 className="ard-card-title">{t("Hardening Impact")}</h3>
+            {i.hardened ? (
+                <>
+                    <p className="hri-sub">
+                        {t("Since audit {{id}}: first change {{first}}, last change {{last}}.", {
+                            id: i.audit_session_id, first: formatDateTime(i.first_change_at),
+                            last: formatDateTime(i.last_change_at),
+                        })}
+                    </p>
+                    <div className="hri-rows">
+                        {impactRows(i).map((r) => <Row key={r.key} {...r} />)}
+                    </div>
+                    <p className="hri-foot">
+                        {t("{{changes}} changes run: {{verified}} verified, {{failed}} failed.", {
+                            changes: i.changes, verified: i.verified, failed: i.failed,
+                        })}
+                        {i.awaiting_reaudit > 0 && (
+                            <>
+                                {" "}{t("{{fixed}} fixed controls still count as failed until the next audit.", { fixed: i.awaiting_reaudit })}
+                                {" "}<Link to="/audit/sessions">{t("Run audits")}</Link>
+                            </>
+                        )}
+                    </p>
+                </>
+            ) : (
+                <div className="hri-empty">
+                    <p>{t("Nothing has been hardened since the last audit.")}</p>
+                    {i.last_hardened_at && (
+                        <p className="hri-muted">{t("Last hardened {{when}}, before this audit.", { when: formatDate(i.last_hardened_at) })}</p>
+                    )}
+                    <Link to="/hardening" className="hri-btn">{t("Harden failed controls")}</Link>
+                </div>
+            )}
+        </section>
+    );
+};
 
 export default HardeningImpact;

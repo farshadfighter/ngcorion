@@ -8,7 +8,7 @@ The assets sorted by risk score, worst first. Click one to open its risk page: s
 2. **Criticality, confidentiality and zone:** they come from the Asset list.
 3. **Audit findings:** failed controls with severity, actual value and hardening status.
 4. **Open ports:** with each port's severity and whether it counts in the risk.
-5. **Hardening impact:** how many findings hardening fixed and the current audit risk.
+5. **Hardening impact:** since the last audit: failed controls and audit risk just after the audit and now, and the risk score before the first change and now. Cisco and FortiGate fixes count as failed until the next audit; the card says how many. The risk score also moves with everything else that changed since (new CVEs, open ports).
 6. **Risk history:** every recalculation and its trigger (audit, hardening, zone change, risk acceptance …).
 
 ## Change the zone or criticality

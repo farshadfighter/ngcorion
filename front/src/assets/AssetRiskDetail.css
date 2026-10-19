@@ -252,66 +252,169 @@
 
 /* ── Hardening impact ────────────────────────────────────────────────────── */
 
-.ard-impact-row {
-    margin-bottom: 28px;
+.hri-sub {
+    margin: -12px 0 20px;
+    text-align: center;
+    color: #6B7280;
+    font-size: 13px;
 }
 
-.ard-impact-cols {
+.hri-rows {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 24px;
-    align-items: center;
-    margin-bottom: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+    gap: 16px;
 }
 
-.ard-impact-box,
-.ard-impact-prior {
+.hri-row {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 16px 20px;
-    border-radius: 5px;
-    text-align: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 16px 18px;
+    border: 1px solid #E5E9F0;
+    border-radius: 10px;
 }
 
-.ard-impact-box {
-    background: #14213D;
-    color: #ffffff;
-}
-
-.ard-impact-box .ard-impact-label {
-    color: rgba(255, 255, 255, 0.85);
-}
-
-.ard-impact-box .ard-impact-value {
-    color: #ffffff;
-}
-
-.ard-impact-label {
+.hri-label {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     color: #4A5568;
 }
 
-.ard-impact-value {
-    font-size: 22px;
-    font-weight: 700;
+.hri-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 14px;
+}
+
+.hri-value {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hri-value small {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #8A94A6;
+}
+
+.hri-value b {
+    font-size: 24px;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.hri-value.is-before b {
+    color: #8A94A6;
+}
+
+.hri-value.is-now b {
     color: #14213D;
 }
 
-/* Figma: 12px track, rx 6. */
-.ard-progress {
-    height: 12px;
-    border-radius: 6px;
-    background: #DBDBDB;
-    overflow: hidden;
+.hri-arrow {
+    margin-bottom: 6px;
+    color: #B4BCC8;
+    font-size: 13px;
 }
 
-.ard-progress-fill {
-    height: 100%;
-    border-radius: 6px;
-    background: rgba(20, 33, 61, 0.9);
+[dir="rtl"] .hri-arrow {
+    transform: scaleX(-1);
+}
+
+.hri-delta {
+    margin-inline-start: auto;
+    margin-bottom: 4px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: #EEF1F6;
+    color: #4A5568;
+}
+
+.hri-delta.is-good {
+    background: #E6F4EA;
+    color: #1E7B34;
+}
+
+.hri-delta.is-bad {
+    background: #FDECEA;
+    color: #B42318;
+}
+
+.hri-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hri-bar {
+    display: block;
+    height: 8px;
+    min-width: 2px;
+    border-radius: 4px;
     transition: width 0.3s ease;
+}
+
+.hri-bar.is-before {
+    background: #D5DAE3;
+}
+
+.hri-bar.is-now {
+    background: #14213D;
+}
+
+.hri-muted {
+    margin: 0;
+    color: #8A94A6;
+    font-size: 12px;
+}
+
+.hri-foot {
+    margin: 16px 0 0;
+    color: #4A5568;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.hri-foot a {
+    color: #14213D;
+    font-weight: 700;
+}
+
+.hri-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    text-align: center;
+}
+
+.hri-empty p {
+    margin: 0;
+    color: #4A5568;
+    font-size: 14px;
+}
+
+.hri-btn {
+    margin-top: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: #14213D;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.hri-btn:hover {
+    background: #1F3360;
 }
 
 /* ── States ──────────────────────────────────────────────────────────────── */

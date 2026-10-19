@@ -63,7 +63,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Fix: Linux/Windows/SQL Server/Apache/MongoDB/benchmark hardening recorded; risk counts fixes already PASS | recorded with the next item |
+| Risk detail: Hardening Impact before/now (failed controls, audit risk, risk score) | recorded with the next item |
+| Fix: Linux/Windows/SQL Server/Apache/MongoDB/benchmark hardening recorded; risk counts fixes already PASS | 5979e48 |
 | Fix: OSV.dev HTTP 403 (refused by country) names a proxy, a mirror or an import | 4169673 |
 | Fix: Linux SSH on systemd 257+ (OSC 3008 prompt marks) failed every command with "Pattern not detected" | 47a3603 |
 | Fix: "Collect now" names a missing answer (timeout, server unreachable, 5xx without a message); a database error keeps its reason | 2133442 |

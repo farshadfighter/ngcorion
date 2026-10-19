@@ -4,6 +4,14 @@
 
 ### Fixes
 
+- Risk detail, Hardening Impact: the card showed only the number of
+  fixed findings, "before" values that were always empty, and a note to
+  developers. It now compares, since the audit the score reads, the failed
+  controls and the audit risk just after that audit with now, and the risk
+  score just before the first change with now, each with its change; says
+  how many changes ran (verified, failed) and how many fixed controls still
+  count until a re-audit (Cisco, FortiGate); and without a change since the
+  audit offers hardening.
 - Risk and hardening overview after hardening Linux (and Windows, SQL
   Server, Apache, MongoDB and the benchmark modules): the risk page said
   nothing was fixed by hardening. These services set a fixed finding to
