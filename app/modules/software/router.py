@@ -187,8 +187,9 @@ async def collect_now(asset_id: int, body: CollectIn, db: Session = Depends(get_
         logger.warning("[software] collect-now on asset %s (%s, %s) failed", asset_id, body.platform,
                        asset.ip_address, exc_info=True)
         error = _connect_error(exc, body.platform, f"{asset.ip_address}:{body.port or (22 if body.platform == 'linux' else 5985)}")
+        reason = error.detail[:200]
         _log(db, user, "software.collect", f"Software collection on {asset.asset_name} ({asset.ip_address}) "
-                                           f"failed: {error.detail[:200]}", target_id=asset_id, result="failed")
+                                           f"failed: {reason}", target_id=asset_id, result="failed")
         raise error
     if col is None or col.status != "ok":
         reason = (col.error if col is not None else None) or "Nothing could be collected"
