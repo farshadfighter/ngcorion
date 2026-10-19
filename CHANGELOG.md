@@ -42,6 +42,22 @@
 - New endpoint `GET /api/dashboard/assets` (asset list read access; the
   coverage of other modules and the unknown devices need their own).
 
+### Risk overview
+
+- Rebuilt around what builds the risk and where it sits: assets per level,
+  the average score, incomplete scores and assets with exploited
+  vulnerabilities; the average points each of the seven factors adds to
+  the scores and its share, each factor opening the page where it is
+  fixed; assets per zone and level; 90 days of the average score and of
+  the critical and high assets (from each asset's latest score at every
+  point); why scores are incomplete, with the action that fixes each; and
+  the ten riskiest assets with their main factor. The confidentiality and
+  level donuts and the monthly bar trend are gone.
+- Risk of assets reads `?level=`, `?zone=` and `?incomplete=1` from the
+  address, which every figure and matrix cell uses, and shows each as a
+  chip that removes it.
+- New endpoint `GET /api/dashboard/risk` (risk read access).
+
 ### In-app help
 
 - A help button ("?" in the header, or the "?" key) on every page opens that

@@ -63,7 +63,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Assets overview rebuilt (missing details, coverage, mix, filtered asset list) | recorded with the next item |
+| Risk overview rebuilt (factor shares, zone by level, trend, incomplete scores, filtered risk list) | recorded with the next item |
+| Assets overview rebuilt (missing details, coverage, mix, filtered asset list) | de30dcb |
 | Dashboard rebuilt (needs action, coverage, 90-day trends, top 10 with main factor) | 018d38a |
 | In-app help (every menu page, fa and en; search inside it and from the global search) | 20c931a |
 | 12 API keys (service account per key, scopes, expiry, address list, renew, revoke, expiry alert) | c7b6549 |

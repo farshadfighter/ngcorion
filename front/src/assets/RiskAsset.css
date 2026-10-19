@@ -8,160 +8,6 @@
     min-height: 100%;
 }
 
-/* ── Shared card ─────────────────────────────────────────────────────────── */
-
-.risk-card {
-    background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
-}
-
-.risk-card-title {
-    margin: 0;
-    padding: 24px 28px 8px;
-    font-size: 18px;
-    font-weight: 700;
-    color: #14213D;
-    text-align: center;
-}
-
-/* ── KPI band ────────────────────────────────────────────────────────────── */
-
-.risk-kpi-panel {
-    border-radius: 20px;
-    padding: 28px 24px;
-    margin-bottom: 24px;
-}
-
-/* Figma lays the KPI tiles out four per row. */
-.risk-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 20px;
-}
-
-@media (max-width: 1200px) {
-    .risk-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 640px) {
-    .risk-kpi-grid { grid-template-columns: 1fr; }
-}
-
-.risk-kpi {
-    /* Figma: 260x120, rx 5 */
-    min-height: 120px;
-    border: 1px solid #E3E6ED;
-    border-radius: 5px;
-    padding: 18px 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    text-align: center;
-    background: #ffffff;
-}
-
-.risk-kpi-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #4A5568;
-    line-height: 1.35;
-}
-
-.risk-kpi-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: #14213D;
-    line-height: 1;
-}
-
-/* Values the backend cannot supply yet render muted rather than as a fake 0. */
-.risk-kpi-value.is-unavailable {
-    font-size: 15px;
-    font-weight: 600;
-    color: #9AA5B5;
-}
-
-.risk-kpi-note {
-    font-size: 11px;
-    color: #9AA5B5;
-}
-
-/* ── Chart grid ──────────────────────────────────────────────────────────── */
-
-/* Figma: the 9th KPI sits alone and centred on its own row. */
-.risk-kpi:last-child:nth-child(4n + 1) {
-    grid-column: 2 / span 2;
-}
-
-@media (max-width: 1200px) {
-    .risk-kpi:last-child:nth-child(4n + 1) { grid-column: auto; }
-}
-
-/* Figma pairs the charts two per row. */
-.risk-chart-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
-    margin-bottom: 24px;
-}
-
-@media (max-width: 1000px) {
-    .risk-chart-grid { grid-template-columns: 1fr; }
-}
-
-.risk-chart-card {
-    display: flex;
-    flex-direction: column;
-    min-height: 420px;
-}
-
-.risk-chart-body {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 20px 12px;
-    min-height: 260px;
-}
-
-/* Keep placeholder text vertically centred in a card the same height as its
-   siblings, so a pending chart does not collapse the row. */
-.risk-chart-card .risk-chart-empty {
-    white-space: pre-line;
-}
-
-/* ── Donut legend ────────────────────────────────────────────────────────── */
-
-.risk-legend {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px 24px;
-    padding: 8px 40px 28px;
-}
-
-.risk-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: #14213D;
-}
-
-.risk-legend-swatch {
-    /* Figma: 20x20, rx 5 */
-    width: 20px;
-    height: 20px;
-    border-radius: 5px;
-    flex-shrink: 0;
-}
-
-.risk-legend-count {
-    font-weight: 700;
-}
-
 /* ── Notice bar ──────────────────────────────────────────────────────────── */
 
 /* Figma: 1426x93, rx 30, #14213D text on white. */
@@ -260,25 +106,6 @@
     border-radius: 10px;
     overflow-x: auto;
     box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
-}
-
-/* Top 10 table sits inside a card, so it drops the shadow and gains the
-   1px #CCCCCC frame from the Figma export. */
-.risk-table-wrapper--inset {
-    margin: 8px 24px 24px;
-    border: 1px solid #CCCCCC;
-    box-shadow: none;
-}
-
-.risk-table-card {
-    padding-bottom: 8px;
-}
-
-/* Denser rows than the standalone Risk Asset table — this is a summary. */
-.risk-table-wrapper--inset .risk-table td {
-    height: auto;
-    padding: 14px 18px;
-    border-bottom: 1px solid #EEF0F4;
 }
 
 .risk-table {
@@ -470,9 +297,11 @@
     color: #C0392B;
 }
 
-.risk-chart-empty {
-    color: #9AA5B5;
-    font-size: 13px;
-    text-align: center;
-    line-height: 1.6;
+/* Filters from the address (?level=, ?zone=, ?incomplete=1): one removable chip each. */
+.risk-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-inline-end: auto; }
+.risk-filter-chip {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 16px;
+    border: 1px solid #1e3a5f; background: #eef3f9; color: #1e3a5f; font: inherit; font-size: 13px;
+    font-weight: 600; cursor: pointer;
 }
+.risk-filter-chip:hover, .risk-filter-chip:focus-visible { background: #dde7f3; }

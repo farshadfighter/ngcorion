@@ -55,6 +55,10 @@ export const fetchRiskDashboard = createAsyncThunk(
                     page_size: sort?.pageSize || PAGE_SIZE,
                     sort_by: sort?.sortBy || "final_risk_score",
                     sort_order: sort?.sortOrder || "desc",
+                    // ?level=, ?zone=, ?incomplete=1 of the risk list (the risk overview's links)
+                    risk_level: sort?.riskLevel || undefined,
+                    zone_id: sort?.zoneId || undefined,
+                    incomplete_data: sort?.incomplete ? true : undefined,
                 },
             }),
             api.get("/api/risk/trend", { params: { months: 12 } }),

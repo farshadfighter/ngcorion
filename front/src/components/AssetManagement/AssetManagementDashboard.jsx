@@ -10,10 +10,9 @@ import { formatDate } from "../../utils/dates";
 import { tb, tv } from "../../i18n/backendText";
 import { t, n } from "../../i18n";
 import { coverageRows } from "../Overview/overviewMetrics";
+import { CoverageTiles, Figure } from "../Overview/DashboardParts";
 import "../../assets/OverviewDashboard.css";
 import "../../assets/AssetManagementDashboard.css";
-
-const hasValue = (v) => v !== null && v !== undefined;
 
 const QUALITY_LABELS = {
     no_owner: t("No owner"),
@@ -24,18 +23,6 @@ const QUALITY_LABELS = {
 };
 
 const STATUS_ORDER = ["active", "standby", "inactive", "unknown", "decommissioned"];
-
-/** A figure that opens the page behind it (a plain box without a link). */
-const Figure = ({ label, value, to, detail }) => {
-    const body = (
-        <>
-            <span className="ovd-figure-value">{hasValue(value) ? n(value) : "—"}</span>
-            <span className="ovd-figure-label">{label}</span>
-            {detail && <span className="amo-figure-detail">{detail}</span>}
-        </>
-    );
-    return to ? <Link to={to} className="ovd-figure">{body}</Link> : <div className="ovd-figure amo-static">{body}</div>;
-};
 
 /** Values with bars to scale, each a link to the filtered asset list; the rest as "Other". */
 const BarList = ({ title, rows, unset, unsetLabel, name = (r) => r.name }) => {
@@ -54,7 +41,7 @@ const BarList = ({ title, rows, unset, unsetLabel, name = (r) => r.name }) => {
                             </>
                         );
                         return <li key={r.key ?? `other-${i}`}>{r.link ? <Link to={r.link} className="amo-bar">{inner}</Link>
-                            : <div className="amo-bar amo-static">{inner}</div>}</li>;
+                            : <div className="amo-bar is-static">{inner}</div>}</li>;
                     })}
                 </ul>
             )}
@@ -91,7 +78,7 @@ export const AssetManagementDashboard = () => {
                 <Link to="/assets/inventory" className="ovd-more">{t("Open the asset list")}</Link>
             </div>
 
-            <div className="amo-figures">
+            <div className="ovd-figures-row">
                 <Figure label={t("Assets in the inventory")} value={totals.total} to="/assets/inventory" />
                 <Figure label={t("Added in the last 7 days")} value={totals.new_7d} to="/assets/inventory?added=7" />
                 <Figure label={t("Added in the last 30 days")} value={totals.new_30d} to="/assets/inventory?added=30" />
@@ -109,13 +96,13 @@ export const AssetManagementDashboard = () => {
                 <h2 className="ovd-title">{t("Missing details")}</h2>
                 <div className="amo-quality">
                     {data.quality.map((q) => (q.count ? (
-                        <Link key={q.key} to={q.link} className="amo-quality-item is-missing">
-                            <span className="amo-quality-count">{n(q.count)}</span>
+                        <Link key={q.key} to={q.link} className="ovd-tile is-missing">
+                            <span className="ovd-tile-count">{n(q.count)}</span>
                             <span>{QUALITY_LABELS[q.key] || q.key}</span>
                             <i className="fa-solid fa-chevron-right ovd-action-go" aria-hidden="true" />
                         </Link>
                     ) : (
-                        <div key={q.key} className="amo-quality-item is-done">
+                        <div key={q.key} className="ovd-tile is-done">
                             <i className="fa-solid fa-circle-check" aria-hidden="true" />
                             <span>{QUALITY_LABELS[q.key] || q.key}: {t("none")}</span>
                         </div>
@@ -126,20 +113,7 @@ export const AssetManagementDashboard = () => {
             {coverage.length > 0 && (
                 <section className="ovd-section">
                     <h2 className="ovd-title">{t("Coverage")}</h2>
-                    <div className="ovd-coverage">
-                        {coverage.map((c) => (
-                            <Link key={c.key} to={c.link} className="ovd-card ovd-cover">
-                                <span className="ovd-cover-label">{c.label}</span>
-                                <span className="ovd-cover-value">{hasValue(c.pct) ? n(`${c.pct}%`) : "—"}</span>
-                                <span className="ovd-cover-bar" aria-hidden="true">
-                                    <span style={{ width: `${c.pct ?? 0}%` }} className={c.pct >= 80 ? "is-good" : c.pct >= 50 ? "is-mid" : "is-low"} />
-                                </span>
-                                <span className="ovd-cover-detail">
-                                    {t("{{covered}} of {{total}}", { covered: n(c.covered), total: n(c.total) })} {c.unit}
-                                </span>
-                            </Link>
-                        ))}
-                    </div>
+                    <CoverageTiles rows={coverage} />
                 </section>
             )}
 

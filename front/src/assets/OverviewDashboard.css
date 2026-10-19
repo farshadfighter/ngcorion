@@ -33,6 +33,57 @@
 .ovd-more { font-size: 13px; font-weight: 600; color: #1E3A5F; text-decoration: none; margin-inline-start: auto; }
 .ovd-more:hover { text-decoration: underline; }
 
+/* ── Shared by the overview pages (components/Overview/DashboardParts.jsx and the pages) ─ */
+
+.ovd-figures-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 12px; }
+.ovd-figures-row .ovd-figure { background: #fff; box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08); border-color: transparent; }
+.ovd-figures-row .is-static:hover { border-color: transparent; background: #fff; }
+
+.amo-quality { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.ovd-tile {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px;
+    background: #fff; box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08); font-size: 13px; color: #14213D;
+    text-decoration: none; border-inline-start: 4px solid transparent;
+}
+.ovd-tile.is-missing { border-inline-start-color: #EAB308; }
+.ovd-tile.is-missing:hover, .ovd-tile.is-missing:focus-visible { box-shadow: 0 2px 8px rgba(20, 33, 61, 0.16); }
+.ovd-tile.is-missing span:nth-child(2) { flex: 1; }
+.ovd-tile-count { font-size: 20px; font-weight: 800; color: #A16207; font-variant-numeric: tabular-nums; }
+.ovd-tile.is-done { color: #3C4A63; box-shadow: none; background: #F0FDF4; border-inline-start-color: #16A34A; }
+.ovd-tile.is-done i { color: #16A34A; }
+
+/* ── Risk overview (components/Risk/RiskIntelDashboard.jsx) ──────────────── */
+
+.rio-row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; align-items: start; }
+.rio-stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 12px; }
+.rio-stack > span { height: 100%; }
+.rio-factors { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.rio-factor {
+    display: grid; grid-template-columns: 12px 1fr auto 44px; align-items: center; gap: 10px; padding: 7px 8px;
+    border-radius: 6px; text-decoration: none; color: #14213D; font-size: 13.5px;
+}
+.rio-factor:hover, .rio-factor:focus-visible { background: #F3F6FA; }
+.rio-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.rio-factor-name { font-weight: 600; }
+.rio-factor-points { font-size: 12px; color: #6C7A93; }
+.rio-factor-share { font-weight: 800; text-align: end; font-variant-numeric: tabular-nums; }
+.rio-matrix th:not(:first-child), .rio-matrix td:not(:first-child) { text-align: center; }
+.rio-cell { padding: 6px 4px !important; }
+.rio-cell.is-zero { color: #C3CAD5; }
+.rio-cell-link {
+    display: inline-block; min-width: 34px; padding: 4px 8px; border-radius: 6px; font-weight: 800;
+    text-decoration: none; font-variant-numeric: tabular-nums;
+}
+.rio-cell-link:hover, .rio-cell-link:focus-visible { outline: 2px solid #14213D; outline-offset: 1px; }
+.rio-total { font-weight: 700; }
+.ovd-muted-inline { color: #6C7A93; }
+.rio-reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.rio-action { font-size: 12px; font-weight: 700; color: #1E3A5F; white-space: nowrap; }
+.rio-incomplete { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rio-incomplete li { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; padding: 8px 4px; border-top: 1px solid #F3F4F6; font-size: 13px; }
+.rio-ip { color: #6C7A93; }
+.rio-why { color: #A16207; margin-inline-start: auto; }
+
 /* ── Row 1: score and its parts ──────────────────────────────────────────── */
 
 .ovd-row-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; }
@@ -62,6 +113,12 @@
 .ovd-figure:hover, .ovd-figure:focus-visible { border-color: #1E3A5F; background: #F3F6FA; }
 .ovd-figure-value { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .ovd-figure-label { font-size: 12px; color: #6C7A93; line-height: 1.4; }
+.ovd-figure-detail { font-size: 12px; color: #B45309; font-weight: 600; }
+.ovd-figure.is-static { cursor: default; }
+.ovd-figure.is-static:hover { border-color: #E5E9F0; background: #FAFBFC; }
+.ovd-figure-value.is-critical { color: #B91C1C; }
+.ovd-figure-value.is-high { color: #C2410C; }
+.ovd-figure-value.is-medium { color: #A16207; }
 
 .ovd-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .ovd-part {
@@ -142,6 +199,7 @@
 .ovd-asset:hover { text-decoration: underline; }
 .ovd-kev { margin-inline-start: 8px; padding: 1px 6px; border-radius: 6px; background: #FEE2E2; color: #991B1B; font-size: 10.5px; font-weight: 800; }
 .ovd-share { display: block; font-size: 11.5px; color: #6C7A93; }
+.ovd-table .ovd-part-warn { margin-inline-start: 6px; }
 .ovd-empty { text-align: center; color: #6C7A93; padding: 24px 10px; }
 
 /* ── States ──────────────────────────────────────────────────────────────── */
@@ -162,6 +220,10 @@
 .ov-risk-score {
     display: inline-block; min-width: 38px; padding: 4px 10px; border-radius: 6px; font-size: 13px;
     font-weight: 700; text-align: center; background: #E5E7EB; color: #374151;
+}
+
+@media (max-width: 1280px) {
+    .rio-row { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 1100px) {

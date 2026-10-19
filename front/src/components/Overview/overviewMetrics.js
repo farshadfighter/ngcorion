@@ -19,6 +19,9 @@ const EXPOSED_ZONES = new Set(["internet/public", "dmz"]);
 const zoneKey = (name) =>
     String(name || "").toLowerCase().replace(/\s*\/\s*/g, "/").trim();
 
+/** A value that is there (0 is a value). */
+export const hasValue = (v) => v !== null && v !== undefined;
+
 const round = (value) =>
     typeof value === "number" && Number.isFinite(value)
         ? Math.round(value)

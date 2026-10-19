@@ -1,27 +1,21 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { fetchOverviewDashboard } from "../../store/overviewDashboardSlice";
 import { tb } from "../../i18n/backendText";
 import {
     attentionItems,
     breakdownRows,
-    changeTone,
     coverageRows,
     criticalRisks,
     exposedAssets,
-    FACTOR_LABELS,
+    hasValue,
     riskFromSecurityScore,
 } from "./overviewMetrics";
-import { RiskLevelBadge } from "../Risk/RiskLevelBadge";
-import { RiskScoreBadge } from "./RiskScoreBadge";
-import { parseUtc } from "../../utils/dates";
+import { Change, CoverageTiles, Figure, TopAssets, TrendChart } from "./DashboardParts";
 import "../../assets/OverviewDashboard.css";
-import { t, n, uiLocale } from "../../i18n";
-
-const hasValue = (v) => v !== null && v !== undefined;
+import { t, n } from "../../i18n";
 
 /* The score reads as RISK, not health: higher is worse (see riskFromSecurityScore).
  * `width` is each band's true share of the 0-100 scale, so the needle (placed at `risk%`) and the
@@ -45,29 +39,6 @@ const riskBandFor = (risk) => {
 };
 
 const BAND_COLOR = Object.fromEntries(RISK_BANDS.map((b) => [b.key, b.color]));
-
-/** A 30-day change with its arrow, green when it is good news and red when it is not. */
-const Change = ({ value, higherIsBetter, unit = "" }) => {
-    const tone = changeTone(value, higherIsBetter);
-    if (!tone) return null;
-    const cls = tone.good === null ? "is-flat" : tone.good ? "is-good" : "is-bad";
-    const arrow = { up: "fa-arrow-up", down: "fa-arrow-down", flat: "fa-minus" }[tone.dir];
-    const amount = n(`${value > 0 ? "+" : ""}${value}${unit}`);
-    return (
-        <span className={`ovd-change ${cls}`} title={t("Change over the last 30 days")}>
-            <i className={`fa-solid ${arrow}`} aria-hidden="true" /> {amount}
-            <span className="ovd-change-when">{t("in 30 days")}</span>
-        </span>
-    );
-};
-
-/** A small figure that opens the page behind it. */
-const Figure = ({ label, value, to }) => (
-    <Link to={to} className="ovd-figure">
-        <span className="ovd-figure-value">{hasValue(value) ? n(value) : "—"}</span>
-        <span className="ovd-figure-label">{label}</span>
-    </Link>
-);
 
 /** Row 1, start: the overall risk score, its band, and the key counts. */
 const ScoreCard = ({ securityScore, riskSummary, overview }) => {
@@ -184,58 +155,7 @@ const Coverage = ({ overview }) => {
     return (
         <section className="ovd-section">
             <h2 className="ovd-title">{t("Coverage")}</h2>
-            <div className="ovd-coverage">
-                {rows.map((c) => (
-                    <Link key={c.key} to={c.link} className="ovd-card ovd-cover">
-                        <span className="ovd-cover-label">{c.label}</span>
-                        <span className="ovd-cover-value">{hasValue(c.pct) ? n(`${c.pct}%`) : "—"}</span>
-                        <span className="ovd-cover-bar" aria-hidden="true">
-                            <span style={{ width: `${c.pct ?? 0}%` }} className={c.pct >= 80 ? "is-good" : c.pct >= 50 ? "is-mid" : "is-low"} />
-                        </span>
-                        <span className="ovd-cover-detail">
-                            {t("{{covered}} of {{total}}", { covered: n(c.covered), total: n(c.total) })} {c.unit}
-                        </span>
-                    </Link>
-                ))}
-            </div>
-        </section>
-    );
-};
-
-const dayLabel = (iso) => {
-    const d = parseUtc(iso);
-    return d ? new Intl.DateTimeFormat(uiLocale(), { day: "numeric", month: "short" }).format(d) : "";
-};
-
-/** One 90-day line: the latest value of every asset at each point. */
-const TrendChart = ({ title, series, higherIsBetter, color, unit, to, empty }) => {
-    const data = (series?.points || []).map((p) => ({ label: dayLabel(p.at), value: p.value, assets: p.assets }));
-    const last = data.length ? data[data.length - 1].value : null;
-    return (
-        <section className="ovd-card ovd-trend">
-            <div className="ovd-trend-head">
-                <Link to={to} className="ovd-title ovd-title-link">{title}</Link>
-                {hasValue(last) && <span className="ovd-trend-now">{n(`${last}${unit}`)}</span>}
-                <Change value={series?.change} higherIsBetter={higherIsBetter} unit={unit} />
-            </div>
-            {data.length < 2 ? (
-                <p className="ovd-muted">{empty}</p>
-            ) : (
-                <div className="ovd-chart" dir="ltr">
-                    <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                            <CartesianGrid stroke="#EEF0F4" vertical={false} />
-                            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6C7A93" }} axisLine={false} tickLine={false}
-                                   interval="preserveStartEnd" minTickGap={24} />
-                            <YAxis domain={[0, 100]} tickFormatter={(v) => n(v)} tick={{ fontSize: 11, fill: "#6C7A93" }}
-                                   axisLine={false} tickLine={false} width={32} />
-                            <Tooltip formatter={(value, _name, entry) => [
-                                t("{{value}} · {{count}} assets", { value: n(`${value}${unit}`), count: n(entry.payload.assets) }), title]} />
-                            <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-            )}
+            <CoverageTiles rows={rows} />
         </section>
     );
 };
@@ -248,63 +168,13 @@ const Trends = ({ overview }) => {
         <section className="ovd-section">
             <h2 className="ovd-title">{t("Last 90 days")}</h2>
             <div className="ovd-trends">
-                {trend.risk && <TrendChart title={t("Average asset risk")} series={trend.risk} higherIsBetter={false}
-                                           color="#DC2626" unit="" to="/risk/overview"
+                {trend.risk && <TrendChart title={t("Average asset risk")} points={trend.risk.points} change={trend.risk.change}
+                                           higherIsBetter={false} to="/risk/overview"
                                            empty={t("Not enough risk history yet: it builds up as risk is recalculated.")} />}
-                {trend.compliance && <TrendChart title={t("Average compliance")} series={trend.compliance} higherIsBetter
-                                                 color="#2563EB" unit="%" to="/audit"
+                {trend.compliance && <TrendChart title={t("Average compliance")} points={trend.compliance.points}
+                                                 change={trend.compliance.change} higherIsBetter
+                                                 lines={[{ key: "value", color: "#2563EB" }]} unit="%" to="/audit"
                                                  empty={t("Not enough audits yet: the line appears after audits on two different days.")} />}
-            </div>
-        </section>
-    );
-};
-
-/** Row 5: the riskiest assets and what drives each one. */
-const TopAssets = ({ items }) => {
-    if (!items) return null;
-    return (
-        <section className="ovd-card">
-            <div className="ovd-trend-head">
-                <h2 className="ovd-title">{t("Top 10 risky assets")}</h2>
-                <Link to="/risk/assets" className="ovd-more">{t("All assets by risk")}</Link>
-            </div>
-            <div className="ovd-table-wrap">
-                <table className="ovd-table">
-                    <thead>
-                        <tr>
-                            <th>{t("Asset")}</th>
-                            <th>{t("IP address")}</th>
-                            <th>{t("Risk Score")}</th>
-                            <th>{t("Risk Level")}</th>
-                            <th>{t("Main factor")}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {items.length === 0 && (
-                            <tr><td colSpan={5} className="ovd-empty">{t("No assets have a risk score yet.")}</td></tr>
-                        )}
-                        {items.map((row) => (
-                            <tr key={row.asset_id}>
-                                <td>
-                                    <Link to={`/risk/assets/${row.asset_id}`} className="ovd-asset">{row.asset_name}</Link>
-                                    {row.kev > 0 && <span className="ovd-kev" title={t("Has vulnerabilities exploited in the wild (KEV)")}>KEV</span>}
-                                    {row.incomplete && <i className="fa-solid fa-circle-exclamation ovd-part-warn" title={t("Some data is missing for this asset")} />}
-                                </td>
-                                <td><span dir="ltr">{row.ip_address || "—"}</span></td>
-                                <td><RiskScoreBadge score={row.score} level={row.level} /></td>
-                                <td><RiskLevelBadge level={row.level} /></td>
-                                <td>
-                                    {row.main_factor ? (
-                                        <>
-                                            {FACTOR_LABELS[row.main_factor] || row.main_factor}
-                                            <span className="ovd-share">{t("{{pct}} of the score", { pct: n(`${row.main_factor_share}%`) })}</span>
-                                        </>
-                                    ) : "—"}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
             </div>
         </section>
     );
