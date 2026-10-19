@@ -51,19 +51,19 @@ export const HardeningImpact = ({ score, auditSummary, impact }) => (
                 score?.resolved_by_hardening_count ??
                 null
             }
-            priorLabel="Number of Findings prior to Hardening"
+            priorLabel={t("Number of Findings prior to Hardening")}
             priorValue={null}
         />
         <Row
             label={t("Current Audit Risk")}
             value={score?.audit_risk_score ?? null}
-            priorLabel="Audit Risk Prior to Hardening"
+            priorLabel={t("Audit Risk Prior to Hardening")}
             priorValue={null}
         />
         <Row
             label={t("Current Risk Score")}
             value={impact?.current_score ?? score?.final_risk_score ?? null}
-            priorLabel="Risk Score Before Hardening"
+            priorLabel={t("Risk Score Before Hardening")}
             priorValue={impact?.baseline_score ?? null}
         />
 

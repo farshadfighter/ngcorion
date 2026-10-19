@@ -376,6 +376,20 @@ class AssetRiskCalculationService:
         from app.modules.remediation.service import accepted_refs, audit_ref
         accepted = accepted_refs(db, asset_id, "audit")
 
+        # The hardening actions of the session's findings, read once.
+        actions_of: dict = {}
+        if results:
+            for result_id, action_type, status, verification_passed in (
+                db.query(
+                    HardeningAction.audit_result_id,
+                    HardeningAction.action_type,
+                    HardeningAction.status,
+                    HardeningAction.verification_passed,
+                )
+                .filter(HardeningAction.audit_result_id.in_([r.id for r in results]))
+            ):
+                actions_of.setdefault(result_id, []).append((action_type, status, verification_passed))
+
         failed_weight = 0.0
         applicable_weight = 0.0
         hardening_weight_found = 0.0
@@ -387,6 +401,20 @@ class AssetRiskCalculationService:
                 continue
             weight = self._severity_weight(result.severity, settings)
             applicable_weight += weight
+            actions = actions_of.get(result.id, [])
+            if actions:
+                has_hardening_data = True
+
+            # Fixed by hardening: a verified successful (non-preview) execute, whether the control
+            # still reads FAIL until a re-audit (Cisco, FortiGate) or the fix already set it to
+            # PASS (Linux, Windows, SQL Server, Apache, MongoDB, the benchmark modules).
+            if any(
+                action_type != "preview"
+                and status == "success"
+                and verification_passed is True
+                for action_type, status, verification_passed in actions
+            ):
+                out["resolved_by_hardening"] += 1
 
             if result.status != CheckStatus.FAIL:
                 continue
@@ -402,30 +430,12 @@ class AssetRiskCalculationService:
                 sev = "medium"
             out["findings"][sev] += 1
 
-            # One pass over the finding's hardening actions: a fix is "found"
-            # when any action row exists (drives HF, PDF section 8); a verified
-            # successful non-preview execute is tracked for display only and,
-            # per the PDF, does NOT remove the finding from AF or HF.
-            actions = (
-                db.query(
-                    HardeningAction.action_type,
-                    HardeningAction.status,
-                    HardeningAction.verification_passed,
-                )
-                .filter(HardeningAction.audit_result_id == result.id)
-                .all()
-            )
+            # A fix is "found" when any action row exists (drives HF, PDF
+            # section 8); a verified fix does NOT remove the finding from AF or
+            # HF while it still reads FAIL (per the PDF).
             if actions:
-                has_hardening_data = True
                 hardening_weight_found += weight
                 out["fixes_found"] += 1
-            if any(
-                action_type != "preview"
-                and status == "success"
-                and verification_passed is True
-                for action_type, status, verification_passed in actions
-            ):
-                out["resolved_by_hardening"] += 1
 
         out["session"] = session
         out["failed_weight"] = failed_weight

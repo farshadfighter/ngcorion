@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.hardening_param_security import ParameterSecurityError
 from app.models import Asset, AuditResult, AuditSession
 from app.models.audit import CheckStatus
+from app.modules.shared.hardening_record import record_fix_results
 from app.modules.windows.hardening.service import _recompute_session_stats
 
 from .connectors import get_connector
@@ -175,6 +176,8 @@ class BenchmarkHardeningService:
                 out["backup_created"] = False
                 out["backup_error"] = backup_error or (
                     "No backup content captured" if spec.backup else f"{spec.label} has no configuration backup")
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id, results=results,
+                           parameters={c.get("check_id"): c.get("parameters") for c in checks})
         self._mark_passed(db, session_id, results)
         out.update(session_id=session_id, asset_id=asset_id, target_ip=asset.ip_address,
                    executed_at=datetime.now(timezone.utc).isoformat())
@@ -182,7 +185,7 @@ class BenchmarkHardeningService:
 
     def execute_single(self, db: Session, asset_id: int, credentials: Dict[str, Any], check_id: str,
                        parameters: Optional[Dict[str, Any]] = None,
-                       session_id: Optional[int] = None) -> Dict[str, Any]:
+                       session_id: Optional[int] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
         """Run one fix (with its parameters) and its verification; on success the check is marked
         passed in the given audit session.
         """
@@ -191,6 +194,8 @@ class BenchmarkHardeningService:
         with get_connector(spec.connector).open(asset.ip_address, credentials) as conn:
             result = run_template(spec, conn, check_id, parameters)
         if session_id is not None:
+            record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id, results=[result],
+                               parameters={check_id: parameters})
             self._mark_passed(db, session_id, [result])
         result.update(asset_id=asset_id, target_ip=asset.ip_address,
                       executed_at=datetime.now(timezone.utc).isoformat())

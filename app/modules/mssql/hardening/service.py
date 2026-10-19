@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Asset, AuditResult, AuditSession
 from app.models.audit import CheckStatus, DeviceType
+from app.modules.shared.hardening_record import record_fix_results
 
 from .command_templates import get_all_supported_checks, get_mssql_hardening_template
 from .parameter_metadata import (
@@ -316,6 +317,9 @@ class MSSQLHardeningService:
                 result["backup_created"] = False
                 result["backup_error"] = backup_error or "No backup content captured"
 
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id,
+                           results=result.get("results", []),
+                           parameters={c.get("check_id"): c.get("parameters") for c in checks})
         for check_result in result.get("results", []):
             if check_result.get("success"):
                 audit_row = (
@@ -353,6 +357,7 @@ class MSSQLHardeningService:
         parameters: Dict[str, str] = None,
         mssql_port: int = 1433,
         session_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Execute hardening for a single check with given parameters."""
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -375,6 +380,8 @@ class MSSQLHardeningService:
         )
 
         result = executor.execute_single(check_id, parameters)
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id,
+                           results=[result], parameters={check_id: parameters})
 
         if result.get("success") and session_id is not None:
             audit_row = (

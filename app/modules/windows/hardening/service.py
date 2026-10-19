@@ -23,6 +23,7 @@ from app.modules.windows.audit.rules import (
     DEFAULT_SEVERITY_WEIGHT,
     SEVERITY_WEIGHTS,
 )
+from app.modules.shared.hardening_record import record_fix_results
 
 from .command_templates import get_all_supported_checks, get_windows_hardening_template
 from .parameter_metadata import (
@@ -344,6 +345,9 @@ class WindowsHardeningService:
                 result["backup_created"] = False
                 result["backup_error"] = backup_error or "No backup content captured"
 
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id,
+                           results=result.get("results", []),
+                           parameters={c.get("check_id"): c.get("parameters") for c in checks})
         for check_result in result.get("results", []):
             if check_result.get("success"):
                 audit_row = (
@@ -383,6 +387,7 @@ class WindowsHardeningService:
         transport: str = "ntlm",
         verify_ssl: Optional[bool] = None,
         session_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Execute hardening for a single check with given parameters."""
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -405,6 +410,8 @@ class WindowsHardeningService:
         )
 
         result = executor.execute_single(check_id, parameters)
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id,
+                           results=[result], parameters={check_id: parameters})
 
         if result.get("success") and session_id is not None:
             audit_row = (

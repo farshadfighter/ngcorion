@@ -126,6 +126,7 @@ async def execute_single_fix(
     try:
         result = MongoDBHardeningService.execute_single_fix(
             db=db,
+            user_id=user_id,
             asset_id=request.asset_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,

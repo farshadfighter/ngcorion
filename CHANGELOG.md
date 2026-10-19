@@ -4,6 +4,17 @@
 
 ### Fixes
 
+- Risk and hardening overview after hardening Linux (and Windows, SQL
+  Server, Apache, MongoDB and the benchmark modules): the risk page said
+  nothing was fixed by hardening. These services set a fixed finding to
+  PASS but wrote no hardening record - only Cisco and FortiGate did - so
+  "Fixed by hardening", the hardening factor and the hardening overview
+  never saw them; and the risk score counted "fixed by hardening" only
+  among findings still failing. Every fix that runs is now recorded
+  (commands and output with secret parameters redacted, verified or
+  not), and a verified fix counts whether the finding still fails until a
+  re-audit or already passes. Fixes run before this version have no
+  record; hardening them again or a re-audit brings the pages up to date.
 - Advisories update (OSV.dev): "OSV answered HTTP 403 for Ubuntu" said
   nothing about what to do. The bucket is public, so a 403 is about where
   the request comes from: Google, which hosts it, refuses addresses in some

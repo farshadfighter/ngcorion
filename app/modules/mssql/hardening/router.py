@@ -142,6 +142,7 @@ async def execute_single_fix(
     try:
         result = MSSQLHardeningService.execute_single_fix(
             db=db,
+            user_id=user_id,
             asset_id=request.asset_id,
             mssql_username=request.mssql_username,
             mssql_password=request.mssql_password,

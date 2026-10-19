@@ -15,6 +15,7 @@ import logging
 
 from app.models import AuditSession, AuditResult, Asset
 from app.models.audit import DeviceType, CheckStatus
+from app.modules.shared.hardening_record import record_fix_results
 from .parameter_metadata import (
     aggregate_linux_parameters_for_checks,
     categorize_linux_checks_by_fixability,
@@ -457,6 +458,9 @@ class LinuxHardeningService:
                 result["backup_created"] = False
                 result["backup_error"] = backup_error or "No backup content captured"
 
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id,
+                           results=result.get("results", []),
+                           parameters={c.get("check_id"): c.get("parameters") for c in checks})
         # Update AuditResult.status for every check that passed verification
         for check_result in result.get("results", []):
             if check_result.get("success"):
@@ -497,7 +501,8 @@ class LinuxHardeningService:
         ssh_port: int = 22,
         session_id: Optional[int] = None,
         sub_device_type: Optional[str] = None,
-        dry_run: bool = False
+        dry_run: bool = False,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Execute hardening for a single check.
@@ -558,6 +563,8 @@ class LinuxHardeningService:
         )
 
         result = executor.execute_single(check_id, parameters)
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id,
+                           results=[result], parameters={check_id: parameters})
 
         # Update AuditResult.status if the fix passed and we know the session
         if result.get("success") and session_id is not None:

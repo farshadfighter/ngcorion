@@ -152,6 +152,7 @@ async def execute_single_fix(
     try:
         result = LinuxHardeningService.execute_single_fix(
             db=db,
+            user_id=user_id,
             asset_id=request.asset_id,
             session_id=request.session_id,
             ssh_username=request.ssh_username,

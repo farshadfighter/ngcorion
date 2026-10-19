@@ -293,7 +293,7 @@ def build_hardening_router(spec: ModuleSpec) -> APIRouter:
                                         success_count=success, failed_count=failed, error=error)
         try:
             result = service.execute_single(db, body.asset_id, _credentials(body, spec), body.check_id,
-                                            body.parameters, session_id=body.session_id)
+                                            body.parameters, session_id=body.session_id, user_id=user_id)
         except ValueError as exc:
             _log(0, 1, str(exc))
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

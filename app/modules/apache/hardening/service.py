@@ -15,6 +15,7 @@ import logging
 
 from app.models import AuditSession, AuditResult, Asset
 from app.models.audit import DeviceType, CheckStatus
+from app.modules.shared.hardening_record import record_fix_results
 from .parameter_metadata import (
     aggregate_apache_parameters_for_checks,
     categorize_apache_checks_by_fixability,
@@ -334,6 +335,9 @@ class ApacheHardeningService:
                 result["backup_created"] = False
                 result["backup_error"] = backup_error or "No backup content captured"
 
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id,
+                           results=result.get("results", []),
+                           parameters={c.get("check_id"): c.get("parameters") for c in checks or []})
         for check_result in result.get("results", []):
             if check_result.get("success"):
                 audit_row = (
@@ -372,6 +376,7 @@ class ApacheHardeningService:
         ssh_port: int = 22,
         sudo_password: Optional[str] = None,
         session_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Execute hardening for a single check.
@@ -406,6 +411,8 @@ class ApacheHardeningService:
         )
 
         result = executor.execute_single(check_id, parameters)
+        record_fix_results(db, session_id=session_id, asset_id=asset_id, user_id=user_id,
+                           results=[result], parameters={check_id: parameters})
 
         if result.get("success") and session_id is not None:
             audit_row = (

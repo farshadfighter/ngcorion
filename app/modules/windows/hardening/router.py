@@ -178,6 +178,7 @@ def execute_single_fix(
     try:
         result = WindowsHardeningService.execute_single_fix(
             db=db,
+            user_id=user_id,
             asset_id=request.asset_id,
             session_id=request.session_id,
             windows_username=request.windows_username,
