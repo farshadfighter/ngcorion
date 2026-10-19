@@ -1,9 +1,9 @@
 /**
  * The sidebar menu (sidebarMenu.js has its content and order).
  *
- * Expanded: each group is a heading that opens and closes it; the group of the current page is
- * always open, and which other groups a person keeps open is remembered in this browser. Entries
- * are real links, so they can be opened in a new tab.
+ * Expanded: each group is a heading that opens and closes it, one group at a time: opening a group
+ * closes the one that was open, and going to a page opens that page's group. Entries are real
+ * links, so they can be opened in a new tab.
  * Collapsed: one icon per group; pointing at it (or focusing it) shows its entries beside it.
  */
 import React, { useEffect, useRef, useState } from "react";
@@ -12,28 +12,6 @@ import { Link } from "react-router-dom";
 import { n, t } from "../i18n";
 import { groupOf, isActive, visibleMenu } from "./sidebarMenu";
 import "../assets/SidebarNav.css";
-
-const storageKey = (username) => `ngc.menu.open.${username || "-"}`;
-
-// With nothing saved yet, a short menu (a user with a few permissions) starts fully open; a long
-// one starts with only the current page's group open.
-const SHORT_MENU = 12;
-
-function readOpen(username, groups) {
-    let saved = null;
-    try {
-        saved = JSON.parse(localStorage.getItem(storageKey(username)) || "null");
-    } catch { /* storage blocked */ }
-    if (Array.isArray(saved)) return saved;
-    const entries = groups.reduce((sum, g) => sum + g.items.length, 0);
-    return entries <= SHORT_MENU ? groups.map((g) => g.id) : [];
-}
-
-function saveOpen(username, ids) {
-    try {
-        localStorage.setItem(storageKey(username), JSON.stringify(ids));
-    } catch { /* storage blocked: the menu just forgets */ }
-}
 
 function AlertBadge({ summary }) {
     const count = summary?.unacknowledged || 0;
@@ -46,21 +24,22 @@ function AlertBadge({ summary }) {
     );
 }
 
-export function SidebarNav({ auth, username, pageKey, collapsed, alertSummary }) {
+export function SidebarNav({ auth, pageKey, collapsed, alertSummary }) {
     const { top, groups } = visibleMenu(auth);
     const activeGroup = groupOf(pageKey);
-    const [open, setOpen] = useState(() => readOpen(username, groups));
+    const [openId, setOpenId] = useState(activeGroup ?? null);
     const [flyout, setFlyout] = useState(null); // { id, top } while a collapsed group shows its entries
     const closeTimer = useRef(null);
 
     useEffect(() => () => clearTimeout(closeTimer.current), []);
 
-    // Another account signs in: its own open groups. Another page, or the rail opened or closed:
-    // no flyout left hanging. Compared while rendering, so nothing shows the stale state.
-    const [seenUser, setSeenUser] = useState(username);
-    if (seenUser !== username) {
-        setSeenUser(username);
-        setOpen(readOpen(username, groups));
+    // Another page (from the menu, the search, an alert's link or Back): its group opens and the
+    // others close. Another page, or the rail opened or closed: no flyout left hanging. Compared
+    // while rendering, so nothing shows the stale state.
+    const [seenPage, setSeenPage] = useState(pageKey);
+    if (seenPage !== pageKey) {
+        setSeenPage(pageKey);
+        setOpenId(activeGroup ?? null);
     }
     const navState = `${pageKey}|${collapsed}`;
     const [seenNav, setSeenNav] = useState(navState);
@@ -69,11 +48,7 @@ export function SidebarNav({ auth, username, pageKey, collapsed, alertSummary })
         setFlyout(null);
     }
 
-    const toggle = (id) => {
-        const next = open.includes(id) ? open.filter((g) => g !== id) : [...open, id];
-        setOpen(next);
-        saveOpen(username, next);
-    };
+    const toggle = (id) => setOpenId((current) => (current === id ? null : id));
 
     const showFlyout = (id, el) => {
         clearTimeout(closeTimer.current);
@@ -104,7 +79,7 @@ export function SidebarNav({ auth, username, pageKey, collapsed, alertSummary })
             ))}
 
             {groups.map((group) => {
-                const isOpen = group.id === activeGroup || open.includes(group.id);
+                const isOpen = group.id === openId;
                 const holdsActive = group.id === activeGroup;
                 const listId = `sbn-${group.id}`;
 
@@ -142,8 +117,7 @@ export function SidebarNav({ auth, username, pageKey, collapsed, alertSummary })
                 return (
                     <div key={group.id} className={`sbn-group ${isOpen ? "is-open" : ""}`}>
                         <button type="button" className={`nav-section sbn-head ${holdsActive ? "nav-section-active" : ""}`}
-                                aria-expanded={isOpen} aria-controls={listId}
-                                disabled={holdsActive} title={holdsActive ? undefined : group.label}
+                                aria-expanded={isOpen} aria-controls={listId} title={group.label}
                                 onClick={() => toggle(group.id)}>
                             <img src={group.icon} alt="" className="section-icon" />
                             <span className="nav-section-title">{group.label}</span>

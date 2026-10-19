@@ -196,7 +196,7 @@ export const DashboardLayout = () => {
                     </button>
                 </div>
 
-                <SidebarNav auth={{ role, permissions }} username={username} pageKey={activeMenu}
+                <SidebarNav auth={{ role, permissions }} pageKey={activeMenu}
                             collapsed={isSidebarCollapsed} alertSummary={alertSummary} />
 
                 {/* ── FOOTER ── */}

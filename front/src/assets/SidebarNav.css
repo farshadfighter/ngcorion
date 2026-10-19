@@ -20,8 +20,6 @@
 .sbn-head.nav-section-active .nav-section-title { color: #ffffff; }
 .sbn-head.nav-section-active .section-icon { opacity: 1; }
 /* the group of the current page stays open: nothing to click */
-.sbn-head:disabled { cursor: default; }
-.sbn-head:disabled .sbn-caret { visibility: hidden; }
 
 .sbn-caret {
     font-size: 11px;

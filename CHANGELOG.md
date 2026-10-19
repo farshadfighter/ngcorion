@@ -10,6 +10,10 @@
   what, what to take care of, common problems and links to related pages -
   with a search inside the help. Every menu page has it, in Persian and in
   English; it ships with the product and works offline.
+- The sidebar opens one group at a time: opening a group closes the one that
+  was open, and going to a page (from the menu, the search, an alert's link
+  or Back) opens that page's group. The group of the current page can be
+  closed too.
 - The global search finds help sections too and opens the page with its help
   at that section (`?help=<section>` in the address, so it can be shared).
 - Header and phone-width fixes: the license badge no longer clips beside the
