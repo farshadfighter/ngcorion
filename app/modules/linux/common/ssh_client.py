@@ -47,6 +47,7 @@ from app.core.ssh_host_keys import (
     ensure_host_key_trusted,
     netmiko_host_key_kwargs,
 )
+from app.core.ssh_terminal import steady_prompt, strip_osc
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,7 @@ class LinuxSSHClient:
                     auth_timeout=20,
                     **netmiko_host_key_kwargs(),
                 )
+                steady_prompt(self.connection)
 
                 logger.info(f"Successfully connected to {self.ip}")
                 return
@@ -265,7 +267,8 @@ class LinuxSSHClient:
                     cmd_verify=False,
                     read_timeout=timeout
                 )
-            return output
+            # A sequence split between two reads is not stripped as it arrives.
+            return strip_osc(output)
         except Exception as e:
             logger.error(f"Command execution failed on {self.ip}: {redact_text(command)[:50]}... - {str(e)}")
             raise RuntimeError(f"Command execution failed: {str(e)}")

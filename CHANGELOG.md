@@ -4,6 +4,15 @@
 
 ### Fixes
 
+- Linux over SSH on systemd 257 and later (Ubuntu 25.04+, Debian 13,
+  Fedora 42+): every command failed with "Pattern not detected" - the
+  software collection, Linux and Apache audits, hardening and the MongoDB
+  audit alike. These systems' /etc/profile.d/80-systemd-osc-context.sh
+  wraps every prompt in OSC 3008 terminal sequences with a new ID each
+  time; netmiko took them for part of the prompt, which then never matched
+  again. OSC sequences (also OSC 7 and OSC 133 from terminal
+  integrations) are now dropped from everything read, and the prompt is
+  read again when they had got into it (app/core/ssh_terminal.py).
 - CVE update: the online update (and a package import) failed at "review
   and apply" with "Unexpected error: DataError" when NVD sent a description
   with a NUL character, which PostgreSQL refuses in text, or a CPE

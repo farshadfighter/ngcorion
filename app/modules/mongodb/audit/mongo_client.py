@@ -28,6 +28,7 @@ from app.core.ssh_host_keys import (
     ensure_host_key_trusted,
     netmiko_host_key_kwargs,
 )
+from app.core.ssh_terminal import steady_prompt, strip_osc
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,7 @@ class MongoDBSSHClient:
                 read_timeout_override=self.COMMAND_TIMEOUT,
                 **netmiko_host_key_kwargs(),
             )
+            steady_prompt(self._conn)
             logger.info(f"SSH connection established to {self.ip}")
         except NetmikoTimeoutException as exc:
             raise ConnectionError(f"SSH connection timed out to {self.ip}: {exc}")
@@ -185,7 +187,7 @@ class MongoDBSSHClient:
                 read_timeout=self.COMMAND_TIMEOUT,
                 expect_string=r"[\$\#]\s*$",
             )
-            return (output or "").strip()
+            return strip_osc(output or "").strip()
         except Exception as exc:
             logger.debug(f"Command failed [{redact_text(cmd)[:60]}]: {exc}")
             return ""
