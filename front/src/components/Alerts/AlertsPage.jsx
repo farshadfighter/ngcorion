@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../config/api.js";
 import { usePermission } from "../../hooks/usePermission";
 import { formatWhen } from "../../utils/dates.js";
@@ -27,6 +27,9 @@ export function AlertsPage() {
     const navigate = useNavigate();
     const canManage = usePermission("system_config", "read");
     const [status, setStatus] = useState("open");
+    // ?severity=critical (the dashboard's "critical alerts" card) keeps only the critical ones
+    const [urlParams, setUrlParams] = useSearchParams();
+    const criticalOnly = urlParams.get("severity") === "critical";
     const [module, setModule] = useState("");
     const [search, setSearch] = useState("");
     const [query, setQuery] = useState("");
@@ -46,12 +49,13 @@ export function AlertsPage() {
         let alive = true;
         const params = { status, limit: PAGE, offset };
         if (module) params.module = module;
+        if (criticalOnly) params.severity = "critical";
         if (query) params.search = query;
         api.get("/api/alerts", { params })
             .then(({ data }) => { if (alive) { setPage(data); setError(null); } })
             .catch((e) => alive && setError(e.response?.data?.detail || tr("Could not load alerts")));
         return () => { alive = false; };
-    }, [status, module, query, offset, reload]);
+    }, [status, module, criticalOnly, query, offset, reload]);
 
     // New alerts appear without a reload.
     useEffect(() => {
@@ -104,6 +108,15 @@ export function AlertsPage() {
                             {label} <b>{n(counts[value] ?? 0)}</b>
                         </button>
                     ))}
+                    <span className="alr-sep" aria-hidden="true" />
+                    <button type="button" aria-pressed={criticalOnly} className={`bkm-chip ${criticalOnly ? "is-on" : ""}`}
+                            onClick={() => {
+                                setUrlParams((p) => { if (criticalOnly) p.delete("severity"); else p.set("severity", "critical"); return p; },
+                                             { replace: true });
+                                setOffset(0);
+                            }}>
+                        {tr("Critical only")}
+                    </button>
                     <span className="alr-sep" aria-hidden="true" />
                     {(page?.modules || []).map((m) => (
                         <button key={m.key} type="button" aria-pressed={module === m.key}

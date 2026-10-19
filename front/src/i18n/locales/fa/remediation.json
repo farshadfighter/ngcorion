@@ -71,7 +71,6 @@
   "Could not save the decision": "ثبت تصمیم انجام نشد",
   "Could not send the request": "ارسال درخواست انجام نشد",
   "Could not withdraw the risk acceptance": "لغو پذیرش ریسک انجام نشد",
-  "Coverage": "پوشش",
   "Data at rest and secrets": "دادهٔ ذخیره‌شده و اسرار",
   "Deadline": "مهلت",
   "Deadline reset to the standard {{date}}": "مهلت به مقدار استاندارد {{date}} برگشت",

@@ -1,582 +1,178 @@
-/* Main dashboard. Palette follows the rest of the product: #F5F5F5 page,
-   white cards, #14213D text. */
+/* Main dashboard (components/Overview/OverviewDashboard.jsx). Palette follows the rest of the product:
+   #F5F5F5 page, white cards, #14213D text. Every card that leads somewhere is a link. */
 
-.ov-page {
+.ovd-page {
     padding: 24px;
     background: #F5F5F5;
     min-height: 100%;
-}
-
-/* ── Headline metric tiles ───────────────────────────────────────────────── */
-
-/* Figma (dashbord.svg): 230x120 tiles, rx 5, 50px apart, five to a row in a
-   1350px band.
-
-   The tiles used to be `flex: 0 0 230px` with a fixed 50px gap, which needs the
-   full 1350px to fit five. Content width is the window minus the 290px sidebar,
-   so a 1920 screen fitted five but 1600/1440 dropped to four and 1366/1280 to
-   three -- the same page looked different on every laptop. A grid that packs as
-   many >=200px columns as fit keeps the tiles evenly sized and full-width at
-   any of those widths instead of leaving a ragged last row. */
-.ov-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: clamp(16px, 2vw, 50px);
-    max-width: 1350px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    max-width: 1400px;
     margin: 0 auto;
-}
-
-.ov-metric {
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 16px 20px;
-    background: #ffffff;
-    border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
     box-sizing: border-box;
-}
-
-.ov-metric-label {
-    font-size: 13px;
-    font-weight: 700;
     color: #14213D;
-    text-align: center;
-    line-height: 1.3;
 }
 
-.ov-metric-value {
-    font-size: 15px;
-    font-weight: 600;
-    color: #3C4A63;
-}
-
-/* Distinct from a real zero: this number has no endpoint behind it yet. */
-.ov-metric-pending {
-    font-size: 15px;
-    font-weight: 600;
-    color: #9AA5B5;
-    cursor: help;
-}
-
-/* ── Shared card shell ───────────────────────────────────────────────────── */
-
-.ov-card {
-    margin: 32px auto 0;
-    padding: 24px 28px;
-    background: #ffffff;
+.ovd-card {
+    background: #fff;
     border-radius: 10px;
     box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+    padding: 18px 20px;
     box-sizing: border-box;
-}
-
-/* Figma card widths: the wide tables run 1328px, the narrower panels 908px.
-   These are ceilings, not fixed widths — `width: 100%` lets a card shrink to
-   the content column on a narrower laptop instead of overflowing it. */
-.ov-card-wide   { width: 100%; max-width: 1328px; }
-.ov-card-medium { width: 100%; max-width: 908px; }
-
-.ov-card-title {
-    margin: 0 0 20px;
-    font-size: 17px;
-    font-weight: 700;
-    color: #14213D;
-    text-align: center;
-}
-
-/* ── Module tiles ────────────────────────────────────────────────────────── */
-
-/* Figma: four 320x320 squares, rx 10, 32px apart — a 1376px band. */
-.ov-modules {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 320px));
-    justify-content: center;
-    gap: 32px;
-    max-width: 1376px;
-    margin: 32px auto 0;
-}
-
-/* 1424 = the 1376 band plus the page's 24px gutters. */
-@media (max-width: 1424px) {
-    .ov-modules {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 900px) {
-    .ov-modules {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 520px) {
-    .ov-modules {
-        grid-template-columns: minmax(0, 1fr);
-    }
-}
-
-.ov-module {
-    display: flex;
-    flex-direction: column;
-    aspect-ratio: 1 / 1;
-    padding: 0;
-    border: none;
-    border-radius: 10px;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
-    font-family: inherit;
-    text-align: start;
-    cursor: pointer;
-    overflow: hidden;
-    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-/* Figma: the whole tile inverts to the product navy on hover. Every colour
-   inside has to flip with it, hence the descendant rules below. */
-.ov-module:hover {
-    background: #14213D;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(20, 33, 61, 0.22);
-}
-
-.ov-module:hover .ov-module-title,
-.ov-module:hover .ov-module-value {
-    color: #ffffff;
-}
-
-.ov-module:hover .ov-module-hint {
-    color: rgba(255, 255, 255, 0.75);
-    border-bottom-color: rgba(255, 255, 255, 0.15);
-}
-
-.ov-module:focus-visible {
-    outline: 2px solid #2D5A9E;
-    outline-offset: 2px;
-}
-
-.ov-module-hint {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    font-size: 10px;
-    color: #9AA5B5;
-    border-bottom: 1px solid #F1F3F7;
-}
-
-.ov-module-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 20px 16px;
-}
-
-.ov-module-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: #14213D;
-    text-align: center;
-    line-height: 1.25;
-    transition: color 0.2s ease;
-}
-
-.ov-module-value {
-    font-size: 16px;
-    color: #3C4A63;
-    text-align: center;
-    transition: color 0.2s ease;
-}
-
-/* ── Tables ──────────────────────────────────────────────────────────────── */
-
-/* Figma insets the table inside the card with its own rounded border. */
-.ov-table-wrapper {
-    border: 1px solid #EEF0F4;
-    border-radius: 10px;
-    overflow-x: auto;
-}
-
-.ov-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.ov-table th {
-    padding: 14px 16px;
-    text-align: start;
-    font-weight: 600;
-    color: #6C7A93;
-    background: #F7F8FA;
-    white-space: nowrap;
-}
-
-.ov-table td {
-    padding: 14px 16px;
-    color: #14213D;
-    border-top: 1px solid #EEF0F4;
-}
-
-.ov-table tbody tr:hover {
-    background: #FAFBFD;
-}
-
-.ov-table-empty {
-    padding: 32px 16px;
-    text-align: center;
-    color: #9AA5B5;
-}
-
-/* ── Security Trend ──────────────────────────────────────────────────────── */
-
-.ov-card-trend {
-    max-width: 1374px;
-}
-
-/* Figma: 30 columns, 18px bars 42.5px apart on a shared baseline. The columns
-   flex so the row still fits when the card is narrower than the mock. */
-.ov-trend {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 0 6px;
-}
-
-.ov-trend-col {
-    flex: 1 1 0;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
 }
 
-/* Fixed 235px scale (the mock's tallest bar), so each bar's percentage height
-   is measured against the same reference on every column. */
-.ov-trend-track {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    width: 100%;
-    height: 235px;
+.ovd-section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ovd-title { margin: 0; font-size: 15px; font-weight: 700; color: #14213D; }
+.ovd-title-link { text-decoration: none; }
+.ovd-title-link:hover { text-decoration: underline; }
+.ovd-sub { margin: 4px 0 12px; font-size: 12.5px; color: #6C7A93; }
+.ovd-muted { margin: 12px 0; font-size: 13px; color: #6C7A93; }
+.ovd-note { margin: 8px 0 0; font-size: 12px; color: #92400E; }
+.ovd-more { font-size: 13px; font-weight: 600; color: #1E3A5F; text-decoration: none; margin-inline-start: auto; }
+.ovd-more:hover { text-decoration: underline; }
+
+/* ── Row 1: score and its parts ──────────────────────────────────────────── */
+
+.ovd-row-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; }
+
+.ovd-score { display: flex; flex-direction: column; gap: 12px; }
+.ovd-score-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ovd-score-value { font-size: 44px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.ovd-score-value small { font-size: 16px; font-weight: 600; color: #6C7A93; margin-inline-start: 2px; }
+.ovd-band { color: #fff; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+.ovd-score-trend { margin: 0; font-size: 13px; color: #3C4A63; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.ovd-gauge { position: relative; display: flex; height: 10px; border-radius: 5px; }
+.ovd-gauge-band { height: 100%; opacity: 0.35; }
+.ovd-gauge-band:first-child { border-start-start-radius: 5px; border-end-start-radius: 5px; }
+.ovd-gauge-band:last-child { border-start-end-radius: 5px; border-end-end-radius: 5px; }
+.ovd-gauge-band.is-active { opacity: 1; }
+.ovd-gauge-needle {
+    position: absolute; top: -5px; width: 3px; height: 20px; margin-inline-start: -1.5px;
+    border-radius: 2px; background: #14213D; box-shadow: 0 0 0 2px #fff;
 }
 
-.ov-trend-value {
-    font-size: 9px;
-    color: #6C7A93;
-    margin-bottom: 4px;
-    white-space: nowrap;
+.ovd-figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: auto; }
+.ovd-figure {
+    display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #E5E9F0;
+    border-radius: 8px; text-decoration: none; color: inherit; background: #FAFBFC;
+}
+.ovd-figure:hover, .ovd-figure:focus-visible { border-color: #1E3A5F; background: #F3F6FA; }
+.ovd-figure-value { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ovd-figure-label { font-size: 12px; color: #6C7A93; line-height: 1.4; }
+
+.ovd-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ovd-part {
+    display: grid; grid-template-columns: minmax(120px, 1.3fr) minmax(80px, 2fr) 34px auto; align-items: center;
+    gap: 12px; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: inherit;
+}
+.ovd-part:hover, .ovd-part:focus-visible { background: #F3F6FA; }
+.ovd-part-label { font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.ovd-part-warn { color: #B45309; font-size: 12px; }
+.ovd-part-bar { height: 8px; border-radius: 4px; background: #EEF0F4; overflow: hidden; }
+.ovd-part-bar > span { display: block; height: 100%; border-radius: 4px; background: #94A3B8; }
+.ovd-part-value { font-size: 14px; font-weight: 700; text-align: end; font-variant-numeric: tabular-nums; }
+.ovd-part-weight { font-size: 12px; color: #6C7A93; white-space: nowrap; }
+
+/* ── Row 2: needs action ─────────────────────────────────────────────────── */
+
+.ovd-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.ovd-action {
+    display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 12px;
+    padding: 14px 16px; background: #fff; border-radius: 10px; text-decoration: none; color: #14213D;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08); border-inline-start: 4px solid #94A3B8;
+}
+.ovd-action:hover, .ovd-action:focus-visible { box-shadow: 0 2px 8px rgba(20, 33, 61, 0.16); }
+.ovd-action-icon { font-size: 16px; color: #94A3B8; }
+.ovd-action-count { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ovd-action-label { font-size: 13px; line-height: 1.45; min-width: 0; }
+.ovd-action-go { font-size: 11px; color: #9AA5B5; }
+[dir="rtl"] .ovd-action-go { transform: scaleX(-1); }
+.ovd-action.sev-critical { border-inline-start-color: #DC2626; }
+.ovd-action.sev-critical .ovd-action-icon, .ovd-action.sev-critical .ovd-action-count { color: #B91C1C; }
+.ovd-action.sev-high { border-inline-start-color: #F97316; }
+.ovd-action.sev-high .ovd-action-icon, .ovd-action.sev-high .ovd-action-count { color: #C2410C; }
+.ovd-action.sev-medium { border-inline-start-color: #EAB308; }
+.ovd-action.sev-medium .ovd-action-icon { color: #A16207; }
+.ovd-action.sev-info { border-inline-start-color: #2563EB; }
+.ovd-action.sev-info .ovd-action-icon { color: #2563EB; }
+
+.ovd-allclear {
+    display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 10px;
+    background: #ECFDF5; color: #065F46; font-size: 13.5px; font-weight: 600;
 }
 
-.ov-trend-bar {
-    width: 18px;
-    max-width: 100%;
-    background: #29354E;
-    border-radius: 2px;
-    /* A 0% day still needs to be visible as a tick rather than vanishing. */
-    min-height: 2px;
-    transition: height 0.3s ease;
-}
+/* ── Row 3: coverage ─────────────────────────────────────────────────────── */
 
-.ov-trend-label {
-    font-size: 9px;
-    color: #9AA5B5;
-    margin-top: 6px;
-    white-space: nowrap;
-}
+.ovd-coverage { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.ovd-cover { display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit; }
+.ovd-cover:hover, .ovd-cover:focus-visible { box-shadow: 0 2px 8px rgba(20, 33, 61, 0.16); }
+.ovd-cover-label { font-size: 13px; font-weight: 600; color: #3C4A63; }
+.ovd-cover-value { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ovd-cover-bar { height: 8px; border-radius: 4px; background: #EEF0F4; overflow: hidden; }
+.ovd-cover-bar > span { display: block; height: 100%; border-radius: 4px; }
+.ovd-cover-bar > .is-good { background: #16A34A; }
+.ovd-cover-bar > .is-mid { background: #EAB308; }
+.ovd-cover-bar > .is-low { background: #DC2626; }
+.ovd-cover-detail { font-size: 12px; color: #6C7A93; }
 
-.ov-empty {
-    padding: 32px 16px;
-    text-align: center;
-    color: #9AA5B5;
-    font-size: 13px;
-}
+/* ── Row 4: trends ───────────────────────────────────────────────────────── */
 
-/* ── Compliance vs Hardening ─────────────────────────────────────────────── */
+.ovd-trends { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.ovd-trend-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.ovd-trend-now { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ovd-chart { width: 100%; min-width: 0; }
 
-.ov-compare {
-    max-width: 908px;
-}
+.ovd-change { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.ovd-change.is-good { background: #DCFCE7; color: #166534; }
+.ovd-change.is-bad { background: #FEE2E2; color: #991B1B; }
+.ovd-change.is-flat { background: #F1F5F9; color: #475569; }
+.ovd-change-when { font-weight: 500; opacity: 0.8; }
 
-.ov-compare-heads {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
-}
+/* ── Row 5: top assets ───────────────────────────────────────────────────── */
 
-.ov-compare-head {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 14px;
-    border: 1px solid #EEF0F4;
-    border-radius: 8px;
-}
-
-.ov-compare-label {
-    font-size: 14px;
-    font-weight: 700;
-    color: #14213D;
-}
-
-.ov-compare-value {
-    font-size: 15px;
-    color: #3C4A63;
-}
-
-.ov-bar-row {
-    margin-bottom: 14px;
-}
-
-.ov-bar-row:last-child {
-    margin-bottom: 0;
-}
-
-.ov-bar-track {
-    display: block;
-    height: 8px;
-    border-radius: 4px;
-    background: #EEF0F4;
-    overflow: hidden;
-}
-
-.ov-bar-fill {
-    display: block;
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease;
-}
-
-/* Figma: compliance in the product's navy, hardening in green. */
-.ov-bar-compliance { background: #14213D; }
-.ov-bar-hardening  { background: #34C77B; }
-
-.ov-bar-legend {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    font-size: 12px;
-    color: #3C4A63;
-}
-
-.ov-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.ov-dot-compliance { background: #14213D; }
-.ov-dot-hardening  { background: #34C77B; }
-
-/* ── Security posture gauge ──────────────────────────────────────────────── */
-
-.ov-gauge {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-}
-
-.ov-gauge-readout {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 28px;
-    border: 1px solid #EEF0F4;
-    border-radius: 8px;
-}
-
-.ov-gauge-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #14213D;
-}
-
-.ov-gauge-value {
-    font-size: 15px;
-    color: #3C4A63;
-}
-
-/* Five equal bands with a marker at the score's position. */
-.ov-gauge-track {
-    position: relative;
-    display: flex;
-    width: 100%;
-    max-width: 620px;
-    height: 10px;
-    border-radius: 5px;
-}
-
-/* Width comes from the band's real share of the 0-100 scale (set inline), not
-   an equal split — the needle is positioned at `score%` and the two must agree. */
-.ov-gauge-band {
-    flex: 0 0 auto;
-    height: 100%;
-    opacity: 0.45;
-    transition: opacity 0.2s ease;
-}
-
-.ov-gauge-band:first-child { border-radius: 5px 0 0 5px; }
-.ov-gauge-band:last-child  { border-radius: 0 5px 5px 0; }
-
-/* The band the score actually falls in. */
-.ov-gauge-band.is-active {
-    opacity: 1;
-}
-
-.ov-gauge-needle {
-    position: absolute;
-    top: -5px;
-    width: 3px;
-    height: 20px;
-    margin-inline-start: -1.5px;
-    border-radius: 2px;
-    background: #14213D;
-    box-shadow: 0 0 0 2px #ffffff;
-}
-
-.ov-gauge-legend {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 16px;
-    font-size: 12px;
-    color: #3C4A63;
-}
-
-.ov-gauge-legend-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-}
-
-.ov-gauge-note {
-    margin: 0;
-    font-size: 12px;
-    color: #92400E;
-}
-
-/* ── Recent Security Events ──────────────────────────────────────────────── */
-
-.ov-card-events {
-    max-width: 1326px;
-}
-
-.ov-events {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-/* Figma: two 614px panes per row, 72px tall. */
-/* Figma: two 614px panes with a 42px channel between them. */
-.ov-event {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 42px;
-    min-height: 72px;
-    align-items: center;
-}
-
-.ov-event-module,
-.ov-event-title {
-    display: flex;
-    align-items: center;
-    min-height: 52px;
-    padding: 0 20px;
-    border-radius: 6px;
-    font-size: 13px;
-    box-sizing: border-box;
-}
-
-.ov-event-module {
-    background: #F1F3F7;
-    color: #6C7A93;
-    font-weight: 600;
-}
-
-.ov-event-title {
-    gap: 10px;
-    background: #ffffff;
-    border: 1px solid #EEF0F4;
-    color: #14213D;
-}
-
-.ov-event-failed {
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: #FEE2E2;
-    color: #991B1B;
-    font-size: 11px;
-    font-weight: 700;
-}
-
-@media (max-width: 700px) {
-    .ov-event {
-        grid-template-columns: 1fr;
-        gap: 8px;
-        padding: 8px 0;
-    }
-}
+.ovd-table-wrap { overflow-x: auto; }
+.ovd-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ovd-table th { text-align: start; font-weight: 700; color: #6C7A93; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid #EEF0F4; white-space: nowrap; }
+.ovd-table td { padding: 10px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
+.ovd-table tr:last-child td { border-bottom: 0; }
+.ovd-asset { font-weight: 700; color: #1E3A5F; text-decoration: none; }
+.ovd-asset:hover { text-decoration: underline; }
+.ovd-kev { margin-inline-start: 8px; padding: 1px 6px; border-radius: 6px; background: #FEE2E2; color: #991B1B; font-size: 10.5px; font-weight: 800; }
+.ovd-share { display: block; font-size: 11.5px; color: #6C7A93; }
+.ovd-empty { text-align: center; color: #6C7A93; padding: 24px 10px; }
 
 /* ── States ──────────────────────────────────────────────────────────────── */
 
-.ov-state {
-    padding: 48px 24px;
-    text-align: center;
-    color: #6C6C6C;
-    font-size: 14px;
-}
-
-.ov-state-error {
-    color: #DC2626;
-}
+.ovd-state { padding: 48px 24px; text-align: center; color: #6C6C6C; font-size: 14px; }
+.ovd-state-error { color: #DC2626; }
 
 /* ── Risk severity chips ─────────────────────────────────────────────────────
-   The dashboard tables show Risk Score and Risk Level, and both must read as
-   the same severity. .risk-level-badge / .risk-muted live in RiskAsset.css,
-   which this page does not import, so RiskLevelBadge rendered here with its
-   inline colours but none of its pill shape. Mirrored (not imported) to keep
-   the two pages' stylesheets independent — the colours themselves come from
-   RISK_LEVEL_BADGES in riskConstants.js, so they cannot drift. */
+   RiskLevelBadge's pill shape lives in RiskAsset.css, which this page does not import; mirrored here.
+   The colours come from RISK_LEVEL_BADGES in riskConstants.js, so they cannot drift. */
 .risk-level-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
-    background: #E5E7EB;
-    color: #374151;
+    display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 700;
+    white-space: nowrap; background: #E5E7EB; color: #374151;
 }
+.risk-muted { color: #9AA5B5; }
 
-.risk-muted {
-    color: #9AA5B5;
-}
-
-/* The score in the same tint as its level, so a row reads as one severity.
-   Deliberately squarer and narrower than the level pill: the number is a
-   measurement, the level is a label, and they should not look interchangeable. */
+/* The score in the same tint as its level (RiskScoreBadge), squarer than the level pill. */
 .ov-risk-score {
-    display: inline-block;
-    min-width: 38px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 700;
-    text-align: center;
-    background: #E5E7EB;
-    color: #374151;
+    display: inline-block; min-width: 38px; padding: 4px 10px; border-radius: 6px; font-size: 13px;
+    font-weight: 700; text-align: center; background: #E5E7EB; color: #374151;
+}
+
+@media (max-width: 1100px) {
+    .ovd-row-top { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+    .ovd-page { padding: 16px; gap: 16px; }
+    .ovd-part { grid-template-columns: 1fr 34px; row-gap: 4px; }
+    .ovd-part-bar { grid-column: 1 / -1; grid-row: 2; }
+    .ovd-part-weight { display: none; }
+    .ovd-actions, .ovd-coverage, .ovd-trends { grid-template-columns: 1fr; }
+    .ovd-score-value { font-size: 36px; }
 }

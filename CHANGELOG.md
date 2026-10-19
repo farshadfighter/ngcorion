@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Dashboard
+
+- The dashboard is rebuilt around what to do next, in five rows: the
+  security risk score with its six parts (each opens its module) and the
+  30-day change of the average asset risk; "Needs action" - assets with
+  exploited (KEV) vulnerabilities, critical alerts nobody acknowledged,
+  monitored devices not answering, overdue remediation, expired or expiring
+  certificates, unsupported software, configuration changed outside NGCorion
+  this week, failed scheduled jobs, a failed backup of NGCorion and requests
+  waiting for your approval, only those above zero, each opening the
+  filtered list; coverage (audited, backed up, monitored); 90-day trends of
+  risk and compliance; and the ten riskiest assets with the factor that adds
+  most to each score.
+- Each part comes from the modules the user may read, so an account with
+  only some modules still gets a dashboard of those.
+- The asset count is now the whole inventory (it counted only assets with a
+  risk score). The module tiles, "Compliance vs Hardening" and the second
+  risky-assets table are gone.
+- The trends take every asset's latest value at each point, so an asset
+  audited ten times counts once.
+- Alerts can be filtered to critical ones ("Critical only", or
+  `?severity=critical`), and Remediation opens a view from the address
+  (`?view=overdue`).
+- New endpoint `GET /api/dashboard/overview`.
+
 ### In-app help
 
 - A help button ("?" in the header, or the "?" key) on every page opens that

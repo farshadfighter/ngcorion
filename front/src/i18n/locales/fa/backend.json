@@ -311,7 +311,6 @@
   "Critical and known exploited": "بحرانی و مورد سوءاستفادهٔ واقعی",
   "Critical asset has no configuration backup": "دارایی بحرانی پشتیبان پیکربندی ندارد",
   "Critical asset lacks redundancy": "دارایی بحرانی افزونگی ندارد",
-  "Critical only": "فقط بحرانی",
   "Critical vulnerability": "آسیب‌پذیری بحرانی",
   "Current password was wrong": "رمز عبور فعلی نادرست بود",
   "CVE automatic update": "به‌روزرسانی خودکار CVE",

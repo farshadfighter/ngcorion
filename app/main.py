@@ -149,6 +149,7 @@ from app.modules.scheduling.scheduler import start_job_scheduler, stop_job_sched
 
 # Import organization-wide dashboard routers
 from app.modules.dashboard.security_score_router import router as security_score_router
+from app.modules.dashboard.overview_router import router as dashboard_overview_router
 
 # Import license components
 from app.core.license_client import LicenseClient
@@ -607,6 +608,7 @@ app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])
 app.include_router(
     security_score_router, prefix="/api/dashboard", tags=["Dashboard"]
 )
+app.include_router(dashboard_overview_router, prefix="/api/dashboard", tags=["Dashboard"])
 
 # System Configuration routes (time, SNMP, syslog, SMS, SMTP, certificate)
 app.include_router(

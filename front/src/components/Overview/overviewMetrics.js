@@ -1,10 +1,11 @@
 import { t } from "../../i18n";
 /**
- * Turns the four module payloads into the numbers the dashboard cards show.
+ * Turns the dashboard's payloads into what its sections show.
  *
- * Kept out of the components so the mapping from backend field to card is in
- * one readable place — several cards combine two modules, and a few need a
- * derivation rather than a plain field read.
+ * GET /api/dashboard/overview (app/modules/dashboard/overview.py) carries the "needs action" counts,
+ * coverage, the 90-day trends and the riskiest assets, each part filled only from the modules the user
+ * may read; /api/dashboard/security-score and /api/risk/summary carry the score and the risk counts.
+ * Kept out of the components so the mapping from backend key to label and page is in one place.
  */
 
 /** Zones the seed defines as reachable from outside the organisation.
@@ -12,8 +13,7 @@ import { t } from "../../i18n";
  *
  *  Matched on a normalised key (lowercased, spaces around the slash removed)
  *  because the seeded name is "Internet / Public" while operator-created zones
- *  spell it "Internet/Public". Comparing the raw strings missed the seeded
- *  zone entirely, so its assets never counted as internet-exposed. */
+ *  spell it "Internet/Public". */
 const EXPOSED_ZONES = new Set(["internet/public", "dmz"]);
 
 const zoneKey = (name) =>
@@ -34,17 +34,8 @@ export const exposedAssets = (riskSummary) => {
 };
 
 /**
- * Assets whose *calculated* risk level is critical.
- *
- * Reads by_risk_level from /api/risk/summary — the aggregate over
- * asset_risk_scores.risk_level — not the operator's own classification in
- * asset_inventory.risk_level. The two are easy to confuse (both columns are
- * called "risk level"), but only the calculated band answers "is this asset
- * actually in a critical state?": the manual classification is one of six
- * inputs and carries 20% of the weight, so an asset marked critical that sits
- * in a safe zone with no open ports and a clean audit is not a critical risk.
- *
- * A 0 here is a real answer, not a missing one — it means nothing scored >= 81.
+ * Assets whose *calculated* risk level is critical (asset_risk_scores.risk_level), not the operator's
+ * own classification in the asset list. A 0 is a real answer: nothing scored 81 or more.
  */
 export const criticalRisks = (riskSummary) => {
     const levels = riskSummary?.by_risk_level;
@@ -53,146 +44,94 @@ export const criticalRisks = (riskSummary) => {
     return critical ? critical.count : 0;
 };
 
-export const totalAssets = (riskSummary) =>
-    riskSummary?.totals?.total_assets ?? null;
-
 /**
  * The dashboard reports RISK, where a higher number is worse.
  *
- * /api/dashboard/security-score returns the opposite: a *health* score, with
- * every sub-score inverted (100 - avg_risk) and bands running 90+ excellent ..
- * <40 critical. Flip it once here so the headline tile and the gauge show the
- * same risk number, and nothing has to reason about which direction a given
- * value is in.
+ * /api/dashboard/security-score returns the opposite: a *health* score, with every sub-score inverted
+ * (100 - avg_risk). Flip it once here so the score and its parts all read the same way.
  */
 export const riskFromSecurityScore = (securityScore) => {
     const value = round(securityScore);
     return value === null ? null : 100 - value;
 };
 
-export const complianceScore = (auditOverview) =>
-    round(auditOverview?.average_compliance);
+/** The six parts of the score, each with the page that explains it. */
+export const SUB_SCORES = [
+    { key: "asset_health", label: t("Asset Health"), to: "/assets" },
+    { key: "audit_compliance", label: t("Audit Compliance"), to: "/audit" },
+    { key: "hardening", label: t("Hardening"), to: "/hardening/overview" },
+    { key: "risk_intelligence", label: t("Risk Intelligence"), to: "/risk/overview" },
+    { key: "exposure_intelligence", label: t("Exposure Intelligence"), to: "/risk/exposure" },
+    { key: "vulnerability", label: t("Vulnerability"), to: "/cve" },
+];
 
-export const hardeningScore = (hardeningOverview) =>
-    round(hardeningOverview?.hardening_score);
-
-/**
- * Labels for the breakdown rows, keyed by the sub_scores keys the backend
- * returns. "vulnerability" is not in the Figma mock but the endpoint computes
- * it, so it is shown rather than silently dropped.
- */
-export const SUB_SCORE_LABELS = {
-    asset_health: t("Asset Health"),
-    audit_compliance: t("Audit Compliance"),
-    hardening: t("Hardening"),
-    risk_intelligence: t("Risk Intelligence"),
-    exposure_intelligence: t("Exposure Intelligence"),
-    vulnerability: t("Vulnerability"),
-};
-
-/** sub_scores object -> ordered rows for the breakdown table.
- *  Currently unused: the "NGCorion Security Score Breakdown" panel was removed
- *  from the dashboard pending further development. Kept for when it returns. */
+/** sub_scores -> rows of the breakdown, as risk (higher is worse), each with its weight and page. */
 export const breakdownRows = (securityScore) => {
     const subs = securityScore?.sub_scores;
     if (!subs) return [];
-    return Object.keys(SUB_SCORE_LABELS)
-        .filter((key) => subs[key])
-        .map((key) => ({
-            key,
-            label: SUB_SCORE_LABELS[key],
-            score: round(subs[key].score),
-            weight: subs[key].weight,
-            incomplete: !!subs[key].incomplete,
-        }));
+    return SUB_SCORES.filter((s) => subs[s.key]).map((s) => ({
+        ...s,
+        risk: riskFromSecurityScore(subs[s.key].score),
+        weight: subs[s.key].weight,
+        incomplete: !!subs[s.key].incomplete,
+    }));
+};
+
+/** What each "needs action" count means (the backend's keys). */
+export const ATTENTION_LABELS = {
+    kev_assets: t("Assets with exploited vulnerabilities (KEV)"),
+    critical_alerts: t("Critical alerts not acknowledged"),
+    devices_down: t("Monitored devices not answering"),
+    system_backup_failed: t("Last backup of NGCorion failed"),
+    overdue_remediation: t("Overdue remediation items"),
+    certificates_expired: t("Expired certificates"),
+    certificates_expiring: t("Certificates expiring within 30 days"),
+    eol_unsupported: t("Assets on unsupported software (end of life)"),
+    external_changes: t("Devices changed outside NGCorion this week"),
+    failed_jobs_discovery: t("Scheduled discoveries that failed"),
+    failed_jobs_audit: t("Scheduled audits that failed"),
+    failed_jobs_backup: t("Scheduled backups that failed"),
+    acceptances_pending: t("Risk acceptances waiting for your approval"),
+    policy_pending: t("Benchmark policy rules waiting for your approval"),
+};
+
+/** Items the page knows how to name, in the backend's order (most urgent first). */
+export const attentionItems = (overview) =>
+    (overview?.attention || []).filter((i) => ATTENTION_LABELS[i.key] && i.count > 0)
+        .map((i) => ({ ...i, label: ATTENTION_LABELS[i.key] }));
+
+export const COVERAGE_LABELS = {
+    audited: { label: t("Audited in the last 90 days"), unit: t("of all assets") },
+    backed_up: { label: t("Configuration backed up in the last 30 days"), unit: t("of the devices that can be backed up") },
+    monitored: { label: t("Monitored over SNMP"), unit: t("of all assets") },
+};
+
+/** Coverage rows with their share; a module with nothing to cover shows no share, not 0%. */
+export const coverageRows = (overview) =>
+    (overview?.coverage || []).filter((c) => COVERAGE_LABELS[c.key]).map((c) => ({
+        ...c,
+        ...COVERAGE_LABELS[c.key],
+        pct: c.total ? Math.round((100 * c.covered) / c.total) : null,
+    }));
+
+/** Risk factors, as the backend names them (app/modules/dashboard/overview.py FACTORS). */
+export const FACTOR_LABELS = {
+    criticality: t("Criticality"),
+    asset_risk: t("Asset Risk"),
+    zone: t("Zone"),
+    open_ports: t("Open Ports"),
+    audit: t("Audit Risk"),
+    hardening: t("Hardening"),
+    vulnerability: t("Vulnerability"),
 };
 
 /**
- * The four module tiles, each summarising one area and linking to its screen.
- *
- * The headline number is whatever that module leads with on its own dashboard,
- * so the two pages agree: asset count, average compliance, hardening success
- * rate, and the count of critical-risk assets.
+ * How a 30-day change reads: for risk a rise is bad, for compliance a fall is.
+ * {dir: "up" | "down" | "flat", good: true | false | null}, or null without a change.
  */
-export const moduleCards = ({
-    riskSummary,
-    auditOverview,
-    hardeningOverview,
-}) => [
-    {
-        key: "assets",
-        title: t("Asset Management"),
-        value: totalAssets(riskSummary),
-        unit: t("Asset"),
-        to: "/assets",
-    },
-    {
-        key: "auditing",
-        title: t("Auditing"),
-        value: complianceScore(auditOverview),
-        unit: t("Compliance"),
-        suffix: "%",
-        to: "/audit",
-    },
-    {
-        key: "hardening",
-        title: t("Hardening"),
-        value: hardeningScore(hardeningOverview),
-        unit: t("Hardened"),
-        suffix: "%",
-        to: "/hardening/overview",
-    },
-    {
-        key: "risk",
-        title: t("Risk Intelligence"),
-        value: criticalRisks(riskSummary),
-        unit: t("Critical Risk Assets"),
-        to: "/risk/overview",
-    },
-];
-
-/** The six headline tiles across the top of the design. */
-export const headlineMetrics = ({
-    riskSummary,
-    auditOverview,
-    hardeningOverview,
-    securityScore,
-}) => [
-    {
-        // Risk, not health: higher is worse, matching the gauge below.
-        key: "security_score",
-        label: t("Security Risk Score"),
-        value: riskFromSecurityScore(securityScore?.security_score),
-        suffix: "/100",
-    },
-    {
-        key: "total_assets",
-        label: t("Total Assets"),
-        value: totalAssets(riskSummary),
-    },
-    {
-        // "Critical Risk Assets", not "Critical Risks": it counts assets whose
-        // calculated level is critical, and the bare wording was read as the
-        // Asset List classification of the same name.
-        key: "critical_risks",
-        label: t("Critical Risk Assets"),
-        value: criticalRisks(riskSummary),
-    },
-    {
-        key: "exposed_assets",
-        label: t("Internet Exposed Assets"),
-        value: exposedAssets(riskSummary),
-    },
-    {
-        key: "compliance_score",
-        label: t("Compliance Score"),
-        value: complianceScore(auditOverview),
-        suffix: "%",
-    },
-    {
-        key: "hardening_score",
-        label: t("Hardening Score"),
-        value: hardeningScore(hardeningOverview),
-        suffix: "%",
-    },
-];
+export const changeTone = (change, higherIsBetter) => {
+    if (change === null || change === undefined) return null;
+    if (Math.abs(change) < 0.5) return { dir: "flat", good: null };
+    const dir = change > 0 ? "up" : "down";
+    return { dir, good: (dir === "up") === higherIsBetter };
+};

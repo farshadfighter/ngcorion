@@ -3,51 +3,17 @@ import api from "../config/api";
 import { t } from "../i18n";
 
 /**
- * Main dashboard aggregates.
+ * Main dashboard data.
  *
- * There is no single dashboard endpoint: the screen is assembled from the risk,
- * audit and hardening modules, each guarded by its own permission. A user with
- * only some of those still gets a useful page, so every request is allowed to
- * fail on its own and the reducer records which ones did.
- *
+ * GET /api/dashboard/overview answers every signed-in user, filled from the modules they may read;
+ * the security score and the risk summary need risk access. Each request may fail on its own (a user
+ * without risk access still gets the rest), and the reducer records which ones did.
  */
 const SOURCES = {
-    riskSummary: { url: "/api/risk/summary" },
-    // The "Security Trend" and "Recent Security Events" panels were removed
-    // from the page pending further development, so their sources
-    // (/api/audit/dashboard/compliance-trend and /api/events/recent) are no
-    // longer requested. Restore them here alongside the panels.
-    auditOverview: { url: "/api/audit/dashboard/overview" },
-    hardeningOverview: { url: "/api/hardening/dashboard/overview" },
-    topRisky: {
-        url: "/api/risk/assets",
-        params: {
-            page: 1,
-            page_size: 20,
-            sort_by: "final_risk_score",
-            sort_order: "desc",
-        },
-    },
-    // Assets needing attention are the worst-scoring ones, so this reads the
-    // risk list rather than the hardening one: the hardening endpoint only
-    // returns assets with active audit findings, so a high-risk asset that has
-    // never been audited -- exactly the kind worth surfacing -- was hidden.
-    // The API filters one risk_level at a time, so the page takes the top slice
-    // (already sorted by score desc) and keeps high + critical.
-    requiringAttention: {
-        url: "/api/risk/assets",
-        params: {
-            page: 1,
-            page_size: 50,
-            sort_by: "final_risk_score",
-            sort_order: "desc",
-        },
-    },
+    overview: { url: "/api/dashboard/overview" },
     securityScore: { url: "/api/dashboard/security-score" },
+    riskSummary: { url: "/api/risk/summary" },
 };
-
-/** rejectWithValue marker: the user may read none of the dashboard's sources. */
-export const NO_ACCESS = "no-access";
 
 export const fetchOverviewDashboard = createAsyncThunk(
     "overviewDashboard/fetch",
@@ -55,7 +21,7 @@ export const fetchOverviewDashboard = createAsyncThunk(
         const keys = Object.keys(SOURCES);
         const results = await Promise.allSettled(
             keys.map((key) =>
-                // the page reports missing permissions itself: no toast per panel
+                // the page leaves out what the user may not read: no toast per panel
                 api.get(SOURCES[key].url, { params: SOURCES[key].params, skipPermissionToast: true })
             )
         );
@@ -72,14 +38,9 @@ export const fetchOverviewDashboard = createAsyncThunk(
             }
         });
 
-        // Everything failing is a real page-level error; one panel failing is not.
-        if (failed.length === keys.length) {
+        // The overview answers everyone, so its failure is a real page-level error.
+        if (!data.overview) {
             const first = results[0].reason;
-            // Every source refused for lack of permission: not an error, the
-            // account simply has no access to what this page shows.
-            if (results.every((r) => r.reason?.response?.status === 403)) {
-                return rejectWithValue(NO_ACCESS);
-            }
             return rejectWithValue(
                 first?.response?.data?.detail ||
                     first?.message ||
@@ -93,12 +54,9 @@ export const fetchOverviewDashboard = createAsyncThunk(
 const overviewDashboardSlice = createSlice({
     name: "overviewDashboard",
     initialState: {
-        riskSummary: null,
-        auditOverview: null,
-        hardeningOverview: null,
-        topRisky: null,
-        requiringAttention: null,
+        overview: null,
         securityScore: null,
+        riskSummary: null,
         failedPanels: [],
         isLoading: false,
         error: null,

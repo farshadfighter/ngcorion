@@ -21,6 +21,7 @@
   "Could not load alerts": "بارگذاری هشدارها ممکن نشد",
   "Could not resolve the alert": "بستن هشدار انجام نشد",
   "Critical": "بحرانی",
+  "Critical only": "فقط بحرانی",
   "Critical, not acknowledged": "بحرانی، تأیید‌نشده",
   "Email": "ایمیل",
   "Filter alerts": "فیلتر هشدارها",

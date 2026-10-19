@@ -26,7 +26,8 @@ const PAGE = 50;
 export function RemediationPage() {
     const canWrite = usePermission("remediation", "write");
     const [params, setParams] = useSearchParams();
-    const [view, setView] = useState("open");
+    // ?view=overdue (the dashboard's "overdue" card) opens that view
+    const [view, setView] = useState(() => (VIEWS.some(([v]) => v === params.get("view")) ? params.get("view") : "open"));
     const [source, setSource] = useState("");
     const [search, setSearch] = useState("");
     const [query, setQuery] = useState("");

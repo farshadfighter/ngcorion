@@ -1,55 +1,31 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { fetchOverviewDashboard, NO_ACCESS } from "../../store/overviewDashboardSlice";
+import { fetchOverviewDashboard } from "../../store/overviewDashboardSlice";
 import { tb } from "../../i18n/backendText";
 import {
-    headlineMetrics,
-    moduleCards,
-    complianceScore,
-    hardeningScore,
+    attentionItems,
+    breakdownRows,
+    changeTone,
+    coverageRows,
+    criticalRisks,
+    exposedAssets,
+    FACTOR_LABELS,
     riskFromSecurityScore,
 } from "./overviewMetrics";
 import { RiskLevelBadge } from "../Risk/RiskLevelBadge";
 import { RiskScoreBadge } from "./RiskScoreBadge";
+import { parseUtc } from "../../utils/dates";
 import "../../assets/OverviewDashboard.css";
-import { t, n } from "../../i18n";
+import { t, n, uiLocale } from "../../i18n";
 
-const fmt = (value) => n(value);
+const hasValue = (v) => v !== null && v !== undefined;
 
-/** One of the six tiles across the top. */
-const MetricCard = ({ metric }) => (
-    <div className="ov-metric">
-        <span className="ov-metric-label">{metric.label}</span>
-        {metric.pending ? (
-            <span className="ov-metric-pending" title={t("Waiting on a backend endpoint")}>
-                —
-            </span>
-        ) : (
-            <span className="ov-metric-value">
-                {metric.value === null || metric.value === undefined
-                    ? "—"
-                    : fmt(metric.value)}
-                {metric.value !== null && metric.value !== undefined && metric.suffix
-                    ? n(metric.suffix)
-                    : ""}
-            </span>
-        )}
-    </div>
-);
-
-/* The gauge reads as RISK, not health: higher is worse.
- *
- * The backend's security_score is a *health* score — every sub-score is
- * inverted (100 - avg_risk) and its bands run 90+ excellent .. <40 critical.
- * Showing that number under a risk-coloured scale would contradict itself, so
- * the page converts it once, here: riskScore = 100 - security_score. The band
- * a score falls into is then derived from that risk number rather than trusting
- * the backend's health-oriented `score_level`, which would disagree.
- *
- * `width` is each band's true share of the 0-100 scale, so the needle (placed
- * at `risk%`) and the colours use the same scale. */
+/* The score reads as RISK, not health: higher is worse (see riskFromSecurityScore).
+ * `width` is each band's true share of the 0-100 scale, so the needle (placed at `risk%`) and the
+ * colours use the same scale. */
 const RISK_BANDS = [
     { key: "minimal", label: t("Minimal"), range: "0-9", color: "#16A34A", width: 10 },
     { key: "low", label: t("Low"), range: "10-24", color: "#22C55E", width: 15 },
@@ -60,7 +36,7 @@ const RISK_BANDS = [
 
 /** Which band a risk score sits in — highest band first, inclusive bounds. */
 const riskBandFor = (risk) => {
-    if (risk === null || risk === undefined) return null;
+    if (!hasValue(risk)) return null;
     if (risk >= 60) return "critical";
     if (risk >= 40) return "high";
     if (risk >= 25) return "moderate";
@@ -68,237 +44,262 @@ const riskBandFor = (risk) => {
     return "minimal";
 };
 
-/** "Security Risk Gauge": the overall risk score against its level bands.
- *  Higher is worse — see riskFromSecurityScore. */
-const SecurityPostureGauge = ({ securityScore }) => {
-    const risk = riskFromSecurityScore(securityScore?.security_score);
-    const level = riskBandFor(risk);
+const BAND_COLOR = Object.fromEntries(RISK_BANDS.map((b) => [b.key, b.color]));
 
+/** A 30-day change with its arrow, green when it is good news and red when it is not. */
+const Change = ({ value, higherIsBetter, unit = "" }) => {
+    const tone = changeTone(value, higherIsBetter);
+    if (!tone) return null;
+    const cls = tone.good === null ? "is-flat" : tone.good ? "is-good" : "is-bad";
+    const arrow = { up: "fa-arrow-up", down: "fa-arrow-down", flat: "fa-minus" }[tone.dir];
+    const amount = n(`${value > 0 ? "+" : ""}${value}${unit}`);
     return (
-        <section className="ov-card ov-card-medium">
-            <h3 className="ov-card-title">{t("Security Risk Gauge")}</h3>
-            <div className="ov-gauge">
-                <div className="ov-gauge-readout">
-                    <span className="ov-gauge-label">{t("Security Risk")}</span>
-                    <span className="ov-gauge-value">
-                        {risk === null ? "—" : n(`${risk}/100`)}
-                    </span>
-                </div>
+        <span className={`ovd-change ${cls}`} title={t("Change over the last 30 days")}>
+            <i className={`fa-solid ${arrow}`} aria-hidden="true" /> {amount}
+            <span className="ovd-change-when">{t("in 30 days")}</span>
+        </span>
+    );
+};
 
-                <div className="ov-gauge-track">
-                    {RISK_BANDS.map((band) => (
-                        <span
-                            key={band.key}
-                            className={`ov-gauge-band${
-                                band.key === level ? " is-active" : ""
-                            }`}
-                            style={{ background: band.color, width: `${band.width}%` }}
-                            title={`${band.label}: ${n(band.range)}`}
-                        />
-                    ))}
-                    {risk !== null && (
-                        <span
-                            className="ov-gauge-needle"
-                            style={{ left: `${Math.min(100, Math.max(0, risk))}%` }}
-                        />
-                    )}
-                </div>
+/** A small figure that opens the page behind it. */
+const Figure = ({ label, value, to }) => (
+    <Link to={to} className="ovd-figure">
+        <span className="ovd-figure-value">{hasValue(value) ? n(value) : "—"}</span>
+        <span className="ovd-figure-label">{label}</span>
+    </Link>
+);
 
-                <div className="ov-gauge-legend">
-                    {RISK_BANDS.map((band) => (
-                        <span key={band.key} className="ov-gauge-legend-item">
-                            <i
-                                className="ov-dot"
-                                style={{ background: band.color }}
-                            />
-                            {band.label}: {n(band.range)}
+/** Row 1, start: the overall risk score, its band, and the key counts. */
+const ScoreCard = ({ securityScore, riskSummary, overview }) => {
+    const risk = riskFromSecurityScore(securityScore?.security_score);
+    const band = riskBandFor(risk);
+    const riskTrend = overview?.trend?.risk;
+    return (
+        <section className="ovd-card ovd-score">
+            <h2 className="ovd-title">{t("Security Risk Score")}</h2>
+            {securityScore ? (
+                <>
+                    <div className="ovd-score-head">
+                        <span className="ovd-score-value" style={{ color: band ? BAND_COLOR[band] : undefined }}>
+                            {hasValue(risk) ? n(risk) : "—"}
+                            <small>{n("/100")}</small>
                         </span>
-                    ))}
-                </div>
-
-                {securityScore?.incomplete_data && (
-                    <p className="ov-gauge-note">
-                        {t("Some inputs are incomplete, so this score is provisional.")}
-                    </p>
-                )}
+                        {band && <span className="ovd-band" style={{ background: BAND_COLOR[band] }}>
+                            {RISK_BANDS.find((b) => b.key === band).label}</span>}
+                    </div>
+                    <div className="ovd-gauge" aria-hidden="true">
+                        {RISK_BANDS.map((b) => (
+                            <span key={b.key} className={`ovd-gauge-band${b.key === band ? " is-active" : ""}`}
+                                  style={{ background: b.color, width: `${b.width}%` }} title={`${b.label}: ${n(b.range)}`} />
+                        ))}
+                        {hasValue(risk) && <span className="ovd-gauge-needle" style={{ insetInlineStart: `${Math.min(100, Math.max(0, risk))}%` }} />}
+                    </div>
+                    {hasValue(riskTrend?.change) && (
+                        <p className="ovd-score-trend">
+                            {t("Average asset risk")} <Change value={riskTrend.change} higherIsBetter={false} />
+                        </p>
+                    )}
+                    {securityScore.incomplete_data && (
+                        <p className="ovd-note">{t("Some inputs are incomplete, so this score is provisional.")}</p>
+                    )}
+                </>
+            ) : (
+                <p className="ovd-muted">{t("The score needs access to risk intelligence.")}</p>
+            )}
+            <div className="ovd-figures">
+                {overview?.assets && <Figure label={t("Assets in the inventory")} value={overview.assets.total} to="/assets/inventory" />}
+                {riskSummary && <Figure label={t("Critical Risk Assets")} value={criticalRisks(riskSummary)} to="/risk/assets" />}
+                {riskSummary && <Figure label={t("Internet Exposed Assets")} value={exposedAssets(riskSummary)} to="/risk/exposure" />}
             </div>
         </section>
     );
 };
 
-/* "NGCorion Security Score Breakdown", "Security Trend" and "Recent Security
-   Events" were removed from this page while those features are still being
-   developed. The endpoints they read (/api/dashboard/security-score,
-   .../compliance-trend, /api/events/recent) are untouched, so restoring a
-   panel means re-adding its component and its entry in the render below. */
-
-/** One of the four module tiles; the whole card is the link to its screen. */
-const ModuleCard = ({ card, onOpen }) => (
-    <button type="button" className="ov-module" onClick={() => onOpen(card.to)}>
-        <span className="ov-module-hint">
-            <i className="fa-solid fa-circle-info" aria-hidden="true" /> {" "}{t("click on to see more information")}
-        </span>
-        <span className="ov-module-body">
-            <span className="ov-module-title">{card.title}</span>
-            <span className="ov-module-value">
-                {card.value === null || card.value === undefined ? (
-                    "—"
-                ) : (
-                    <>
-                        {fmt(card.value)}
-                        {n(card.suffix || "")} {card.unit}
-                    </>
-                )}
-            </span>
-        </span>
-    </button>
-);
-
-/** Two percentages side by side, each with its own bar. */
-const ComplianceVsHardening = ({ compliance, hardening }) => (
-    <section className="ov-card ov-card-medium ov-compare">
-        <h3 className="ov-card-title">{t("Compliance vs Hardening")}</h3>
-        <div className="ov-compare-heads">
-            <div className="ov-compare-head">
-                <span className="ov-compare-label">{t("Compliance")}</span>
-                <span className="ov-compare-value">
-                    {compliance === null ? "—" : n(`${compliance}%`)}
-                </span>
-            </div>
-            <div className="ov-compare-head">
-                <span className="ov-compare-label">{t("Hardening")}</span>
-                <span className="ov-compare-value">
-                    {hardening === null ? "—" : n(`${hardening}%`)}
-                </span>
-            </div>
-        </div>
-        <div className="ov-compare-bars">
-            <div className="ov-bar-row">
-                <span className="ov-bar-track">
-                    <span
-                        className="ov-bar-fill ov-bar-compliance"
-                        style={{ width: `${Math.min(100, compliance ?? 0)}%` }}
-                    />
-                </span>
-                <span className="ov-bar-legend">
-                    <i className="ov-dot ov-dot-compliance" /> {" "}{t("Compliance: ")}
-                    {compliance === null ? "—" : n(`${compliance}%`)}
-                </span>
-            </div>
-            <div className="ov-bar-row">
-                <span className="ov-bar-track">
-                    <span
-                        className="ov-bar-fill ov-bar-hardening"
-                        style={{ width: `${Math.min(100, hardening ?? 0)}%` }}
-                    />
-                </span>
-                <span className="ov-bar-legend">
-                    <i className="ov-dot ov-dot-hardening" /> {" "}{t("Hardening: ")}
-                    {hardening === null ? "—" : n(`${hardening}%`)}
-                </span>
-            </div>
-        </div>
-    </section>
-);
-
-const dash = (value) =>
-    value === null || value === undefined || value === "" ? "-" : value;
-
-/** "Top 20 Risky Assets" — the highest-scoring assets, newest calculation.
- *  Score and level are shown so the ordering is legible; the level badge is the
- *  shared one, so the colours match the Risk Asset and Risk Intelligence pages. */
-const TopRiskyAssets = ({ items }) => (
-    <section className="ov-card ov-card-wide">
-        <h3 className="ov-card-title">{t("Top 20 Risky Assets")}</h3>
-        <div className="ov-table-wrapper">
-            <table className="ov-table">
-                <thead>
-                    <tr>
-                        <th>{t("Number")}</th>
-                        <th>{t("Asset Name")}</th>
-                        <th>{t("Hostname")}</th>
-                        <th>{t("Type")}</th>
-                        <th>{t("Zone")}</th>
-                        <th>{t("Manufacturer")}</th>
-                        <th>{t("Model")}</th>
-                        <th>{t("Risk Score")}</th>
-                        <th>{t("Risk Level")}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.length === 0 && (
-                        <tr>
-                            <td colSpan={9} className="ov-table-empty">
-                                {t("No assets have a risk score yet.")}
-                            </td>
-                        </tr>
-                    )}
-                    {items.map((row, i) => (
-                        <tr key={row.asset_id}>
-                            <td>{n(row.rank ?? i + 1)}</td>
-                            <td>{dash(row.asset_name)}</td>
-                            <td>{dash(row.hostname)}</td>
-                            <td>{dash(row.asset_type)}</td>
-                            <td>{dash(row.zone_name)}</td>
-                            <td>{dash(row.vendor)}</td>
-                            <td>{dash(row.model)}</td>
-                            <td>
-                                <RiskScoreBadge
-                                    score={row.final_risk_score}
-                                    level={row.risk_level}
-                                />
-                            </td>
-                            <td>
-                                <RiskLevelBadge level={row.risk_level} />
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </section>
-);
-
-/** "Assets Requiring Attention" — the High and Critical assets by risk
- *  score, worst first, with the same level colours as the Risk pages. */
-const ATTENTION_LEVELS = ["critical", "high"];
-
-const AssetsRequiringAttention = ({ items }) => {
-    const rows = (items || [])
-        .filter((row) => ATTENTION_LEVELS.includes(row.risk_level))
-        .slice(0, 10);
-
+/** Row 1, end: the six parts of the score, each opening its module. */
+const Breakdown = ({ securityScore }) => {
+    const rows = breakdownRows(securityScore);
+    if (!rows.length) return null;
     return (
-        <section className="ov-card ov-card-medium">
-            <h3 className="ov-card-title">{t("Assets Requiring Attention")}</h3>
-            <div className="ov-table-wrapper">
-                <table className="ov-table">
+        <section className="ovd-card ovd-breakdown">
+            <h2 className="ovd-title">{t("What makes up the score")}</h2>
+            <p className="ovd-sub">{t("Risk of each part (higher is worse) and its weight in the score.")}</p>
+            <ul className="ovd-parts">
+                {rows.map((r) => {
+                    const band = riskBandFor(r.risk);
+                    return (
+                        <li key={r.key}>
+                            <Link to={r.to} className="ovd-part">
+                                <span className="ovd-part-label">
+                                    {r.label}
+                                    {r.incomplete && <i className="fa-solid fa-circle-exclamation ovd-part-warn"
+                                                        title={t("No data yet: counted as 50 until there is")} />}
+                                </span>
+                                <span className="ovd-part-bar" aria-hidden="true">
+                                    <span style={{ width: `${Math.min(100, r.risk ?? 0)}%`, background: band ? BAND_COLOR[band] : undefined }} />
+                                </span>
+                                <span className="ovd-part-value">{hasValue(r.risk) ? n(r.risk) : "—"}</span>
+                                <span className="ovd-part-weight">{t("weight {{w}}", { w: n(`${r.weight}%`) })}</span>
+                            </Link>
+                        </li>
+                    );
+                })}
+            </ul>
+        </section>
+    );
+};
+
+const SEVERITY_ICON = { critical: "fa-circle-exclamation", high: "fa-triangle-exclamation", medium: "fa-circle-info", info: "fa-user-check" };
+
+/** Row 2: what someone has to act on now. */
+const NeedsAction = ({ overview }) => {
+    const items = attentionItems(overview);
+    return (
+        <section className="ovd-section">
+            <h2 className="ovd-title">{t("Needs action")}</h2>
+            {items.length === 0 ? (
+                <div className="ovd-allclear">
+                    <i className="fa-solid fa-circle-check" aria-hidden="true" />
+                    {t("Nothing needs action right now in the modules you can see.")}
+                </div>
+            ) : (
+                <div className="ovd-actions">
+                    {items.map((i) => (
+                        <Link key={i.key} to={i.link} className={`ovd-action sev-${i.severity}`}>
+                            <i className={`fa-solid ${SEVERITY_ICON[i.severity] || "fa-circle-info"} ovd-action-icon`} aria-hidden="true" />
+                            <span className="ovd-action-count">{n(i.count)}</span>
+                            <span className="ovd-action-label">{i.label}</span>
+                            <i className="fa-solid fa-chevron-right ovd-action-go" aria-hidden="true" />
+                        </Link>
+                    ))}
+                </div>
+            )}
+        </section>
+    );
+};
+
+/** Row 3: how much of the estate each module covers. */
+const Coverage = ({ overview }) => {
+    const rows = coverageRows(overview);
+    if (!rows.length) return null;
+    return (
+        <section className="ovd-section">
+            <h2 className="ovd-title">{t("Coverage")}</h2>
+            <div className="ovd-coverage">
+                {rows.map((c) => (
+                    <Link key={c.key} to={c.link} className="ovd-card ovd-cover">
+                        <span className="ovd-cover-label">{c.label}</span>
+                        <span className="ovd-cover-value">{hasValue(c.pct) ? n(`${c.pct}%`) : "—"}</span>
+                        <span className="ovd-cover-bar" aria-hidden="true">
+                            <span style={{ width: `${c.pct ?? 0}%` }} className={c.pct >= 80 ? "is-good" : c.pct >= 50 ? "is-mid" : "is-low"} />
+                        </span>
+                        <span className="ovd-cover-detail">
+                            {t("{{covered}} of {{total}}", { covered: n(c.covered), total: n(c.total) })} {c.unit}
+                        </span>
+                    </Link>
+                ))}
+            </div>
+        </section>
+    );
+};
+
+const dayLabel = (iso) => {
+    const d = parseUtc(iso);
+    return d ? new Intl.DateTimeFormat(uiLocale(), { day: "numeric", month: "short" }).format(d) : "";
+};
+
+/** One 90-day line: the latest value of every asset at each point. */
+const TrendChart = ({ title, series, higherIsBetter, color, unit, to, empty }) => {
+    const data = (series?.points || []).map((p) => ({ label: dayLabel(p.at), value: p.value, assets: p.assets }));
+    const last = data.length ? data[data.length - 1].value : null;
+    return (
+        <section className="ovd-card ovd-trend">
+            <div className="ovd-trend-head">
+                <Link to={to} className="ovd-title ovd-title-link">{title}</Link>
+                {hasValue(last) && <span className="ovd-trend-now">{n(`${last}${unit}`)}</span>}
+                <Change value={series?.change} higherIsBetter={higherIsBetter} unit={unit} />
+            </div>
+            {data.length < 2 ? (
+                <p className="ovd-muted">{empty}</p>
+            ) : (
+                <div className="ovd-chart" dir="ltr">
+                    <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                            <CartesianGrid stroke="#EEF0F4" vertical={false} />
+                            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6C7A93" }} axisLine={false} tickLine={false}
+                                   interval="preserveStartEnd" minTickGap={24} />
+                            <YAxis domain={[0, 100]} tickFormatter={(v) => n(v)} tick={{ fontSize: 11, fill: "#6C7A93" }}
+                                   axisLine={false} tickLine={false} width={32} />
+                            <Tooltip formatter={(value, _name, entry) => [
+                                t("{{value}} · {{count}} assets", { value: n(`${value}${unit}`), count: n(entry.payload.assets) }), title]} />
+                            <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
+        </section>
+    );
+};
+
+/** Row 4: where risk and compliance have been heading. */
+const Trends = ({ overview }) => {
+    const trend = overview?.trend || {};
+    if (!trend.risk && !trend.compliance) return null;
+    return (
+        <section className="ovd-section">
+            <h2 className="ovd-title">{t("Last 90 days")}</h2>
+            <div className="ovd-trends">
+                {trend.risk && <TrendChart title={t("Average asset risk")} series={trend.risk} higherIsBetter={false}
+                                           color="#DC2626" unit="" to="/risk/overview"
+                                           empty={t("Not enough risk history yet: it builds up as risk is recalculated.")} />}
+                {trend.compliance && <TrendChart title={t("Average compliance")} series={trend.compliance} higherIsBetter
+                                                 color="#2563EB" unit="%" to="/audit"
+                                                 empty={t("Not enough audits yet: the line appears after audits on two different days.")} />}
+            </div>
+        </section>
+    );
+};
+
+/** Row 5: the riskiest assets and what drives each one. */
+const TopAssets = ({ items }) => {
+    if (!items) return null;
+    return (
+        <section className="ovd-card">
+            <div className="ovd-trend-head">
+                <h2 className="ovd-title">{t("Top 10 risky assets")}</h2>
+                <Link to="/risk/assets" className="ovd-more">{t("All assets by risk")}</Link>
+            </div>
+            <div className="ovd-table-wrap">
+                <table className="ovd-table">
                     <thead>
                         <tr>
                             <th>{t("Asset")}</th>
+                            <th>{t("IP address")}</th>
                             <th>{t("Risk Score")}</th>
                             <th>{t("Risk Level")}</th>
+                            <th>{t("Main factor")}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.length === 0 && (
-                            <tr>
-                                <td colSpan={3} className="ov-table-empty">
-                                    {t("No High or Critical risk assets.")}
-                                </td>
-                            </tr>
+                        {items.length === 0 && (
+                            <tr><td colSpan={5} className="ovd-empty">{t("No assets have a risk score yet.")}</td></tr>
                         )}
-                        {rows.map((row) => (
+                        {items.map((row) => (
                             <tr key={row.asset_id}>
-                                <td>{dash(row.asset_name)}</td>
                                 <td>
-                                <RiskScoreBadge
-                                    score={row.final_risk_score}
-                                    level={row.risk_level}
-                                />
-                            </td>
+                                    <Link to={`/risk/assets/${row.asset_id}`} className="ovd-asset">{row.asset_name}</Link>
+                                    {row.kev > 0 && <span className="ovd-kev" title={t("Has vulnerabilities exploited in the wild (KEV)")}>KEV</span>}
+                                    {row.incomplete && <i className="fa-solid fa-circle-exclamation ovd-part-warn" title={t("Some data is missing for this asset")} />}
+                                </td>
+                                <td><span dir="ltr">{row.ip_address || "—"}</span></td>
+                                <td><RiskScoreBadge score={row.score} level={row.level} /></td>
+                                <td><RiskLevelBadge level={row.level} /></td>
                                 <td>
-                                    <RiskLevelBadge level={row.risk_level} />
+                                    {row.main_factor ? (
+                                        <>
+                                            {FACTOR_LABELS[row.main_factor] || row.main_factor}
+                                            <span className="ovd-share">{t("{{pct}} of the score", { pct: n(`${row.main_factor_share}%`) })}</span>
+                                        </>
+                                    ) : "—"}
                                 </td>
                             </tr>
                         ))}
@@ -310,68 +311,39 @@ const AssetsRequiringAttention = ({ items }) => {
 };
 
 /**
- * The main dashboard.
- *
- * Assembled from the risk, audit and hardening modules rather than one
- * dashboard endpoint, so a user missing one of those permissions still gets
- * the rest of the page.
+ * The main dashboard: the risk score and its parts, what needs action, coverage, the 90-day trends
+ * and the riskiest assets. Every section comes from the modules the user may read and is left out
+ * otherwise, so a user with only some modules still gets a dashboard of those.
  */
 export const OverviewDashboard = () => {
     const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const state = useSelector((s) => s.overviewDashboard);
-    const { isLoading, error, riskSummary } = state;
+    const { isLoading, error, overview, securityScore, riskSummary } = useSelector((s) => s.overviewDashboard);
 
     useEffect(() => {
         dispatch(fetchOverviewDashboard());
     }, [dispatch]);
 
-    if (isLoading && !riskSummary) {
-        return (
-            <div className="ov-page">
-                <p className="ov-state">{t("Loading dashboard…")}</p>
-            </div>
-        );
+    if (isLoading && !overview) {
+        return <div className="ovd-page"><p className="ovd-state">{t("Loading dashboard…")}</p></div>;
     }
-
     if (error) {
         return (
-            <div className="ov-page">
-                <p className={error === NO_ACCESS ? "ov-state" : "ov-state ov-state-error"}>
-                    {error === NO_ACCESS
-                        ? t("Your account has no access to the data this dashboard shows (risk, auditing, hardening). Ask an administrator to grant it.")
-                        : t("Failed to load dashboard: {{error}}", { error: tb(error) })}
-                </p>
+            <div className="ovd-page">
+                <p className="ovd-state ovd-state-error">{t("Failed to load dashboard: {{error}}", { error: tb(error) })}</p>
             </div>
         );
     }
 
     return (
-        <div className="ov-page">
-            <div className="ov-metrics">
-                {headlineMetrics(state).map((metric) => (
-                    <MetricCard key={metric.key} metric={metric} />
-                ))}
+        <div className="ovd-page">
+            <div className="ovd-row ovd-row-top">
+                <ScoreCard securityScore={securityScore} riskSummary={riskSummary} overview={overview} />
+                <Breakdown securityScore={securityScore} />
             </div>
-
-            <SecurityPostureGauge securityScore={state.securityScore} />
-
-            <div className="ov-modules">
-                {moduleCards(state).map((card) => (
-                    <ModuleCard key={card.key} card={card} onOpen={navigate} />
-                ))}
-            </div>
-
-            <TopRiskyAssets items={state.topRisky?.items || []} />
-
-            <ComplianceVsHardening
-                compliance={complianceScore(state.auditOverview)}
-                hardening={hardeningScore(state.hardeningOverview)}
-            />
-
-            <AssetsRequiringAttention
-                items={state.requiringAttention?.items || []}
-            />
+            <NeedsAction overview={overview} />
+            <Coverage overview={overview} />
+            <Trends overview={overview} />
+            <TopAssets items={overview?.top_assets} />
         </div>
     );
 };
