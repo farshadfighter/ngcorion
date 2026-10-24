@@ -1,0 +1,22 @@
+/* Disk budget of syslog messages and SNMP metrics (components/NOC/StorageUsage.jsx, NocStoragePanel.jsx). */
+.stg-usage { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stg-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 13px; }
+.stg-label { font-weight: 700; color: #1e3a5f; }
+.stg-figure { color: #4b5563; font-variant-numeric: tabular-nums; }
+.stg-pct { margin-inline-start: 8px; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
+.stg-pct.is-ok { background: #e6f4ea; color: #1e7b34; }
+.stg-pct.is-warn { background: #fff4e0; color: #8a5300; }
+.stg-pct.is-high { background: #fdecea; color: #b42318; }
+.stg-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+.stg-bar span { display: block; height: 100%; border-radius: 4px; min-width: 2px; background: #1e3a5f; }
+.stg-bar span.is-warn { background: #d97706; }
+.stg-bar span.is-high { background: #dc2626; }
+.stg-sub { color: #6b7280; font-size: 12px; }
+
+.stg-panel { display: flex; flex-direction: column; gap: 16px; padding: 18px 20px; margin-bottom: 18px; }
+.stg-panel h2 { margin: 0; }
+.stg-usages { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 16px; }
+.stg-disk { margin: 0; color: #4b5563; font-size: 13px; }
+.stg-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 12px; }
+.stg-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151; min-width: 0; }
+.stg-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }

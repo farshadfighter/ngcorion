@@ -8,6 +8,7 @@ import { fetchHosts, clearMessages } from "../../store/nocSlice.jsx";
 import { Pagination } from "../Logs/Pagination.jsx";
 import { HealthBar } from "./Health.jsx";
 import AssetIcon from "../shared/AssetIcon.jsx";
+import { NocStoragePanel } from "./NocStoragePanel.jsx";
 import "../../assets/Noc.css";
 // Pagination's styles live with the Logs page it was first built for (see
 // AssetList.jsx, which reuses it the same way).
@@ -21,6 +22,7 @@ export const NocHostList = () => {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
+    const [showStorage, setShowStorage] = useState(false);
 
     useEffect(() => {
         dispatch(fetchHosts());
@@ -58,6 +60,10 @@ export const NocHostList = () => {
         <div className="noc-container">
             <div className="noc-toolbar">
                 <div className="noc-toolbar-info">{t("{{length}} of {{length2}} asset(s)", { length: filtered.length, length2: hosts.length })}</div>
+                <button type="button" className={`bkm-btn ${showStorage ? "bkm-btn-primary" : ""}`} aria-expanded={showStorage}
+                        onClick={() => setShowStorage((v) => !v)}>
+                    <i className="fa-solid fa-hard-drive" aria-hidden="true" /> {t("Storage")}
+                </button>
                 <input
                     placeholder={t("Search by name, IP or type…")}
                     value={search}
@@ -65,6 +71,8 @@ export const NocHostList = () => {
                     style={{ padding: "8px 12px", borderRadius: 8, fontSize: 13, minWidth: 260 }}
                 />
             </div>
+
+            {showStorage && <NocStoragePanel />}
 
             {(error || successMessage) && (
                 <div className={`noc-toast ${error ? "noc-toast-error" : "noc-toast-success"}`}>

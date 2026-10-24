@@ -718,6 +718,8 @@
   "Simultaneous connections allowed from one client address.": "تعداد اتصال هم‌زمان مجاز از یک نشانی کاربر.",
   "Small (< 50 devices, single site)": "کوچک (کمتر از ۵۰ دستگاه، یک سایت)",
   "SMTP error: {{error}}": "خطای SMTP: {{error}}",
+  "SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily {{days_1d}} days, at most {{gb}} GB": "نگهداری معیارهای SNMP: خام {{raw}} ساعت، ۵ دقیقه‌ای {{days_5m}} روز، ساعتی {{days_1h}} روز، روزانه {{days_1d}} روز، حداکثر {{gb}} گیگابایت",
+  "SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily for good, at most {{gb}} GB": "نگهداری معیارهای SNMP: خام {{raw}} ساعت، ۵ دقیقه‌ای {{days_5m}} روز، ساعتی {{days_1h}} روز، روزانه برای همیشه، حداکثر {{gb}} گیگابایت",
   "Software collection on {{asset_name}} ({{ip_address}}) failed: {{reason}}": "جمع‌آوری نرم‌افزار روی {{asset_name}} ({{ip_address}}) ناموفق بود: {{reason}}",
   "Software collection on {{asset_name}} ({{ip_address}}) failed: could not connect": "جمع‌آوری نرم‌افزار روی {{asset_name}} ({{ip_address}}) ناموفق بود: اتصال برقرار نشد",
   "Software collection on {{asset_name}} failed: {{value}}": "جمع‌آوری نرم‌افزار روی {{asset_name}} ناموفق بود: {{value}}",

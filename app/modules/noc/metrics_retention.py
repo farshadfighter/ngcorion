@@ -131,25 +131,29 @@ def run_rollups(db: Session, now: datetime) -> None:
 
 
 def apply_time_based_retention(db: Session, now: datetime) -> None:
-    """Delete rows older than each tier's configured retention window. A
-    retention of 0 means "keep forever" (used for 1d rollups by default)."""
-    raw_cutoff = now - timedelta(hours=settings.NOC_METRICS_RAW_RETENTION_HOURS)
+    """Delete rows older than each tier's configured retention window
+    (app/modules/noc/storage.py: the System Configuration values, .env as
+    defaults). A retention of 0 means "keep forever" (used for 1d rollups by
+    default)."""
+    from app.modules.noc.storage import get_settings
+    keep = get_settings(db)
+    raw_cutoff = now - timedelta(hours=keep["raw_hours"])
     db.query(AssetMetricSample).filter(AssetMetricSample.sampled_at < raw_cutoff).delete(synchronize_session=False)
 
-    if settings.NOC_METRICS_5M_RETENTION_DAYS > 0:
-        cutoff = now - timedelta(days=settings.NOC_METRICS_5M_RETENTION_DAYS)
+    if keep["days_5m"] > 0:
+        cutoff = now - timedelta(days=keep["days_5m"])
         db.query(AssetMetricRollup).filter(
             AssetMetricRollup.granularity == "5m", AssetMetricRollup.bucket_start < cutoff,
         ).delete(synchronize_session=False)
 
-    if settings.NOC_METRICS_1H_RETENTION_DAYS > 0:
-        cutoff = now - timedelta(days=settings.NOC_METRICS_1H_RETENTION_DAYS)
+    if keep["days_1h"] > 0:
+        cutoff = now - timedelta(days=keep["days_1h"])
         db.query(AssetMetricRollup).filter(
             AssetMetricRollup.granularity == "1h", AssetMetricRollup.bucket_start < cutoff,
         ).delete(synchronize_session=False)
 
-    if settings.NOC_METRICS_1D_RETENTION_DAYS > 0:
-        cutoff = now - timedelta(days=settings.NOC_METRICS_1D_RETENTION_DAYS)
+    if keep["days_1d"] > 0:
+        cutoff = now - timedelta(days=keep["days_1d"])
         db.query(AssetMetricRollup).filter(
             AssetMetricRollup.granularity == "1d", AssetMetricRollup.bucket_start < cutoff,
         ).delete(synchronize_session=False)
@@ -189,7 +193,8 @@ def enforce_storage_budget(db: Session) -> None:
     storage benefit) until as much as the excess is gone. Measured once, then
     counted down by an average row size, so a run never re-reads sizes that a
     DELETE does not change."""
-    budget_bytes = settings.NOC_METRICS_STORAGE_BUDGET_GB * (1024 ** 3)
+    from app.modules.noc.storage import get_settings
+    budget_bytes = get_settings(db)["storage_budget_gb"] * (1024 ** 3)
     threshold_bytes = budget_bytes * settings.NOC_METRICS_STORAGE_EVICT_THRESHOLD
 
     used, rows = metrics_usage(db)

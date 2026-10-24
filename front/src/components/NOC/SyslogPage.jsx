@@ -17,6 +17,7 @@ import api from "../../config/api.js";
 import { n, t } from "../../i18n";
 import { formatDateTime, formatWhen, relativeDays } from "../../utils/dates.js";
 import { errorText } from "../AssetGroups/groupFormat.js";
+import { StorageUsage } from "./StorageUsage.jsx";
 import "../../assets/BackupModule.css";
 import "../../assets/Syslog.css";
 
@@ -267,6 +268,10 @@ function Sources({ data }) {
 function Settings({ data, isAdmin, onSaved, msg, setMsg }) {
     const [form, setForm] = useState(data.settings);
     const [busy, setBusy] = useState(false);
+    const [usage, setUsage] = useState(null);
+    useEffect(() => {
+        api.get("/api/noc/storage").then(({ data: d }) => setUsage(d.syslog)).catch(() => setUsage(null));
+    }, [data.settings.storage_budget_gb]);
     const host = window.location.hostname;
     const changed = JSON.stringify(form) !== JSON.stringify(data.settings);
     const save = () => {
@@ -310,6 +315,10 @@ function Settings({ data, isAdmin, onSaved, msg, setMsg }) {
                                onChange={(e) => setForm({ ...form, storage_budget_gb: e.target.value })} />
                     </label>
                     <p className="bkm-small bkm-muted">{t("When the messages take more space than this, the oldest are removed first.")}</p>
+                    {usage && (
+                        <StorageUsage label={t("Space the messages take")} used={usage.used_bytes} budget={usage.budget_bytes}
+                                      rows={usage.rows} rowsLabel={(r) => t("{{total}} messages", { total: r })} />
+                    )}
                     {flag("backup_on_change", t("Back up a device when it reports a configuration change"))}
                     <p className="bkm-small bkm-muted">{t("Cisco IOS, NX-OS and FortiGate report each change with who made it and from where. About a minute after the last change, the device is backed up with its scheduled backup's credential profile and compared with the previous backup. A device without a scheduled backup only raises an alert.")}</p>
                     {msg && <div className={`bkm-note ${msg.ok ? "bkm-note-ok" : "bkm-note-error"}`}>{msg.text}</div>}

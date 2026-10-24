@@ -376,6 +376,8 @@ const TEMPLATES = [
     msg("An asset that sends syslog has sent nothing for {{hours}} hours"),
     msg("Exported {{rows}} syslog messages"),
     msg("Syslog intake settings: {{protocols}}, kept {{days}} days, at most {{gb}} GB, levels up to {{level}}"),
+    msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily for good, at most {{gb}} GB"),
+    msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily {{days_1d}} days, at most {{gb}} GB"),
 ];
 
 // ── Fixed sentences: translated by exact match ────────────────────────────

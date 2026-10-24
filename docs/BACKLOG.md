@@ -63,7 +63,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Fix: syslog and NOC metrics storage budgets measure the stored rows, not the files | recorded with the next item |
+| NOC: SNMP metrics retention and space in the app; usage of syslog and metrics against their limits | recorded with the next item |
+| Fix: syslog and NOC metrics storage budgets measure the stored rows, not the files | ca1fe8a |
 | Assets: physical or virtual asset types; a virtual asset names its physical server | f2f7064 |
 | Fix: assets save with empty serial, value and dates; last audit and last hardening dates kept automatically | b2394fc |
 | Fix: risk detail Audit Findings shows hardening and verification status | ba63175 |

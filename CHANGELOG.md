@@ -4,6 +4,14 @@
 
 ### Fixes
 
+- Monitoring storage: how long SNMP metrics are kept (raw, 5-minute,
+  hourly, daily) and their disk space were only settable in .env. A
+  system administrator sets them under NOC hosts, "Storage" (System
+  Configuration section noc_metrics_storage, .env as defaults; changes in
+  the audit trail). The panel shows what syslog messages and SNMP metrics
+  take against their limits and the disk's free space, and warns when the
+  limits allow more than is free; the syslog settings show the space the
+  messages take.
 - Syslog and NOC metrics storage budgets: the check measured the tables'
   files, which do not shrink when rows are deleted. Once a table had
   reached its budget, every run deleted again - a fifth of the syslog

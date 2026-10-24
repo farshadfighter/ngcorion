@@ -10,11 +10,12 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import require_admin, require_permission
 from app.models import User, Asset
 from app.modules.noc.service import NocService
 from app.modules.noc.schemas import (
@@ -238,3 +239,44 @@ def get_host_metrics(
         interface_id=interface_id,
         points=[MetricPoint(**p) for p in points],
     )
+
+
+# ── storage: what syslog and SNMP metrics take, and how long metrics are kept ──
+
+class MetricsStorageSettings(BaseModel):
+    """How long each SNMP metrics tier is kept, and the disk space they may take (app/modules/noc/storage.py)."""
+    raw_hours: int
+    days_5m: int
+    days_1h: int
+    days_1d: int
+    storage_budget_gb: int
+
+
+@router.get("/storage")
+def get_storage(current_user: User = Depends(require_permission("noc", "read")), db: Session = Depends(get_db)):
+    """What syslog messages and SNMP metrics take against their budgets, and the disk's free space."""
+    from app.modules.noc import storage
+    return {**storage.usage(db), "metrics_settings": storage.get_settings(db)}
+
+
+@router.put("/storage/metrics-settings", response_model=MetricsStorageSettings)
+def save_metrics_storage(body: MetricsStorageSettings, request: Request,
+                         current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Keep SNMP metrics this long and in at most this much space; the next retention run applies it."""
+    from app.models.security_audit_log import log_action
+    from app.modules.noc import storage
+    saved = storage.save_settings(db, body.model_dump(), current_user.id)
+    raw, days_5m, days_1h, days_1d, gb = (saved["raw_hours"], saved["days_5m"], saved["days_1h"], saved["days_1d"],
+                                          saved["storage_budget_gb"])
+    ip = request.client.host if request.client else None
+    if days_1d == 0:
+        log_action(db, user_id=current_user.id, username=current_user.username, action="noc.storage",
+                   module="system_config", ip_address=ip,
+                   detail=f"SNMP metrics storage: raw {raw} hours, 5-minute {days_5m} days, hourly {days_1h} days, "
+                          f"daily for good, at most {gb} GB")
+    else:
+        log_action(db, user_id=current_user.id, username=current_user.username, action="noc.storage",
+                   module="system_config", ip_address=ip,
+                   detail=f"SNMP metrics storage: raw {raw} hours, 5-minute {days_5m} days, hourly {days_1h} days, "
+                          f"daily {days_1d} days, at most {gb} GB")
+    return saved

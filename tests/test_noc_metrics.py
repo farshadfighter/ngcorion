@@ -400,3 +400,39 @@ def test_route_get_host_metrics_404s_for_an_unknown_asset(db, user):
     with pytest.raises(HTTPException) as exc_info:
         get_host_metrics(asset_id=999999, metric="reachable", current_user=user, db=db)
     assert exc_info.value.status_code == 404
+
+
+# ======================================================================
+# Storage settings in System Configuration (app/modules/noc/storage.py)
+# ======================================================================
+
+def test_metrics_storage_settings_default_to_env_and_are_clamped(db, user):
+    from app.models.system_config import SystemConfigSetting
+    from app.modules.noc import storage
+    db.query(SystemConfigSetting).filter(SystemConfigSetting.section == storage.SECTION).delete()
+    assert storage.get_settings(db) == storage.defaults()
+    saved = storage.save_settings(db, {"raw_hours": 5, "days_5m": 9999, "days_1d": 0, "storage_budget_gb": 3}, user.id)
+    assert (saved["raw_hours"], saved["days_5m"], saved["days_1d"], saved["storage_budget_gb"]) == (24, 365, 0, 3)
+
+
+def test_retention_follows_the_stored_settings(db, user):
+    """The tiers were only settable in .env; the stored settings decide now."""
+    from app.modules.noc import storage
+    asset = _make_asset(db)
+    now = datetime(2026, 6, 1, 12)
+    old = AssetMetricSample(asset_id=asset.id, metric_type="reachable", value=1.0, sampled_at=now - timedelta(hours=30))
+    fresh = AssetMetricSample(asset_id=asset.id, metric_type="reachable", value=1.0, sampled_at=now - timedelta(hours=2))
+    db.add_all([old, fresh])
+    db.flush()
+    storage.save_settings(db, {"raw_hours": 24}, user.id)
+    metrics_retention.apply_time_based_retention(db, now)
+    left = {s.sampled_at for s in db.query(AssetMetricSample).filter(AssetMetricSample.asset_id == asset.id)}
+    assert left == {now - timedelta(hours=2)}
+
+
+def test_storage_usage_reports_both_stores_and_the_disk(db, user):
+    from app.modules.noc import storage
+    out = storage.usage(db)
+    assert set(out) == {"syslog", "metrics", "disk", "budgets_exceed_free"}
+    assert out["metrics"]["budget_bytes"] == storage.get_settings(db)["storage_budget_gb"] * 1024 ** 3
+    assert out["syslog"]["used_bytes"] >= 0 and out["metrics"]["rows"] >= 0

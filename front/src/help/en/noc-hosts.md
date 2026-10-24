@@ -27,6 +27,10 @@ SNMP credentials are stored encrypted. Prefer v3 with Auth and Priv over v2c (a 
 
 If the device stops answering, the last reported values stay with a note. A device restart is detected and raises the alert "Device restarted".
 
+## Storage
+
+"Storage" above the list shows what syslog messages and SNMP metrics take against their disk space, and the free space on the server's disk. When a store passes its limit, its oldest data is removed first. A system administrator sets how long SNMP metrics are kept - raw samples in hours, 5-minute, hourly and daily averages in days (0 = for good) - and the disk space they may take; the syslog limits are in Syslog, Settings.
+
 ## Health alerts
 
 "CPU usage high" and "Memory usage high" (every poll in a window at 90% or more), "Disk almost full" (90%) and "Temperature high" (70 °C). Thresholds are changed in the [notification rules](/settings/notifications).
