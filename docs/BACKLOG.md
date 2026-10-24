@@ -63,6 +63,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
+| Version 2.1.1 | recorded with the next item |
+| Review of every page and API call; fixes found by it | 7a971f1 |
 | New Backup: every asset listed, device type detected from the asset; dialogs styled on their own | 75f55f0 |
 | Architecture Validation: the topology against Cisco SAFE only (segmentation, edge, management, availability, visibility), with evidence; zone place in the network | 2c11d53 |
 | One list of network zones: an asset's zone the same in Asset List, Risk, groups, alerts and reports; zone exposure score in Asset Requirements | 861c9b3 |
