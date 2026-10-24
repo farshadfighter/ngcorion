@@ -28,6 +28,7 @@ An asset type is physical or virtual ("Runs as"). Each asset of a virtual type -
 ## Why it matters
 
 - **Network zone** feeds the risk score directly (15% weight); the Internet/public and DMZ zones count as "internet exposed" on the dashboard.
+- **One list of zones:** the zones here are the ones Risk scores. Each has an exposure score from 0 to 100; a new zone left without one gets the score of an asset with no zone, so set it. An asset's zone is the same in Asset List, Risk, asset groups, alert rules and reports, wherever it was set. Changing a score recalculates the risk of the zone's assets; a zone that still has assets cannot be deleted. In the Excel file the zones sheet has a "Score" column and the assets' "Network Zone" column takes a zone's name.
 - **Owner** is by default responsible for the asset's remediation items.
 - **OS and vendor** are used by dynamic groups and end-of-life detection.
 

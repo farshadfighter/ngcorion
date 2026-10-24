@@ -102,7 +102,7 @@ ASSET_LIST_COLUMNS = [
     "Asset Name",
     "Hostname",
     "Asset Type",
-    "Asset Role",
+    "Network Zone",
     "Manufacturer",
     "Model",
     "Serial Number",
@@ -184,8 +184,8 @@ ASSET_REQUIREMENT_SHEETS = [
     {
         "key": "zones",
         "title": "Network Zones",
-        "columns": ["ID", "Zone Name", "Description"],
-        "map_row": lambda item: [item.id, item.zone_name, item.description],
+        "columns": ["ID", "Zone Name", "Description", "Score"],
+        "map_row": lambda item: [item.id, item.zone_name, item.description, float(item.score)],
     },
     {
         "key": "os_catalog",
@@ -220,7 +220,7 @@ ASSET_LIST_SHEETS = [
     {
         "key": "overview",
         "title": "Overview",
-        "columns": ["Asset Name", "Hostname", "Type", "Role", "Manufacturer", "Model"],
+        "columns": ["Asset Name", "Hostname", "Type", "Network Zone", "Manufacturer", "Model"],
         "map_row": lambda asset: [
             asset.asset_name,
             asset.hostname,
@@ -436,7 +436,8 @@ def import_assets_from_excel(
     MULTI_SHEET_FIELD_MAPS = {
         "Overview": {
             "Asset Name": "asset_name", "Hostname": "hostname", "Type": "asset_type",
-            "Role": "asset_role", "Manufacturer": "manufacturer", "Model": "model",
+            "Network Zone": "asset_role", "Manufacturer": "manufacturer", "Model": "model",
+            "Role": "asset_role",       # the header before it said what the column is
         },
         "Network & System": {
             "Asset Name": "asset_name", "Serial": "serial_number", "OS": "os_name",
@@ -462,6 +463,7 @@ def import_assets_from_excel(
         "Asset Name": "asset_name",
         "Hostname": "hostname",
         "Asset Type": "asset_type",
+        "Network Zone": "asset_role",
         "Asset Role": "asset_role",
         "Manufacturer": "manufacturer",
         "Model": "model",
@@ -615,6 +617,15 @@ def import_assets_from_excel(
                             f"Row {row_idx}: Invalid port count '{row_data['port_count']}'"
                         )
                         del row_data["port_count"]
+
+                # The zone must be one of the network zones (app/models/asset_zone.py)
+                if row_data.get("asset_role"):
+                    from app.models.asset_zone import find_zone
+                    if find_zone(db_session, row_data["asset_role"]) is None:
+                        results["errors"].append(
+                            f"Row {row_idx}: {row_data['asset_role']} is not a network zone"
+                        )
+                        del row_data["asset_role"]
 
                 # Add foreign keys
                 if asset_type_id:
@@ -793,7 +804,6 @@ def import_asset_requirements_from_excel(
         AssetType,
         AssetOwner,
         AssetLocation,
-        NetworkZone,
         OSCatalog,
         VendorCatalog,
         AssetDependency,
@@ -971,33 +981,38 @@ def import_asset_requirements_from_excel(
                         results["zones"]["skipped"] += 1
                         continue
 
-                    data = {
-                        "zone_name": row[1],
-                        "description": row[2] if len(row) > 2 else None,
-                    }
+                    # The one list of zones, each with its exposure score (app/models/asset_zone.py)
+                    from app.models.asset_zone import find_zone
+                    from app.models.risk import RiskZone
+                    from app.modules.risk.service import risk_calculation_service
+                    name = str(row[1]).strip()
+                    description = row[2] if len(row) > 2 else None
+                    score = row[3] if len(row) > 3 and row[3] not in (None, "") else None
+                    if score is not None:
+                        score = float(score)
+                        if not 0 <= score <= 100:
+                            results["zones"]["errors"].append(f"Row {row_idx}: the score is 0 to 100")
+                            continue
 
                     existing = None
                     if row[0]:
-                        existing = (
-                            db_session.query(NetworkZone)
-                            .filter(NetworkZone.id == row[0])
-                            .first()
-                        )
+                        existing = db_session.query(RiskZone).filter(RiskZone.id == row[0]).first()
                     if not existing:
-                        existing = (
-                            db_session.query(NetworkZone)
-                            .filter(NetworkZone.zone_name == data["zone_name"])
-                            .first()
-                        )
+                        existing = find_zone(db_session, name)
 
                     if existing:
-                        for key, value in data.items():
-                            if value is not None:
-                                setattr(existing, key, value)
+                        existing.name = name
+                        if description is not None:
+                            existing.description = description
+                        if score is not None:
+                            existing.score = score
                         results["zones"]["updated"] += 1
                     else:
-                        new_item = NetworkZone(**data)
-                        db_session.add(new_item)
+                        if score is None:
+                            score = risk_calculation_service._load_settings(db_session)["unknown_zone_score"]
+                        db_session.add(RiskZone(name=name, description=description, score=score,
+                                                status="active", created_by=current_user.id))
+                        db_session.flush()
                         results["zones"]["created"] += 1
 
                 except Exception as e:

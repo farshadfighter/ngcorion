@@ -25,6 +25,7 @@ from app.core.database import SessionLocal, get_db
 from app.core.dependencies import require_permission
 from app.models import User, log_action, log_asset_updated
 from app.models.asset import Asset
+from app.models.asset_zone import find_zone
 from app.models.audit import AuditResult, AuditSession, CheckStatus
 from app.models.hardening import HardeningAction
 from app.models.enums import ConfidentialityLevelEnum
@@ -1059,8 +1060,7 @@ def create_zone(
     db: Session = Depends(get_db),
 ):
     """Create a risk zone (a network area with its exposure score)."""
-    exists = db.query(RiskZone).filter(RiskZone.name == data.name).first()
-    if exists:
+    if find_zone(db, data.name) is not None:
         raise HTTPException(status_code=400, detail="Zone name already exists")
 
     zone = RiskZone(
@@ -1096,12 +1096,8 @@ def update_zone(
         raise HTTPException(status_code=404, detail="Zone not found")
 
     if data.name is not None and data.name != zone.name:
-        clash = (
-            db.query(RiskZone)
-            .filter(RiskZone.name == data.name, RiskZone.id != zone_id)
-            .first()
-        )
-        if clash:
+        clash = find_zone(db, data.name)
+        if clash is not None and clash.id != zone_id:
             raise HTTPException(status_code=400, detail="Zone name already exists")
 
     score_changed = (

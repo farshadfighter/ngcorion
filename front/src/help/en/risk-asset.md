@@ -13,7 +13,7 @@ The assets sorted by risk score, worst first. Click one to open its risk page: s
 
 ## Change the zone or criticality
 
-"Edit Zone" or "Edit Criticality" → the new value → a **reason** → "Save & recalculate". Every change is kept in the risk history with its reason.
+"Edit Zone" or "Edit Criticality" → the new value → a **reason** → "Save & recalculate". Every change is kept in the risk history with its reason. A zone changed here is the asset's zone in Asset List too, and the other way round.
 
 ## Example
 

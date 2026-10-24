@@ -3,7 +3,7 @@ Asset Management Routers with Authentication
 All routes require JWT authentication
 Admin-only routes are protected with require_admin dependency
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 import logging
 
@@ -584,8 +584,8 @@ def get_zone(
     db: Session = Depends(get_db)
 ):
     """Get zone by id (authenticated users)"""
-    from app.models import NetworkZone
-    zone = db.query(NetworkZone).filter(NetworkZone.id == zone_id).first()
+    from app.models.risk import RiskZone
+    zone = db.query(RiskZone).filter(RiskZone.id == zone_id).first()
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
     return zone
@@ -597,8 +597,11 @@ def create_zone(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    """Create zone (admin only)"""
-    result = AssetService.create_zone(db, data.model_dump())
+    """Create zone (admin only). It is the zone Risk Intelligence scores (app/models/asset_zone.py)."""
+    try:
+        result = AssetService.create_zone(db, data.model_dump(), current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     log_requirement_create(db, current_user.id, "zone", result.id, result.zone_name)
     return result
 
@@ -607,17 +610,25 @@ def create_zone(
 def update_zone(
     zone_id: int,
     data: NetworkZoneCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    """Update zone (admin only, matching create/delete on this router)."""
-    result = AssetService.update_zone(db, zone_id, data.model_dump())
+    """Update zone (admin only, matching create/delete on this router). A new score recalculates
+    the risk of the zone's assets in the background."""
+    from app.modules.risk.router import _recalculate_zone_assets_background
+    try:
+        result, score_changed = AssetService.update_zone(db, zone_id, data.model_dump(), current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not result:
         raise HTTPException(status_code=404, detail="Zone not found")
     log_requirement_update(
         db, current_user.id, "zone", result.id, result.zone_name,
         data.model_dump()
     )
+    if score_changed:
+        background_tasks.add_task(_recalculate_zone_assets_background, zone_id)
     return result
 
 
@@ -627,15 +638,17 @@ def delete_zone(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    """Delete zone (admin only)"""
-    # Get zone info before deletion
-    from app.models import NetworkZone
-    zone = db.query(NetworkZone).filter(NetworkZone.id == zone_id).first()
+    """Delete zone (admin only); a zone with assets in it stays."""
+    from app.models.risk import RiskZone
+    zone = db.query(RiskZone).filter(RiskZone.id == zone_id).first()
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
     zone_name = zone.zone_name
-    if not AssetService.delete_zone(db, zone_id):
-        raise HTTPException(status_code=404, detail="Zone not found")
+    try:
+        if not AssetService.delete_zone(db, zone_id):
+            raise HTTPException(status_code=404, detail="Zone not found")
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     log_requirement_delete(db, current_user.id, "zone", zone_id, zone_name)
     return {"message": "Deleted successfully"}
 

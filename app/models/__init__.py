@@ -31,7 +31,6 @@ from app.models.user_permission import UserPermission, ModuleEnum
 
 # Import reference tables (no foreign keys to other tables)
 from app.models.asset_types import AssetType
-from app.models.network_zones import NetworkZone
 from app.models.os_catalog import OSCatalog
 from app.models.vendor_catalog import VendorCatalog
 from app.models.asset_owners import AssetOwner
@@ -202,7 +201,6 @@ __all__ = [
     "ModuleEnum",
     # Reference tables
     "AssetType",
-    "NetworkZone",
     "OSCatalog",
     "VendorCatalog",
     "AssetOwner",
@@ -371,3 +369,7 @@ from app.models import asset_dates  # noqa: E402,F401
 
 # Other addresses of an asset (syslog from another interface; see app/models/asset_address.py)
 from app.models.asset_address import AssetAddress  # noqa: E402,F401
+
+# One list of network zones; an asset's zone kept in step between the asset and its risk profile
+# (see app/models/asset_zone.py)
+from app.models import asset_zone  # noqa: E402,F401

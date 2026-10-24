@@ -62,6 +62,8 @@ const REQUIREMENT_FORMS = {
         thunk: updateZone,
         fields: [
             { name: "zone_name", label: t("Zone Name"), required: true },
+            { name: "score", label: t("Exposure score (0-100)"), type: "number", min: 0, max: 100,
+              hint: t("How exposed an asset in this zone is; its risk score uses it. A change recalculates the zone's assets.") },
             { name: "description", label: t("Description"), type: "textarea" },
         ],
     },
@@ -112,9 +114,14 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
         setErrors(found);
         if (Object.keys(found).length > 0) return;
 
+        // A number field left empty is "no value", not "".
+        const data = { ...form };
+        config.fields.filter((f) => f.type === "number").forEach((f) => {
+            data[f.name] = String(data[f.name] ?? "").trim() === "" ? null : Number(data[f.name]);
+        });
         setIsSaving(true);
         const result = await dispatch(
-            config.thunk({ id: item.id, data: form })
+            config.thunk({ id: item.id, data })
         );
         setIsSaving(false);
 
@@ -170,6 +177,8 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
                                 ) : (
                                     <input
                                         type={f.type || "text"}
+                                        min={f.min}
+                                        max={f.max}
                                         value={form[f.name]}
                                         onChange={(e) => setField(f.name, e.target.value)}
                                     />

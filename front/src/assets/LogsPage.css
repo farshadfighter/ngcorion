@@ -315,6 +315,12 @@
     font-size: 11px;
 }
 
+/* Network zones: the one list Risk scores (AssetRequirement). */
+.zone-list-note {
+    margin: 0 0 10px;
+    font-size: 12px;
+}
+
 .type-virtual-badge {
     display: inline-block;
     margin-inline-start: 8px;

@@ -3,7 +3,7 @@ Pydantic request/response models of the asset inventory API: assets, asset
 types, owners, locations, network zones, OS and vendor catalogs, dependencies
 and security status. Validation of user input (IP/MAC formats, lengths) lives here.
 """
-from pydantic import BaseModel, field_validator, model_validator, EmailStr, ConfigDict, computed_field
+from pydantic import BaseModel, Field, field_validator, model_validator, EmailStr, ConfigDict, computed_field
 from typing import Optional, Generic, TypeVar, List
 import re
 
@@ -356,13 +356,18 @@ class AssetLocationResponse(AssetLocationCreate):
                 
 # Network Zones
 class NetworkZoneCreate(BaseModel):
-    """Body of creating a network zone."""
-    zone_name: str
-    description: Optional[str] = None
+    """Body of creating or changing a network zone. The score (0-100) is how exposed an asset in it is,
+    for its risk score; a new zone without one gets the score of an asset with no zone."""
+    zone_name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    score: Optional[float] = Field(None, ge=0, le=100)
 
-class NetworkZoneResponse(NetworkZoneCreate):
+class NetworkZoneResponse(BaseModel):
     """A network zone."""
     id: int
+    zone_name: str
+    description: Optional[str] = None
+    score: float
 
     model_config = ConfigDict(from_attributes=True)
 

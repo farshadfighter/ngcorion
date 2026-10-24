@@ -99,7 +99,7 @@ def _multi_sheet_workbook(sheet_rows: dict) -> BytesIO:
 class TestMultiSheetImport:
     def test_fields_from_all_four_sheets_are_merged_into_one_asset(self, db, user, cisco_router_type):
         wb = _multi_sheet_workbook({
-            "Overview": ["Merged-Asset", "merged-host", cisco_router_type.type_name, "Core Router", "Cisco", "ISR4321"],
+            "Overview": ["Merged-Asset", "merged-host", cisco_router_type.type_name, "dmz", "Cisco", "ISR4321"],
             "Network & System": ["Merged-Asset", "SN999", "IOS-XE", "10.0.0.77", "AA:BB:CC:DD:EE:FF", "24"],
             "Location & Owner": ["Merged-Asset", None, None, "active"],
             "Security & Audit": ["Merged-Asset", "internal", "low", None, None],
@@ -113,7 +113,8 @@ class TestMultiSheetImport:
         assert asset is not None
         assert asset.hostname == "merged-host"
         assert asset.asset_type_id == cisco_router_type.id
-        assert asset.asset_role == "Core Router"
+        assert asset.asset_role == "DMZ"                 # the zone's own name (app/models/asset_zone.py)
+        assert asset.risk_profile[0].zone.name == "DMZ"
         assert asset.manufacturer == "Cisco"
         assert asset.model == "ISR4321"
         assert asset.ip_address == "10.0.0.77"

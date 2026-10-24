@@ -7,18 +7,35 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query
 from typing import Optional
 from math import ceil
-from datetime import date as date_type
 from app.models import (
     AssetType, Asset, AssetOwner, AssetLocation,
-    NetworkZone, OSCatalog, VendorCatalog,
+    OSCatalog, VendorCatalog,
     AssetDependency, AssetSecurityStatus
 )
 from app.core.asset_entitlement import check_asset_capacity
+from app.models.asset_zone import find_zone
+from app.models.risk import RiskZone
 from app.modules.assets.change_history import FIELD_META, compute_field_changes
 from .schemas import AssetTypeCreate
 from .hosting import requires_hosting
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_zone(db: Session, name) -> None:
+    """A zone typed in must be one of the network zones (Asset Requirements, Network Zones)."""
+    if name and str(name).strip() and find_zone(db, name) is None:
+        raise ValueError(f"{name} is not a network zone")
+
+
+def _rescore(db: Session, asset_id: int, trigger: str) -> None:
+    """Recalculate an asset's risk score; never fails the change that asked for it."""
+    try:
+        from app.modules.risk.service import risk_calculation_service
+        risk_calculation_service.calculate(asset_id=asset_id, db=db, trigger_type=trigger)
+    except Exception as e:  # noqa: BLE001 - the score is recalculated on the next audit anyway
+        db.rollback()
+        logger.warning(f"[Risk] recalculation failed for asset {asset_id}: {e}")
 
 
 def _validate_hosting(db: Session, asset_type_id: Optional[int], hosted_on_asset_id: Optional[int], asset_id: Optional[int] = None) -> None:
@@ -164,6 +181,7 @@ class AssetService:
         security_status_data = data.pop('security_status', None)
 
         _validate_hosting(db, data.get('asset_type_id'), data.get('hosted_on_asset_id'))
+        _validate_zone(db, data.get('asset_role'))
         # The license covers a number of assets; refuse past it with a clear 403.
         check_asset_capacity(db)
 
@@ -205,9 +223,6 @@ class AssetService:
         (see app/modules/assets/change_history.py) for the caller to record
         as this update's AssetLog entry, powering the Change History view.
         """
-        # Auto-stamp audit date on every update
-        data['last_audit_date'] = date_type.today()
-
         # Extract security_status if present
         security_status_data = data.pop('security_status', None)
 
@@ -225,6 +240,7 @@ class AssetService:
             effective_type_id = data.get('asset_type_id') or asset.asset_type_id
             effective_hosted_on = data.get('hosted_on_asset_id') or asset.hosted_on_asset_id
             _validate_hosting(db, effective_type_id, effective_hosted_on, asset_id=asset.id)
+            _validate_zone(db, data.get('asset_role'))
 
             # Snapshot pre-update values for every field this request touches,
             # so they can be diffed against the post-update values below.
@@ -232,14 +248,17 @@ class AssetService:
 
             # Update asset fields
             for key, value in data.items():
-                # `icon` is the exception to "None is a no-op": an explicit
-                # None puts the asset back on its type's automatic icon.
-                if value is not None or key == 'icon':
+                # `icon` and the zone are the exceptions to "None is a no-op": an
+                # explicit None puts the asset back on its type's automatic icon,
+                # or out of any zone.
+                if value is not None or key in ('icon', 'asset_role'):
                     setattr(asset, key, value)
             db.commit()
             db.refresh(asset)
 
             field_changes = compute_field_changes(db, asset, old_values)
+            if any(c["field"] == "asset_role" for c in field_changes):
+                _rescore(db, asset.id, "profile_updated")
 
             # Update or create security status if provided
             if security_status_data:
@@ -388,45 +407,71 @@ class AssetService:
         return False
 
     # ==========================================
-    # Network Zones
+    # Network Zones: the one list (risk_zones, each with the exposure score the risk score uses;
+    # app/models/asset_zone.py)
     # ==========================================
-    
+
     @staticmethod
     def get_all_zones(db: Session):
-        """Get all network zones"""
-        return db.query(NetworkZone).all()
-    
+        """Active network zones, least exposed first."""
+        return (db.query(RiskZone).filter(RiskZone.status == "active")
+                .order_by(RiskZone.score, RiskZone.name).all())
+
     @staticmethod
-    def create_zone(db: Session, data: dict):
-        """Create network zone"""
-        zone = NetworkZone(**data)
+    def _zone_name_free(db: Session, name: str, zone_id: Optional[int] = None) -> None:
+        clash = find_zone(db, name)
+        if clash is not None and clash.id != zone_id:
+            raise ValueError("Zone name already exists")
+
+    @staticmethod
+    def create_zone(db: Session, data: dict, user_id: Optional[int] = None):
+        """A new zone; without a score it gets the score risk gives an asset with no zone."""
+        from app.modules.risk.service import risk_calculation_service
+        name = (data.get("zone_name") or "").strip()
+        AssetService._zone_name_free(db, name)
+        score = data.get("score")
+        if score is None:
+            score = risk_calculation_service._load_settings(db)["unknown_zone_score"]
+        zone = RiskZone(name=name, description=data.get("description"), score=score, status="active",
+                        created_by=user_id, updated_by=user_id)
         db.add(zone)
         db.commit()
         db.refresh(zone)
         return zone
-    
+
     @staticmethod
-    def update_zone(db: Session, zone_id: int, data: dict):
-        """Update zone. Only keys present in `data` are written, so a partial
-        payload leaves the other columns alone."""
-        row = db.query(NetworkZone).filter(NetworkZone.id == zone_id).first()
-        if row:
-            for key, value in data.items():
-                if value is not None and hasattr(row, key):
-                    setattr(row, key, value)
-            db.commit()
-            db.refresh(row)
-        return row
+    def update_zone(db: Session, zone_id: int, data: dict, user_id: Optional[int] = None):
+        """Change a zone; returns (zone, score_changed), (None, False) when there is none. Omitted
+        values stay; a new name moves to the zone's assets (app/models/asset_zone.py)."""
+        row = db.query(RiskZone).filter(RiskZone.id == zone_id).first()
+        if row is None:
+            return None, False
+        name = (data.get("zone_name") or "").strip()
+        if name:
+            AssetService._zone_name_free(db, name, zone_id)
+            row.name = name
+        if data.get("description") is not None:
+            row.description = data["description"]
+        score_changed = data.get("score") is not None and float(row.score) != float(data["score"])
+        if score_changed:
+            row.score = data["score"]
+        row.updated_by = user_id
+        db.commit()
+        db.refresh(row)
+        return row, score_changed
 
     @staticmethod
     def delete_zone(db: Session, zone_id: int):
-        """Delete network zone"""
-        zone = db.query(NetworkZone).filter(NetworkZone.id == zone_id).first()
-        if zone:
-            db.delete(zone)
-            db.commit()
-            return True
-        return False
+        """Delete a zone no asset is in."""
+        from app.models.risk import AssetRiskProfile
+        zone = db.query(RiskZone).filter(RiskZone.id == zone_id).first()
+        if zone is None:
+            return False
+        if db.query(AssetRiskProfile).filter(AssetRiskProfile.zone_id == zone_id).count():
+            raise ValueError("Cannot delete zone with assigned assets")
+        db.delete(zone)
+        db.commit()
+        return True
     
     # ==========================================
     # OS Catalog

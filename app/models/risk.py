@@ -20,7 +20,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
 )
-from sqlalchemy.orm import backref, relationship
+from sqlalchemy.orm import backref, relationship, synonym
 from datetime import datetime
 from app.core.database import Base
 
@@ -69,6 +69,8 @@ class RiskZone(Base):
     )
 
     risk_profiles = relationship("AssetRiskProfile", back_populates="zone")
+    # Asset List's name for it (the zone list there is this one; app/models/asset_zone.py)
+    zone_name = synonym("name")
 
 
 # Per-asset risk inputs: business criticality + assigned network zone

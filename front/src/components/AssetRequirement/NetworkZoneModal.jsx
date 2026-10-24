@@ -11,6 +11,7 @@ export const NetworkZoneModal = ({ onClose }) => {
 
     const [formData, setFormData] = useState({
         zone_name: "",
+        score: "",
         description: "",
     });
 
@@ -21,6 +22,10 @@ export const NetworkZoneModal = ({ onClose }) => {
 
         if (!formData.zone_name.trim()) {
             newErrors.zone_name = t("Zone name is required");
+        }
+        const score = String(formData.score).trim();
+        if (score !== "" && !(Number(score) >= 0 && Number(score) <= 100)) {
+            newErrors.score = t("Enter a score from 0 to 100");
         }
 
         setErrors(newErrors);
@@ -33,7 +38,8 @@ export const NetworkZoneModal = ({ onClose }) => {
         if (!validateForm()) return;
 
         try {
-            await dispatch(createZone(formData)).unwrap();
+            const score = String(formData.score).trim();
+            await dispatch(createZone({ ...formData, score: score === "" ? null : Number(score) })).unwrap();
             onClose();
         } catch (error) {
             console.error("Failed to create zone:", error);
@@ -73,6 +79,25 @@ export const NetworkZoneModal = ({ onClose }) => {
                         />
                         {errors.zone_name && (
                             <span className="error-message">{errors.zone_name}</span>
+                        )}
+                    </div>
+
+                    <div className="form-group">
+                        <label>{t("Exposure score (0-100)")}</label>
+                        <input
+                            type="number"
+                            name="score"
+                            min="0"
+                            max="100"
+                            value={formData.score}
+                            onChange={handleChange}
+                            className={errors.score ? "error" : ""}
+                        />
+                        <span className="field-hint">
+                            {t("How exposed an asset in this zone is; its risk score uses it. Left empty, it is the score of an asset with no zone.")}
+                        </span>
+                        {errors.score && (
+                            <span className="error-message">{errors.score}</span>
                         )}
                     </div>
 

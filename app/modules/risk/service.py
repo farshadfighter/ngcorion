@@ -62,12 +62,12 @@ Schema notes (differ from the raw pseudocode):
 
 import asyncio
 import logging
-import re
 from datetime import datetime
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.models.asset_zone import zone_key
 from app.models.asset import Asset
 from app.models.audit import AuditResult, AuditSession, CheckStatus
 from app.models.enums import StatusEnum
@@ -252,23 +252,17 @@ class AssetRiskCalculationService:
 
     @staticmethod
     def _zone_key(name) -> str:
-        """Normalised zone name for matching across the two zone tables.
-
-        The asset form stores a free-text zone name while risk_zones is seeded
-        with fixed ones, so "Internet / Public", "internet/public" and
-        "Internet-Public" all have to resolve to the same zone.
-        """
-        return re.sub(r"[^a-z0-9]", "", str(name or "").lower())
+        """Normalised zone name ("Internet / Public" = "internet-public"; app/models/asset_zone.py)."""
+        return zone_key(name)
 
     def _zone_score(self, db: Session, asset: Asset, profile: AssetRiskProfile,
                     settings: dict):
         """Returns (zone, zone_score, is_unknown).
 
-        Spec section 3.1 says the zone comes from Asset Management. In practice
-        it is picked in the asset form and stored as text on
-        asset_inventory.asset_role, so an explicit risk profile wins and the
-        asset's own value is the fallback — that way a zone set once in Asset
-        List is what the risk engine scores, with no second place to maintain.
+        Spec section 3.1 says the zone comes from Asset Management. The asset
+        form and Risk both set the profile's zone (app/models/asset_zone.py
+        keeps asset_inventory.asset_role in step); the asset's zone name is
+        the fallback for a profile that has none yet.
         """
         if profile.zone_id is not None:
             zone = db.query(RiskZone).filter(RiskZone.id == profile.zone_id).first()

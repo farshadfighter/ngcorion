@@ -185,6 +185,9 @@ export const NetworkZoneTab = () => {
     );
 
     const sortedData = [...filteredData].sort((a, b) => {
+        if (sortColumn === "score") {
+            return (sortDirection === "asc" ? 1 : -1) * ((a.score ?? 0) - (b.score ?? 0));
+        }
         let aVal = a[sortColumn];
         let bVal = b[sortColumn];
         if (aVal == null) aVal = "";
@@ -260,6 +263,10 @@ export const NetworkZoneTab = () => {
                     </button>
                 </div>
 
+                <p className="field-hint zone-list-note">
+                    {t("These are the zones Risk Intelligence scores: an asset's zone is the same in Asset List, Risk, asset groups, alert rules and reports.")}
+                </p>
+
                 <RequirementError />
 
                 <BulkDeleteBar
@@ -286,6 +293,9 @@ export const NetworkZoneTab = () => {
                             <th onClick={() => handleSort("zone_name")} style={{ cursor: "pointer" }}>
                                 {t("Zone Name")}{renderSortIcon("zone_name")}
                             </th>
+                            <th onClick={() => handleSort("score")} style={{ cursor: "pointer" }}>
+                                {t("Exposure score")}{renderSortIcon("score")}
+                            </th>
                             <th>{t("Description")}</th>
                             <th>{t("Actions")}</th>
                         </tr>
@@ -310,6 +320,7 @@ export const NetworkZoneTab = () => {
                                 </td>
                                     <td>{n((page - 1) * pageSize + index + 1)}</td>
                                     <td>{item.zone_name}</td>
+                                    <td>{item.score != null ? n(item.score) : "-"}</td>
                                     <td>
                                         {item.description ? (
                                             <button style={{paddingInlineStart:"35px",}}

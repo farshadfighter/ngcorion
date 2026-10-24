@@ -32,6 +32,7 @@
   "{{name}} from {{address}} while directory sign-in is on": "{{name}} از {{address}} در حالی که ورود با دایرکتوری روشن است",
   "{{name}} is down while enabled": "{{name}} با وجود فعال بودن قطع است",
   "{{name}} is down while enabled ({{alias}})": "{{name}} با وجود فعال بودن قطع است ({{alias}})",
+  "{{name}} is not a network zone": "«{{name}}» یکی از ناحیه‌های شبکه نیست",
   "{{name}} is not in the manifest": "{{name}} در فهرست پشتیبان نیست",
   "{{name}}: password not changed for {{rotation_days}} days or more": "{{name}}: گذرواژه {{rotation_days}} روز یا بیشتر عوض نشده است",
   "{{ref}} - due {{date}}": "{{ref}} - مهلت {{date}}",
@@ -233,6 +234,7 @@
   "By rule": "به تفکیک قانون",
   "Cancelled - the database was not changed.": "لغو شد؛ پایگاه داده تغییری نکرد.",
   "Cannot connect to {{device}}": "اتصال به {{device}} برقرار نشد",
+  "Cannot delete zone with assigned assets": "ناحیه‌ای را که دارایی در آن است نمی‌توان حذف کرد",
   "Cannot reach {{target}} ({{error}})": "به {{target}} دسترسی نیست ({{error}})",
   "Cannot write to the share: {{error}}": "نوشتن در پوشهٔ اشتراکی ممکن نیست: {{error}}",
   "Certificate authority not found": "صادرکنندهٔ گواهی پیدا نشد",
@@ -979,5 +981,6 @@
   "Your password is managed by your organization's directory. Change it there.": "رمز شما در دایرکتوری سازمان مدیریت می‌شود. آن را همان‌جا عوض کنید.",
   "Your password is not correct": "گذرواژهٔ شما درست نیست",
   "Your role must use two-step sign-in. To move it to a new phone, set it up again.": "نقش شما باید از ورود دومرحله‌ای استفاده کند. برای انتقال به گوشی جدید، آن را دوباره راه‌اندازی کنید.",
+  "Zone name already exists": "ناحیه‌ای با این نام هست",
   "Zone not found": "ناحیه پیدا نشد"
 }

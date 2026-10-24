@@ -4,6 +4,28 @@
 
 ### Fixes
 
+- One list of network zones. Asset List's zones (network_zones) and the
+  zones Risk scores (risk_zones) were two lists: a zone set on an asset in
+  Asset List ("Data Center", a new "Edge") counted in Risk only when a risk
+  zone had the same name, and never in risk filters, asset groups, alert
+  rules, report scope or the dashboards, which read the risk profile; a
+  zone set in Risk did not show in Asset List.
+  - Asset Requirements, Network Zones manages the zones Risk scores, with
+    an exposure score (0-100); a change recalculates the zone's assets, a
+    zone with assets cannot be deleted. The Excel zones sheet has a Score
+    column; the assets' Overview sheet calls the column "Network Zone"
+    (the old "Role" header still imports) and refuses a name that is not a
+    zone.
+  - An asset's zone is the same wherever it is set (asset form, Excel,
+    Risk, bulk actions) or read (app/models/asset_zone.py); setting it in
+    Asset List recalculates the asset's risk.
+  - Migration e3b5d7f9a1c2 moves every Asset List zone into the one list
+    ("Internal" is "Internal Server Zone", "External" is "Internet /
+    Public"; a new one gets the no-zone score), gives each asset one zone
+    (the one changed last where the two disagreed) and drops network_zones.
+    Recalculate all risk scores once after upgrading.
+- Editing an asset set its last audit date to the day of the edit; the
+  date moves only with an audit now.
 - Dependencies with published advisories: Pillow 13.0.0 (through
   WeasyPrint), brotli 1.2.1, certifi 2026.10.23, opentelemetry-api 1.45.1;
   frontend follow-redirects, undici, vite, zod and vitest 4.1.12.
