@@ -26,6 +26,7 @@ Tags are never moved or deleted once pushed; a fix gets a new number.
 | `v2.0.0` | `7f5be33` | 2026-10-04; not on GitHub as a tag yet. The draft release "NGCorion 2.0.0 appliance" was built from `11f65b0` (20 commits later, before VERSION moved on), so it is not this commit |
 | `v2.1.0` | the "Version 2.1.0" commit | 2026-10-17; first release with the license server key built in (`02f8c805e424e285`). The release candidate `2.1.0-rc.1` was never tagged |
 | `v2.1.1` | `5e1ae2c` | 2026-10-24; tagged by the Release tag workflow, without an appliance build |
+| `v2.1.2` | the "Version 2.1.2" commit | 2026-10-24; security review (OWASP WSTG) fixes, documents up to date; tagged with the appliance build |
 
 ## Making a release
 
@@ -47,7 +48,8 @@ Tags are never moved or deleted once pushed; a fix gets a new number.
    starts it itself): it builds the OVA, VHDX and
    qcow2 from that commit, the software bill of materials (CycloneDX, Python and
    web UI), the Persian documents as PDF (user and admin guides, security
-   architecture, Security Target; `scripts/docs_pdf.py`) and `SHA256SUMS`, and
+   architecture, Security Target, product overview, training course;
+   `scripts/docs_pdf.py`) and `SHA256SUMS`, and
    attaches them to a **draft** GitHub release. CI prints the same PDFs on
    every push (artifact `ngcorion-docs-fa-pdf`).
 5. Try the images (at least VMware ESXi), then publish the draft.
