@@ -4,6 +4,24 @@
 
 ### Fixes
 
+- Full review of every page (desktop and phone width, each tab, every
+  New/Add dialog) and of every API call the web UI makes against the
+  backend's routes, methods and query limits. Found and fixed:
+  - Asset 360 showed the zone of the last risk score, not the asset's;
+    scores left on an old zone (e.g. by the zone-list migration) are
+    recalculated once at startup (risk/zone_rescore.py), so "Recalculate
+    all" is no longer needed after upgrading.
+  - Unknown devices and Topology neighbours offered the first asset type
+    when none is drawn as the device (a camera became a Firewall); the type
+    is chosen by hand then.
+  - Untranslated text: "e.g." placeholders of the asset, owner, OS, port,
+    location, discovery and CVE forms; the audit result's status and risk
+    levels; the notification channels' cards and the send log's subject,
+    status and error; port state tooltips; four page names on the
+    no-access page.
+  - A React key passed inside spread props (Risk, Hardening impact).
+  - An SNMP credential that no longer decrypts (SECRET_KEY changed) wrote
+    a traceback on every poll for every host; it is one warning per host.
 - New Backup: the asset list was empty (it asked the asset API for 500 per
   page, over its limit of 100) and the device type stayed on Cisco whatever
   the asset. GET /api/backups/devices lists every asset with the family a

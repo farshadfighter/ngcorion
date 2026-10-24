@@ -88,7 +88,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
                     <span
                         key={`c${i}`}
                         className="port-badge port-state-closed"
-                        title="closed"
+                        title={t("closed")}
                     >
                         {port.port}/{port.protocol}
                     </span>
@@ -97,7 +97,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
                     <span
                         key={`f${i}`}
                         className="port-badge port-state-filtered"
-                        title="filtered"
+                        title={t("filtered")}
                     >
                         {port.port}/{port.protocol}
                     </span>

@@ -22,7 +22,6 @@
   "Are you sure you want to delete \"{{zone_name}}\"?": "آیا از حذف «{{zone_name}}» مطمئن هستید؟",
   "Are you sure you want to delete {{count}} items?": "آیا از حذف {{count, number}} مورد مطمئن هستید؟",
   "Are you sure you want to delete {{count}} owners?": "آیا از حذف {{count, number}} مالک مطمئن هستید؟",
-  "Asset Requirement": "الزامات دارایی",
   "Automatic (from the name)": "خودکار (بر اساس نام)",
   "Category": "دسته‌بندی",
   "Category is required": "دسته‌بندی الزامی است",

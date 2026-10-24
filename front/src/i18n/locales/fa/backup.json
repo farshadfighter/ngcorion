@@ -63,7 +63,6 @@
   "Back up the current configuration": "پشتیبان‌گیری از پیکربندی فعلی",
   "Back up the current configuration first": "ابتدا از پیکربندی فعلی پشتیبان گرفته شود",
   "Backing up": "در حال پشتیبان‌گیری",
-  "Backup & Restore": "پشتیبان‌گیری و بازیابی",
   "Backup #{{pre_restore_backup_id}} \"Before restore\"": "پشتیبان #{{pre_restore_backup_id}} «پیش از بازیابی»",
   "Backup #{{pre_restore_backup_id}} \"Before restore\" holds the configuration from before this run.": "پشتیبان #{{pre_restore_backup_id}} «پیش از بازیابی» پیکربندی پیش از این اجرا را نگه می‌دارد.",
   "Backup Config": "پشتیبان‌گیری از پیکربندی",

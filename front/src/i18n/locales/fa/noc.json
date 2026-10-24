@@ -51,6 +51,7 @@
   "by {{user}}, {{when}}": "توسط {{user}}، {{when}}",
   "Came up at": "زمان بالا آمدن",
   "Choose the asset": "دارایی را انتخاب کنید",
+  "Choose the asset type": "نوع دارایی را انتخاب کنید",
   "Cisco IOS keeps one MAC table per VLAN: NGCorion reads the VLAN list and then each VLAN's table, as community@VLAN on SNMP v2c or in the context vlan-<VLAN> on SNMP v3 (allow the user those contexts).": "Cisco IOS برای هر VLAN جدول MAC جدا دارد: NGCorion فهرست VLANها و سپس جدول هر VLAN را می‌خواند، در SNMP v2c با community@VLAN و در SNMP v3 در context به نام vlan-<VLAN> (دسترسی کاربر به این contextها را بدهید).",
   "Cisco IOS, NX-OS and FortiGate report each change with who made it and from where. About a minute after the last change, the device is backed up with its scheduled backup's credential profile and compared with the previous backup. A device without a scheduled backup only raises an alert.": "Cisco IOS، NX-OS و FortiGate هر تغییر را همراه با نام انجام‌دهنده و نشانی او گزارش می‌دهند. حدود یک دقیقه پس از آخرین تغییر، از دستگاه با پروفایل اعتبارنامهٔ پشتیبان‌گیری زمان‌بندی‌شده‌اش نسخهٔ پشتیبان گرفته و با نسخهٔ قبلی مقایسه می‌شود. برای دستگاهی که پشتیبان‌گیری زمان‌بندی‌شده ندارد فقط هشدار داده می‌شود.",
   "Community String": "Community String",

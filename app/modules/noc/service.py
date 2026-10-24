@@ -37,6 +37,10 @@ UPTIME_WRAP = timedelta(seconds=2 ** 32 / 100)
 HEALTH_METRICS = ("cpu_percent", "memory_percent", "disk_percent", "temperature_c")
 
 
+# Hosts whose stored SNMP credential could not be decrypted, warned about once until a poll succeeds.
+_UNREADABLE: set = set()
+
+
 class NocService:
     """NOC (SNMP monitoring) service."""
 
@@ -299,7 +303,16 @@ class NocService:
                 try:
                     result = await poll_asset(credential.target, credential)
                     NocService._persist_poll_result(db, credential.asset_id, result)
-                except Exception:
+                    _UNREADABLE.discard(credential.asset_id)
+                except Exception as exc:
+                    # The stored community or v3 keys cannot be decrypted (SECRET_KEY changed, a
+                    # restore from another server): one line per host, not a traceback per poll.
+                    if isinstance(exc, ValueError) and "decrypt" in str(exc):
+                        if credential.asset_id not in _UNREADABLE:
+                            _UNREADABLE.add(credential.asset_id)
+                            logger.warning("[NOC] Asset %s not polled: %s; enter its SNMP credential again",
+                                           credential.asset_id, exc)
+                        return
                     logger.exception("[NOC] Poll failed for asset %s", credential.asset_id)
 
         await asyncio.gather(*(_poll_and_persist(c) for c in targets))

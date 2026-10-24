@@ -151,3 +151,20 @@ def test_excel_import_names_a_zone(db, edge):
     first = db.query(Asset).filter(Asset.asset_name == "zone-xl-1").one()
     assert (first.asset_role, _profile(db, first).zone_id) == ("Edge", edge.id)
     assert db.query(Asset).filter(Asset.asset_name == "zone-xl-2").one().asset_role is None
+
+
+def test_scores_left_on_an_old_zone_are_recalculated(db, edge):
+    """A zone changed without a recalculation (the zone lists merged by a migration) is caught up at startup."""
+    from app.modules.assets.overview360 import _risk
+    from app.modules.risk.zone_rescore import rescore_stale_zones, stale_zone_assets
+    asset = _asset(db, asset_role="DMZ")
+    risk_calculation_service.calculate(asset.id, db, trigger_type="test")
+    db.query(AssetRiskProfile).filter(AssetRiskProfile.asset_id == asset.id).update({"zone_id": edge.id})
+    db.query(Asset).filter(Asset.id == asset.id).update({"asset_role": "Edge"})
+    db.expire_all()
+    assert _risk(db, asset)["zone"] == "Edge"                       # Asset 360 shows the zone it is in
+    assert asset.id in stale_zone_assets(db)
+    assert rescore_stale_zones(db) >= 1
+    row = db.query(AssetRiskScore).filter(AssetRiskScore.asset_id == asset.id).one()
+    assert (row.zone_id, row.zone_name) == (edge.id, "Edge")
+    assert asset.id not in stale_zone_assets(db)

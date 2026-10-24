@@ -161,50 +161,50 @@ export function ChannelsTab({ channels: c, error, canWrite, onChanged }) {
         <>
             <p className="bkm-muted alr-lead">{t("Where alerts are delivered. Counts cover the last 24 hours.")}</p>
             <div className="alr-chan-grid">
-                <Card tile="#1e3a5f" icon={<Icon name="bell" />} title={t("In-app")} sub="The bell and the Alerts page"
+                <Card tile="#1e3a5f" icon={<Icon name="bell" />} title={t("In-app")} sub={t("The bell and the Alerts page")}
                       status={<span className="bkm-pill bkm-pill-ok">{t("Always on")}</span>}>
-                    <Kv k="Alerts raised · 24 h">{c.in_app.raised_24h}</Kv>
-                    <Kv k="Resolved alerts kept for">{t("{{retention_days}} days", { retention_days: c.in_app.retention_days })}</Kv>
+                    <Kv k={t("Alerts raised · 24 h")}>{c.in_app.raised_24h}</Kv>
+                    <Kv k={t("Resolved alerts kept for")}>{t("{{retention_days}} days", { retention_days: c.in_app.retention_days })}</Kv>
                 </Card>
 
-                <Card tile="#1d4ed8" icon={<Icon name="mail" />} title={t("Email")} sub="SMTP from System Configuration"
+                <Card tile="#1d4ed8" icon={<Icon name="mail" />} title={t("Email")} sub={t("SMTP from System Configuration")}
                       status={c.email.configured ? <Ready /> : <NotSet />}
                       actions={<>{canWrite && <TestButton channel="email" needsTo placeholder={t("Send to (your address by default)")} disabled={!c.email.configured} />}{editLink}</>}>
                     {c.email.configured ? (
                         <>
-                            <Kv k="Server"><span className="bkm-mono">{c.email.server} · {c.email.security}</span></Kv>
-                            <Kv k="From">{c.email.from}</Kv>
-                            <Kv k="Delivered · 24 h" warn={c.email.stats_24h.failed > 0}><Stats s={c.email.stats_24h} /></Kv>
+                            <Kv k={t("Server")}><span className="bkm-mono">{c.email.server} · {c.email.security}</span></Kv>
+                            <Kv k={t("From")}>{c.email.from}</Kv>
+                            <Kv k={t("Delivered · 24 h")} warn={c.email.stats_24h.failed > 0}><Stats s={c.email.stats_24h} /></Kv>
                         </>
                     ) : <p className="alr-hint">{t("Set the SMTP server in System Configuration to send alerts by email.")}</p>}
                 </Card>
 
-                <Card tile="#0e7490" icon={<Icon name="phone" />} title={t("SMS")} sub="Provider from System Configuration"
+                <Card tile="#0e7490" icon={<Icon name="phone" />} title={t("SMS")} sub={t("Provider from System Configuration")}
                       status={c.sms.configured ? <Ready /> : <NotSet />}
                       actions={<>{canWrite && <TestButton channel="sms" needsTo placeholder={t("Mobile number")} disabled={!c.sms.configured} />}{editLink}</>}>
                     {c.sms.configured ? (
                         <>
-                            <Kv k="Provider">{c.sms.provider}</Kv>
-                            <Kv k="Users with a mobile number" warn={!c.sms.users_with_phone}>{c.sms.users_with_phone}</Kv>
-                            <Kv k="Delivered · 24 h" warn={c.sms.stats_24h.failed > 0}><Stats s={c.sms.stats_24h} /></Kv>
+                            <Kv k={t("Provider")}>{c.sms.provider}</Kv>
+                            <Kv k={t("Users with a mobile number")} warn={!c.sms.users_with_phone}>{c.sms.users_with_phone}</Kv>
+                            <Kv k={t("Delivered · 24 h")} warn={c.sms.stats_24h.failed > 0}><Stats s={c.sms.stats_24h} /></Kv>
                         </>
                     ) : <p className="alr-hint">{t("Set the SMS provider in System Configuration. Users' mobile numbers are set in User Management.")}</p>}
                 </Card>
 
-                <Card tile="#334155" icon={<Icon name="lines" />} title={t("Syslog / SIEM")} sub="Alerts as CEF syslog events"
+                <Card tile="#334155" icon={<Icon name="lines" />} title={t("Syslog / SIEM")} sub={t("Alerts as CEF syslog events")}
                       status={c.syslog.configured ? <Ready /> : <NotSet />}
                       actions={<>{canWrite && <TestButton channel="syslog" disabled={!c.syslog.configured} />}{editLink}</>}>
                     {c.syslog.configured ? (
                         <>
-                            <Kv k="Target"><span className="bkm-mono">{c.syslog.target} · {c.syslog.protocol}</span></Kv>
-                            <Kv k="Format">{t("CEF (ArcSight, QRadar, Splunk, Wazuh)")}</Kv>
-                            <Kv k="Sent · 24 h" warn={c.syslog.stats_24h.failed > 0}><Stats s={c.syslog.stats_24h} /></Kv>
+                            <Kv k={t("Target")}><span className="bkm-mono">{c.syslog.target} · {c.syslog.protocol}</span></Kv>
+                            <Kv k={t("Format")}>{t("CEF (ArcSight, QRadar, Splunk, Wazuh)")}</Kv>
+                            <Kv k={t("Sent · 24 h")} warn={c.syslog.stats_24h.failed > 0}><Stats s={c.syslog.stats_24h} /></Kv>
                         </>
                     ) : <p className="alr-hint">{t("Uses the syslog server set in System Configuration.")}</p>}
                 </Card>
 
                 {c.webhooks.map((h) => (
-                    <Card key={h.id} tile="#7c3aed" icon={<Icon name="link" />} title={t("Webhook · {{name}}", { name: h.name })} sub="POST to a URL, signed"
+                    <Card key={h.id} tile="#7c3aed" icon={<Icon name="link" />} title={t("Webhook · {{name}}", { name: h.name })} sub={t("POST to a URL, signed")}
                           status={!h.enabled ? <span className="bkm-pill bkm-pill-muted">{t("Off")}</span>
                               : h.stats_24h.failed ? <span className="bkm-pill bkm-pill-orange">{t("{{failed}} failed", { failed: h.stats_24h.failed })}</span> : <Ready />}
                           actions={canWrite && <>
@@ -212,11 +212,11 @@ export function ChannelsTab({ channels: c, error, canWrite, onChanged }) {
                               <button type="button" className="bkm-btn bkm-btn-sm" onClick={() => setEditing(h)}>{t("Edit")}</button>
                               <button type="button" className="bkm-btn bkm-btn-sm alr-danger" onClick={() => removeHook(h)}>{t("Delete")}</button>
                           </>}>
-                        <Kv k="URL"><span className="bkm-mono alr-clip" title={h.url}>{h.url}</span></Kv>
-                        <Kv k="Format">{t("JSON · HMAC-SHA256 signature")}</Kv>
+                        <Kv k={t("URL")}><span className="bkm-mono alr-clip" title={h.url}>{h.url}</span></Kv>
+                        <Kv k={t("Format")}>{t("JSON · HMAC-SHA256 signature")}</Kv>
                         {h.last_error
-                            ? <Kv k="Last error" warn>{h.last_error}{sep()}{formatWhen(h.last_error_at)}</Kv>
-                            : <Kv k="Last delivered">{h.last_success_at ? formatWhen(h.last_success_at) : t("Never")}</Kv>}
+                            ? <Kv k={t("Last error")} warn>{h.last_error}{sep()}{formatWhen(h.last_error_at)}</Kv>
+                            : <Kv k={t("Last delivered")}>{h.last_success_at ? formatWhen(h.last_success_at) : t("Never")}</Kv>}
                     </Card>
                 ))}
 

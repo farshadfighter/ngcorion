@@ -83,7 +83,7 @@ def _risk(db: Session, a: Asset) -> Optional[Dict]:
     if s is None:
         return {"score": None}
     return {"score": _num(s.final_risk_score), "level": s.risk_level, "calculated_at": _iso(s.calculated_at),
-            "zone": s.zone_name, "criticality": s.criticality_level,
+            "zone": a.asset_role or s.zone_name, "criticality": s.criticality_level,   # the asset's zone now
             "audit_findings": s.active_audit_findings_count, "risky_ports": s.risky_ports_count,
             "open_ports": s.open_ports_count, "cve_findings": s.cve_findings_count, "cve_kev": s.cve_kev_count,
             "incomplete": bool(s.incomplete_data)}

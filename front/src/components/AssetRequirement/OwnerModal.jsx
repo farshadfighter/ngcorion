@@ -142,7 +142,7 @@ export const OwnerModal = ({ onClose }) => {
                                 name="phone"
                                 value={formData.phone}
                                 onChange={handleChange}
-                                placeholder="e.g., +98 912 345 6789"
+                                placeholder={t("e.g. {{example}}", { example: "+98 912 345 6789" })}
                                 className={errors.phone ? "error" : ""}
                             />
                             {errors.phone && (

@@ -175,7 +175,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                     value={formData.target}
                                     onChange={handleChange}
                                     className={`form-input ${errors.target ? 'error' : ''}`}
-                                    placeholder="e.g. 192.168.1.0/24"
+                                    placeholder={t("e.g. {{example}}", { example: "192.168.1.0/24" })}
                                 />
                                 {errors.target && <p className="form-error">{errors.target}</p>}
                             </div>
@@ -225,7 +225,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                         value={formData.ports}
                                         onChange={handleChange}
                                         className={`form-input ${errors.ports ? 'error' : ''}`}
-                                        placeholder="e.g. 22,80,443,8080-8090"
+                                        placeholder={t("e.g. {{example}}", { example: "22,80,443,8080-8090" })}
                                     />
                                     {errors.ports && <p className="form-error">{errors.ports}</p>}
                                 </div>

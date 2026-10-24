@@ -151,7 +151,7 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                                         name="hosted_vlan"
                                         value={formData.hosted_vlan}
                                         onChange={handleChange}
-                                        placeholder="e.g. 110"
+                                        placeholder={tr("e.g. {{example}}", { example: "110" })}
                                         disabled={isSubmitting}
                                     />
                                     <span style={{ display: "block", color: "#6c757d", fontSize: "11px", marginTop: "3px" }}>

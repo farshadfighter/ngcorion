@@ -184,7 +184,7 @@ function AddSoftware({ assetId, onDone, onCancel }) {
             </div>
             <label className="cvx-field cvx-field-sm">
                 <span>{tr("Version")}</span>
-                <input ref={versionRef} className="cvx-input cvx-mono" placeholder="e.g. 2.4.52" value={version} maxLength={80}
+                <input ref={versionRef} className="cvx-input cvx-mono" placeholder={tr("e.g. {{example}}", { example: "2.4.52" })} value={version} maxLength={80}
                        onChange={(e) => setVersion(e.target.value)} />
             </label>
             <div className="cvx-add-actions">

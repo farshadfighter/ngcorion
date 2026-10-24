@@ -113,7 +113,6 @@
   "Create update package": "ساخت بستهٔ به‌روزرسانی",
   "Created": "ساخته‌شده",
   "Creating the update package…": "در حال ساخت بستهٔ به‌روزرسانی…",
-  "CVE": "CVE",
   "CVE Database": "پایگاه دادهٔ CVE",
   "CVE database · {{cves}} · updated {{when}}": "پایگاه دادهٔ CVE، {{cves}}، به‌روزرسانی {{when}}",
   "CVE database not loaded": "پایگاه دادهٔ CVE بارگذاری نشده",

@@ -370,7 +370,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                     </div>
                     <div className="form-group">
                         <label>{tr("Model")}</label>
-                        <input type="text" name="model" value={formData.model} onChange={handleChange} placeholder="e.g. R740" disabled={isLoadingOptions} />
+                        <input type="text" name="model" value={formData.model} onChange={handleChange} placeholder={tr("e.g. {{example}}", { example: "R740" })} disabled={isLoadingOptions} />
                     </div>
                 </div>
             );
@@ -418,7 +418,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             name="ip_address"
                             value={formData.ip_address}
                             onChange={handleChange}
-                            placeholder="e.g. 192.168.1.10"
+                            placeholder={tr("e.g. {{example}}", { example: "192.168.1.10" })}
                             disabled={isLoadingOptions}
                             style={fieldErrors.ip_address ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                         />
@@ -431,7 +431,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             name="mac_address"
                             value={formData.mac_address}
                             onChange={handleChange}
-                            placeholder="e.g. 00:1A:2B:3C:4D:5E"
+                            placeholder={tr("e.g. {{example}}", { example: "00:1A:2B:3C:4D:5E" })}
                             disabled={isLoadingOptions}
                             style={fieldErrors.mac_address ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                         />
@@ -446,7 +446,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             max="512"
                             value={formData.port_count}
                             onChange={handleChange}
-                            placeholder="e.g. 24"
+                            placeholder={tr("e.g. {{example}}", { example: "24" })}
                             disabled={isLoadingOptions}
                         />
                         <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
@@ -505,7 +505,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             name="hosted_vlan"
                             value={formData.hosted_vlan}
                             onChange={handleChange}
-                            placeholder="e.g. 110"
+                            placeholder={tr("e.g. {{example}}", { example: "110" })}
                             disabled={isLoadingOptions}
                         />
                         <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>

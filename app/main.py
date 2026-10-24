@@ -299,6 +299,7 @@ async def lifespan(app: FastAPI):
     from app.modules.asset_groups.runs import start_group_runs, stop_group_runs
     from app.modules.syslog.listener import start_syslog_intake, stop_syslog_intake
     from app.modules.tls.worker import start_tls_worker, stop_tls_worker
+    from app.modules.risk.zone_rescore import start_zone_rescore, stop_zone_rescore
     singletons = [
         SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
         SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
@@ -313,6 +314,7 @@ async def lifespan(app: FastAPI):
         SingletonTask("group-runs", start_group_runs, stop_group_runs),
         SingletonTask("syslog-intake", start_syslog_intake, stop_syslog_intake),
         SingletonTask("tls-scan", start_tls_worker, stop_tls_worker),
+        SingletonTask("risk-zone-rescore", start_zone_rescore, stop_zone_rescore),
     ]
     for task in singletons:
         task.start()

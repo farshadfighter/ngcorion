@@ -131,3 +131,42 @@ def test_snmp_address_must_be_an_address():
     assert SnmpCredentialSet(poll_address="").poll_address == ""
     with pytest.raises(ValidationError):
         SnmpCredentialSet(poll_address="bad host; rm -rf")
+
+
+def test_an_unreadable_snmp_credential_is_logged_once(db, admin, monkeypatch, caplog):
+    """A credential that no longer decrypts (SECRET_KEY changed) is one warning per host, not a
+    traceback on every poll; another failure is still logged in full."""
+    import logging
+    fw = _asset(db, "10.88.5.1")
+    noc_service.NocService.set_credential(db, fw.id, {"version": "v2c", "community": "public"}, admin.id)
+    monkeypatch.setattr(db, "query", _only_assets(db, fw.id))
+
+    async def unreadable(address, cred):
+        raise ValueError("Could not decrypt stored secret - SECRET_KEY may have changed")
+    monkeypatch.setattr(noc_service, "poll_asset", unreadable)
+    noc_service._UNREADABLE.discard(fw.id)
+    with caplog.at_level(logging.WARNING, logger=noc_service.logger.name):
+        asyncio.run(noc_service.NocService.poll_all(db))
+        asyncio.run(noc_service.NocService.poll_all(db))
+    lines = [r for r in caplog.records if f"Asset {fw.id} not polled" in r.getMessage()]
+    assert len(lines) == 1 and lines[0].exc_info is None
+
+    async def broken(address, cred):
+        raise ValueError("something else")
+    monkeypatch.setattr(noc_service, "poll_asset", broken)
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger=noc_service.logger.name):
+        asyncio.run(noc_service.NocService.poll_all(db))
+    assert any(r.exc_info for r in caplog.records)
+
+
+def _only_assets(db, asset_id):
+    """db.query limited to this test's credential (the poll covers every credential in the database)."""
+    real = db.query
+
+    def query(*entities, **kw):
+        q = real(*entities, **kw)
+        if entities and entities[0] is AssetSnmpCredential:
+            q = q.filter(AssetSnmpCredential.asset_id == asset_id)
+        return q
+    return query

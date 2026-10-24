@@ -76,17 +76,17 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
         return (
             <div className="ports-display">
                 {openPorts.slice(0, 3).map((port, i) => (
-                    <span key={i} className="port-badge port-state-open" title="open">
+                    <span key={i} className="port-badge port-state-open" title={t("open")}>
                         {port.port}/{port.protocol}
                     </span>
                 ))}
                 {closedPorts.slice(0, 2).map((port, i) => (
-                    <span key={`c${i}`} className="port-badge port-state-closed" title="closed">
+                    <span key={`c${i}`} className="port-badge port-state-closed" title={t("closed")}>
                         {port.port}/{port.protocol}
                     </span>
                 ))}
                 {filteredPorts.slice(0, 1).map((port, i) => (
-                    <span key={`f${i}`} className="port-badge port-state-filtered" title="filtered">
+                    <span key={`f${i}`} className="port-badge port-state-filtered" title={t("filtered")}>
                         {port.port}/{port.protocol}
                     </span>
                 ))}

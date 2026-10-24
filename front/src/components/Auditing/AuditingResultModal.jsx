@@ -9,6 +9,7 @@ import { getDeviceName } from "../../store/hardeningSlice";
 import { FixUnsuccessfulWizard } from "../Hardening/FixUnsuccessfulWizard";
 import { ResultHardeningBar } from "./ResultHardeningBar";
 import { t, uiLocale, n } from "../../i18n";
+import { tv } from "../../i18n/backendText";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "-");
@@ -170,7 +171,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
         if (!level) return <span style={{ color: "#9ca3af" }}>—</span>;
         return (
             <span className={`severity-badge severity-${level}`}>
-                {titleCase(level)}
+                {tv(level) === level ? titleCase(level) : tv(level)}
             </span>
         );
     };
@@ -244,7 +245,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
 
                     <div className="result-card result-card-info">
                         <div className="card-label">{t("Status")}</div>
-                        <div className="card-value">{titleCase(sessionDetails?.status)}</div>
+                        <div className="card-value">{sessionDetails?.status ? tv(String(sessionDetails.status).toLowerCase()) : "-"}</div>
                     </div>
 
                     {isWindowsSession && serverRole && (

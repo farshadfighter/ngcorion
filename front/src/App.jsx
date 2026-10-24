@@ -177,42 +177,42 @@ function AppContent() {
                         {/* Asset Management */}
                         <Route path="/assets" element={
                             <RequireAnyPermission modules={["asset_list", "asset_requirement", "asset_auto_discovery"]}
-                                                  name="Asset Management">
+                                                  name={t("Asset Management")}>
                                 <AssetManagementDashboard />
                             </RequireAnyPermission>
                         } />
                         <Route path="/assets/requirements" element={
-                            <RequirePermission module="asset_requirement" name="Asset Requirement">
+                            <RequirePermission module="asset_requirement" name={t("Asset Requirement")}>
                                 <AssetRequirement />
                             </RequirePermission>
                         } />
                         <Route path="/assets/inventory" element={
-                            <RequirePermission module="asset_list" name="Asset List">
+                            <RequirePermission module="asset_list" name={t("Asset List")}>
                                 <AssetListRoute />
                             </RequirePermission>
                         } />
                         <Route path="/assets/inventory/:assetId" element={
-                            <RequirePermission module="asset_list" name="Asset List">
+                            <RequirePermission module="asset_list" name={t("Asset List")}>
                                 <AssetDetailPage />
                             </RequirePermission>
                         } />
                         <Route path="/assets/groups" element={
-                            <RequirePermission module="asset_list" name="Asset groups">
+                            <RequirePermission module="asset_list" name={t("Asset groups")}>
                                 <ByQuery><AssetGroupsPage /></ByQuery>
                             </RequirePermission>
                         } />
                         <Route path="/assets/software" element={
-                            <RequirePermission module="asset_list" name="Software">
+                            <RequirePermission module="asset_list" name={t("Software")}>
                                 <ByQuery><SoftwarePage /></ByQuery>
                             </RequirePermission>
                         } />
                         <Route path="/assets/software/lifecycle" element={
-                            <RequirePermission module="asset_list" name="End of life">
+                            <RequirePermission module="asset_list" name={t("End of life")}>
                                 <LifecyclePage />
                             </RequirePermission>
                         } />
                         <Route path="/assets/discovery" element={
-                            <RequirePermission module="asset_auto_discovery" name="Auto Discovery">
+                            <RequirePermission module="asset_auto_discovery" name={t("Auto Discovery")}>
                                 <AutoDiscoveryRoute />
                             </RequirePermission>
                         } />
@@ -221,238 +221,238 @@ function AppContent() {
                             standalone section (product decision: this is a scheduled
                             variant of Auto Discovery, not a separate feature) */}
                         <Route path="/assets/schedule-discovery" element={
-                            <RequirePermission module="asset_auto_discovery" name="Schedule Discovery">
+                            <RequirePermission module="asset_auto_discovery" name={t("Schedule Discovery")}>
                                 <ScheduledJobsPage key="discovery" jobType="discovery" />
                             </RequirePermission>
                         } />
 
                         {/* Auditing */}
                         <Route path="/audit" element={
-                            <RequirePermission module="auditing" name="Auditing">
+                            <RequirePermission module="auditing" name={t("Auditing")}>
                                 <AuditingDashboard />
                             </RequirePermission>
                         } />
                         <Route path="/audit/sessions" element={
-                            <RequirePermission module="auditing" name="Auditing">
+                            <RequirePermission module="auditing" name={t("Auditing")}>
                                 <AuditingList />
                             </RequirePermission>
                         } />
                         <Route path="/audit/schedule-auditing" element={
-                            <RequirePermission module="auditing" name="Schedule Auditing">
+                            <RequirePermission module="auditing" name={t("Schedule Auditing")}>
                                 <ScheduledJobsPage key="audit" jobType="audit" />
                             </RequirePermission>
                         } />
                         <Route path="/audit/group-runs" element={
-                            <RequirePermission module="auditing" name="Group audits">
+                            <RequirePermission module="auditing" name={t("Group audits")}>
                                 <GroupRunsPage />
                             </RequirePermission>
                         } />
                         <Route path="/audit/group-runs/:runId" element={
-                            <RequirePermission module="auditing" name="Group audits">
+                            <RequirePermission module="auditing" name={t("Group audits")}>
                                 <GroupRunsPage />
                             </RequirePermission>
                         } />
                         <Route path="/audit/sessions/:sessionId" element={
-                            <RequirePermission module="auditing" name="Auditing">
+                            <RequirePermission module="auditing" name={t("Auditing")}>
                                 <AuditingList />
                             </RequirePermission>
                         } />
 
                         {/* Hardening */}
                         <Route path="/hardening" element={
-                            <RequirePermission module="hardening" name="Hardening">
+                            <RequirePermission module="hardening" name={t("Hardening")}>
                                 <HardeningRoute />
                             </RequirePermission>
                         } />
                         <Route path="/hardening/overview" element={
-                            <RequirePermission module="hardening" name="Hardening">
+                            <RequirePermission module="hardening" name={t("Hardening")}>
                                 <HardeningDashboard />
                             </RequirePermission>
                         } />
 
                         {/* Backup & Restore */}
                         <Route path="/backup/overview" element={
-                            <RequirePermission module="backup" name="Backup & Restore">
+                            <RequirePermission module="backup" name={t("Backup & Restore")}>
                                 <BackupOverview />
                             </RequirePermission>
                         } />
                         <Route path="/backup" element={
-                            <RequirePermission module="backup" name="Backup & Restore">
+                            <RequirePermission module="backup" name={t("Backup & Restore")}>
                                 <BackupPage />
                             </RequirePermission>
                         } />
                         <Route path="/backup/schedules" element={
-                            <RequirePermission module="backup" name="Backup schedules">
+                            <RequirePermission module="backup" name={t("Backup schedules")}>
                                 <BackupSchedulesPage />
                             </RequirePermission>
                         } />
                         <Route path="/backup/runs" element={
-                            <RequirePermission module="backup" name="Backup runs">
+                            <RequirePermission module="backup" name={t("Backup runs")}>
                                 <GroupRunsPage key="backup-runs" kind="backup" />
                             </RequirePermission>
                         } />
                         <Route path="/backup/runs/:runId" element={
-                            <RequirePermission module="backup" name="Backup runs">
+                            <RequirePermission module="backup" name={t("Backup runs")}>
                                 <GroupRunsPage key="backup-run" kind="backup" />
                             </RequirePermission>
                         } />
                         <Route path="/backup/restores" element={
-                            <RequirePermission module="backup" name="Backup & Restore">
+                            <RequirePermission module="backup" name={t("Backup & Restore")}>
                                 <RestoreHistory />
                             </RequirePermission>
                         } />
 
                         {/* Network Design */}
                         <Route path="/topology" element={
-                            <RequirePermission module="topology" name="Topology">
+                            <RequirePermission module="topology" name={t("Topology")}>
                                 <TopologyDashboard />
                             </RequirePermission>
                         } />
                         <Route path="/design-suggestion" element={
-                            <RequirePermission module="design_configuration" name="Suggested Design">
+                            <RequirePermission module="design_configuration" name={t("Suggested Design")}>
                                 <SuggestedDesign />
                             </RequirePermission>
                         } />
                         <Route path="/architecture-validation" element={
-                            <RequirePermission module="architecture_validation" name="Architecture Validation">
+                            <RequirePermission module="architecture_validation" name={t("Architecture Validation")}>
                                 <ArchitectureValidationDashboard />
                             </RequirePermission>
                         } />
                         <Route path="/design-configuration" element={
-                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                            <RequirePermission module="design_configuration" name={t("Design & Configuration")}>
                                 <DesignList />
                             </RequirePermission>
                         } />
                         <Route path="/design-configuration/designs/:designId" element={
-                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                            <RequirePermission module="design_configuration" name={t("Design & Configuration")}>
                                 <DesignDetail />
                             </RequirePermission>
                         } />
                         <Route path="/design-configuration/versions/:versionId" element={
-                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                            <RequirePermission module="design_configuration" name={t("Design & Configuration")}>
                                 <DesignCanvas />
                             </RequirePermission>
                         } />
 
                         {/* Vulnerability Management */}
                         <Route path="/cve" element={
-                            <RequirePermission module="cve" name="CVE">
+                            <RequirePermission module="cve" name={t("CVE")}>
                                 <CveFindings />
                             </RequirePermission>
                         } />
                         <Route path="/cve/certificates" element={
-                            <RequirePermission module="cve" name="TLS certificates">
+                            <RequirePermission module="cve" name={t("TLS certificates")}>
                                 <CertificatesPage />
                             </RequirePermission>
                         } />
                         <Route path="/cve/database" element={
-                            <RequirePermission module="cve" name="CVE">
+                            <RequirePermission module="cve" name={t("CVE")}>
                                 <CveDatabase />
                             </RequirePermission>
                         } />
 
                         {/* NOC */}
                         <Route path="/noc/dashboard" element={
-                            <RequirePermission module="noc" name="NOC Dashboard">
+                            <RequirePermission module="noc" name={t("NOC Dashboard")}>
                                 <NocDashboard />
                             </RequirePermission>
                         } />
                         <Route path="/noc/hosts" element={
-                            <RequirePermission module="noc" name="NOC Host">
+                            <RequirePermission module="noc" name={t("NOC Host")}>
                                 <NocHostList />
                             </RequirePermission>
                         } />
                         <Route path="/noc/hosts/:assetId" element={
-                            <RequirePermission module="noc" name="NOC Host">
+                            <RequirePermission module="noc" name={t("NOC Host")}>
                                 <NocHostDetail />
                             </RequirePermission>
                         } />
                         <Route path="/noc/syslog" element={
-                            <RequirePermission module="noc" name="Syslog">
+                            <RequirePermission module="noc" name={t("Syslog")}>
                                 <SyslogPage />
                             </RequirePermission>
                         } />
                         <Route path="/noc/unknown-devices" element={
-                            <RequirePermission module="noc" name="Unknown devices">
+                            <RequirePermission module="noc" name={t("Unknown devices")}>
                                 <UnknownDevicesPage />
                             </RequirePermission>
                         } />
 
                         {/* System Settings */}
                         <Route path="/settings/users" element={
-                            <RequirePermission module="user_management" name="User Management">
+                            <RequirePermission module="user_management" name={t("User Management")}>
                                 <UserManagement />
                             </RequirePermission>
                         } />
                         <Route path="/settings/logs" element={
-                            <RequirePermission module="logs" name="System Logs">
+                            <RequirePermission module="logs" name={t("System Logs")}>
                                 <AuditTrailPage initialTab="modules" />
                             </RequirePermission>
                         } />
                         <Route path="/settings/audit-trail" element={
-                            <RequirePermission module="logs" name="Audit trail">
+                            <RequirePermission module="logs" name={t("Audit trail")}>
                                 <AuditTrailPage />
                             </RequirePermission>
                         } />
                         <Route path="/alerts" element={<AlertsPage />} />
                         <Route path="/remediation" element={
-                            <RequirePermission module="remediation" name="Remediation">
+                            <RequirePermission module="remediation" name={t("Remediation")}>
                                 <RemediationPage />
                             </RequirePermission>
                         } />
                         <Route path="/remediation/policy" element={
-                            <RequirePermission module="auditing" name="Benchmark policy">
+                            <RequirePermission module="auditing" name={t("Benchmark policy")}>
                                 <BenchmarkPolicyPage />
                             </RequirePermission>
                         } />
                         <Route path="/compliance" element={
-                            <RequirePermission module="auditing" name="Compliance with standards">
+                            <RequirePermission module="auditing" name={t("Compliance with standards")}>
                                 <ComplianceStandardsPage />
                             </RequirePermission>
                         } />
                         <Route path="/remediation/acceptances" element={
-                            <RequirePermission module="remediation" name="Accepted Risks">
+                            <RequirePermission module="remediation" name={t("Accepted Risks")}>
                                 <AcceptancesPage />
                             </RequirePermission>
                         } />
                         <Route path="/reports" element={
-                            <RequirePermission module="reports" name="Reports">
+                            <RequirePermission module="reports" name={t("Reports")}>
                                 <ReportsCatalog />
                             </RequirePermission>
                         } />
                         <Route path="/reports/new/:template" element={
-                            <RequirePermission module="reports" name="Reports">
+                            <RequirePermission module="reports" name={t("Reports")}>
                                 <ReportBuilder />
                             </RequirePermission>
                         } />
                         <Route path="/reports/archive" element={
-                            <RequirePermission module="reports" name="Report archive">
+                            <RequirePermission module="reports" name={t("Report archive")}>
                                 <ByQuery><ReportsArchive /></ByQuery>
                             </RequirePermission>
                         } />
                         <Route path="/reports/schedules" element={
-                            <RequirePermission module="reports" name="Report schedules">
+                            <RequirePermission module="reports" name={t("Report schedules")}>
                                 <ReportSchedules />
                             </RequirePermission>
                         } />
                         <Route path="/settings/notifications" element={
-                            <RequirePermission module="system_config" name="Notifications">
+                            <RequirePermission module="system_config" name={t("Notifications")}>
                                 <NotificationsPage />
                             </RequirePermission>
                         } />
                         <Route path="/settings/system-backup" element={
-                            <RequireAdmin name="NGCorion backup">
+                            <RequireAdmin name={t("NGCorion backup")}>
                                 <SystemBackup />
                             </RequireAdmin>
                         } />
                         <Route path="/settings/license" element={
-                            <RequireAdmin name="License Management"><License /></RequireAdmin>
+                            <RequireAdmin name={t("License Management")}><License /></RequireAdmin>
                         } />
                         <Route path="/settings/api-keys" element={
-                            <RequireAdmin name="API keys"><ApiKeysPage /></RequireAdmin>
+                            <RequireAdmin name={t("API keys")}><ApiKeysPage /></RequireAdmin>
                         } />
                         <Route path="/settings/system" element={
-                            <RequirePermission module="system_config" name="System Configuration">
+                            <RequirePermission module="system_config" name={t("System Configuration")}>
                                 <SystemConfiguration />
                             </RequirePermission>
                         } />
@@ -462,19 +462,19 @@ function AppContent() {
 
                         {/* Risk Intelligence */}
                         <Route path="/risk/assets" element={
-                            <RequirePermission module="risk" name="Risk Asset">
+                            <RequirePermission module="risk" name={t("Risk Asset")}>
                                 <RiskAsset />
                             </RequirePermission>
                         } />
                         <Route path="/risk/assets/:assetId" element={
-                            <RequirePermission module="risk" name="Risk Asset">
+                            <RequirePermission module="risk" name={t("Risk Asset")}>
                                 <AssetRiskDetail />
                             </RequirePermission>
                         } />
                         {/* KPI + charts overview. Not in the sidebar yet — its
                             placement in the menu is still pending in Figma. */}
                         <Route path="/risk/overview" element={
-                            <RequirePermission module="risk" name="Risk Intelligence">
+                            <RequirePermission module="risk" name={t("Risk Intelligence")}>
                                 <RiskIntelDashboard />
                             </RequirePermission>
                         } />

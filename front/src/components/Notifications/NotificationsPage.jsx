@@ -12,6 +12,8 @@ import { t } from "../../i18n";
 import { tx } from "../../i18n/tx";
 import { tb, tbList } from "../../i18n/backendText";
 
+const DELIVERY_STATUS = { sent: t("Sent"), failed: t("Failed"), skipped: t("Skipped") };
+
 const TABS = [["rules", t("Rules")], ["channels", t("Channels")], ["log", t("Delivery log")]];
 
 function Switch({ on, onChange, label, disabled }) {
@@ -160,7 +162,7 @@ function DeliveryLog() {
                                 <tr key={d.id}>
                                     <td className="bkm-nowrap">{formatWhen(d.created_at)}</td>
                                     <td>
-                                        <span className="bkm-strong">{d.subject}</span>
+                                        <span className="bkm-strong">{tb(d.subject)}</span>
                                         <span className="bkm-sub">{d.rule_name || (d.kind === "test" ? t("Test") : "")}
                                             {d.kind === "reminder" ? t(" · reminder") : d.kind === "resolved" ? t(" · resolved notice") : ""}</span>
                                     </td>
@@ -168,10 +170,10 @@ function DeliveryLog() {
                                     <td><span className="bkm-mono alr-clip" title={d.recipient || ""}>{d.recipient || "—"}</span></td>
                                     <td>
                                         <span className={`bkm-pill ${STATUS_PILL[d.status]}`}>
-                                            {d.status === "pending" ? (d.attempts ? t("Retrying") : t("Queued")) : d.status[0].toUpperCase() + d.status.slice(1)}
+                                            {d.status === "pending" ? (d.attempts ? t("Retrying") : t("Queued")) : (DELIVERY_STATUS[d.status] || d.status)}
                                         </span>
                                         {d.attempts > 1 && d.status === "sent" && <span className="bkm-sub">{t("after {{attempts}} tries", { attempts: d.attempts })}</span>}
-                                        {d.error && d.status !== "sent" && <span className="bkm-sub alr-err" title={d.error}>{d.error}</span>}
+                                        {d.error && d.status !== "sent" && <span className="bkm-sub alr-err" title={d.error}>{tb(d.error)}</span>}
                                     </td>
                                 </tr>
                             ))}

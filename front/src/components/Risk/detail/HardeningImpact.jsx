@@ -53,7 +53,7 @@ export const HardeningImpact = ({ impact }) => {
                         })}
                     </p>
                     <div className="hri-rows">
-                        {impactRows(i).map((r) => <Row key={r.key} {...r} />)}
+                        {impactRows(i).map(({ key, ...r }) => <Row key={key} {...r} />)}
                     </div>
                     <p className="hri-foot">
                         {t("{{changes}} changes run: {{verified}} verified, {{failed}} failed.", {

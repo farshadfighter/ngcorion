@@ -39,8 +39,6 @@
   "Recurrence": "تکرار",
   "Run history": "تاریخچهٔ اجرا",
   "Scan type": "نوع اسکن",
-  "Schedule Auditing": "ممیزی زمان‌بندی‌شده",
-  "Schedule Discovery": "کشف زمان‌بندی‌شده",
   "Scheduling a backup needs permission to use credential profiles. Ask an administrator.": "زمان‌بندی پشتیبان‌گیری به مجوز استفاده از پروفایل‌های اعتبارنامه نیاز دارد. از مدیر سامانه بخواهید.",
   "SQL Server Login": "نام ورود SQL Server",
   "Sudo Password (optional)": "رمز Sudo (اختیاری)",

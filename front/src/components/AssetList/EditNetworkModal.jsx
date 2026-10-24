@@ -215,7 +215,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                     name="ip_address"
                                     value={formData.ip_address}
                                     onChange={handleChange}
-                                    placeholder="e.g. 192.168.1.10"
+                                    placeholder={t("e.g. {{example}}", { example: "192.168.1.10" })}
                                     disabled={isSubmitting}
                                     style={fieldErrors.ip_address ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                                 />
@@ -228,7 +228,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                     name="mac_address"
                                     value={formData.mac_address}
                                     onChange={handleChange}
-                                    placeholder="e.g. 00:1A:2B:3C:4D:5E"
+                                    placeholder={t("e.g. {{example}}", { example: "00:1A:2B:3C:4D:5E" })}
                                     disabled={isSubmitting}
                                     style={fieldErrors.mac_address ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                                 />
@@ -243,7 +243,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                     max="512"
                                     value={formData.port_count}
                                     onChange={handleChange}
-                                    placeholder="e.g. 24"
+                                    placeholder={t("e.g. {{example}}", { example: "24" })}
                                     disabled={isSubmitting}
                                 />
                                 <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>

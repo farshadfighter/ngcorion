@@ -211,7 +211,7 @@ export const PortModal = ({ asset, port, onClose }) => {
                                 name="port_number"
                                 value={formData.port_number}
                                 onChange={handleChange}
-                                placeholder="e.g., 8000"
+                                placeholder={t("e.g. {{example}}", { example: "8000" })}
                                 min="1"
                                 max="65535"
                                 style={{

@@ -85,7 +85,7 @@ export const OSCatalogModal = ({ onClose }) => {
                             name="os_version"
                             value={formData.os_version}
                             onChange={handleChange}
-                            placeholder="e.g., 22.04, 2022, 7.2"
+                            placeholder={t("e.g. {{example}}", { example: "22.04, 2022, 7.2" })}
                         />
                     </div>
 

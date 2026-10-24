@@ -1149,6 +1149,12 @@ const VALUES = {
     compliance: t("Compliance"),
     network: t("Network"),
     server: t("Server"),
+    // run states (audit sessions, jobs)
+    completed: t("Completed"),
+    running: t("Running"),
+    pending: t("Pending"),
+    failed: t("Failed"),
+    cancelled: t("Cancelled"),
 };
 
 /** Label for a stored enum value ("very_high" -> "Very high"); other values unchanged. */

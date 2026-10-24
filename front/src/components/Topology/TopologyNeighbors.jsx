@@ -80,7 +80,8 @@ function AddAssetDrawer({ neighbor, onClose, onDone }) {
         api.get("/api/asset-types/").then(({ data }) => {
             const list = Array.isArray(data) ? data : data.items || [];
             setTypes(list);
-            const match = list.find((x) => x.effective_icon === neighbor.guess_icon) || list[0];
+            // Only a type drawn as what the device seems to be; otherwise it is chosen by hand.
+            const match = list.find((x) => x.effective_icon === neighbor.guess_icon);
             if (match) setForm((f) => ({ ...f, asset_type_id: String(match.id) }));
         }).catch(() => setTypes([]));
     }, [neighbor.guess_icon]);
@@ -120,6 +121,7 @@ function AddAssetDrawer({ neighbor, onClose, onDone }) {
                     <label className="alr-lbl">{t("Asset type")}
                         <select className="bkm-select" value={form.asset_type_id} disabled={!types}
                                 onChange={(e) => setForm({ ...form, asset_type_id: e.target.value })}>
+                            <option value="">{t("Choose the asset type")}</option>
                             {(types || []).map((x) => <option key={x.id} value={x.id}>{x.type_name}</option>)}
                         </select>
                     </label>

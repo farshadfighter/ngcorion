@@ -19,7 +19,6 @@
   "Every reachable device with an SNMP credential. A device that runs neither LLDP nor CDP reports no neighbours; the device at the other end of its cables still does.": "هر دستگاه در دسترس که اعتبارنامهٔ SNMP دارد. دستگاهی که نه LLDP دارد نه CDP، همسایه‌ای گزارش نمی‌دهد؛ ولی دستگاه سر دیگر کابل‌هایش گزارش می‌دهد.",
   "Found by LLDP/CDP, no longer reported": "پیداشده با LLDP/CDP، دیگر گزارش نمی‌شود",
   "Found in the devices' {{protocol}} tables.": "در جدول‌های {{protocol}} خود دستگاه‌ها پیدا شده است.",
-  "From": "از",
   "Hosted asset": "دارایی میزبانی‌شده",
   "Hosted-on relationship": "رابطهٔ میزبانی",
   "IP phone": "تلفن IP",
