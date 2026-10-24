@@ -20,7 +20,8 @@ from app.models import User, Asset, DeviceBackup
 from app.models.backup_restore import RESTORE_ACTIVE_STATUSES, BackupRestore
 from app.modules.backup.restore import service as restore_service
 from app.modules.backup.restore.drivers import SUPPORTED_FAMILIES, Credentials
-from app.modules.backup.overview import RESTORE_GROUPS, compute_overview, restore_history
+from app.modules.backup.overview import (RESTORE_GROUPS, backup_family, compute_overview,
+                                         last_backup_types, restore_history)
 from app.modules.backup import changes  # noqa: F401 - registers the change summary of every new backup
 from app.modules.backup import retention
 
@@ -83,9 +84,10 @@ class BackupDetail(BackupSummary):
 
 
 class ManualBackupRequest(BaseModel):
-    """Body of taking a backup now; the SSH credentials are used once and not stored."""
+    """Body of taking a backup now; the SSH credentials are used once and not stored. Without a
+    device type the backup is taken as the family detected for the asset (GET /devices)."""
     asset_id: int
-    device_type: str  # cisco | fortinet
+    device_type: Optional[str] = None  # cisco | fortinet | linux | apache | mongodb
     ssh_username: str
     ssh_password: str
     ssh_secret: Optional[str] = None
@@ -528,6 +530,27 @@ def save_backup_settings(body: BackupSettings, request: Request,
     return saved
 
 
+class BackupDevice(BaseModel):
+    """An asset a backup may be taken from, and the device family detected for it (None: unknown)."""
+    asset_id: int
+    asset_name: str
+    ip_address: Optional[str] = None
+    family: Optional[str] = None
+
+
+@router.get("/devices", response_model=List[BackupDevice])
+def list_backup_devices(
+    current_user: User = Depends(require_permission("backup", "read")),
+    db: Session = Depends(get_db),
+):
+    """Every asset, by name, with the device family a backup of it is taken as (the New Backup
+    dialog's list; the asset list API pages by at most 100)."""
+    last = last_backup_types(db)
+    return [BackupDevice(asset_id=a.id, asset_name=a.asset_name, ip_address=a.ip_address,
+                         family=backup_family(a, last.get(a.id)))
+            for a in db.query(Asset).options(joinedload(Asset.asset_type)).order_by(Asset.asset_name)]
+
+
 @router.get("/{backup_id}", response_model=BackupDetail)
 def get_backup(
     backup_id: int,
@@ -557,7 +580,11 @@ def create_manual_backup(
         raise HTTPException(status_code=400, detail=f"Asset '{asset.asset_name}' has no IP address configured")
 
     device_ip = asset.ip_address
-    device_type = request.device_type.lower()
+    device_type = (request.device_type or "").strip().lower() or backup_family(asset, last_backup_types(db).get(asset.id))
+    if device_type is None:
+        raise HTTPException(status_code=400, detail="Choose the device type; it could not be told from the asset")
+    if device_type not in SUPPORTED_FAMILIES:
+        raise HTTPException(status_code=400, detail="A backup can be taken from Cisco, Fortinet, Linux, Apache and MongoDB devices")
 
     try:
         config_content = _take_backup(

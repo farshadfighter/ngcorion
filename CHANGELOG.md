@@ -4,6 +4,16 @@
 
 ### Fixes
 
+- New Backup: the asset list was empty (it asked the asset API for 500 per
+  page, over its limit of 100) and the device type stayed on Cisco whatever
+  the asset. GET /api/backups/devices lists every asset with the family a
+  backup of it is taken as (told from its type, vendor and system, else its
+  last backup); choosing an asset sets the device type, which can still be
+  changed. A backup without a type is taken as the detected family; a type
+  no backup driver has is refused with a clear message. The New Backup and
+  backup view dialogs had no panel or button styles unless Auto Discovery
+  had been opened first; they bring their own now, and the view shows the
+  device and source by name.
 - Architecture Validation checks the topology against Cisco SAFE, and only
   the topology. Most of its checks were about the inventory, backups and
   audits (no IP, no owner, never audited ...), which other modules cover.

@@ -4,7 +4,7 @@ Each device's saved configuration, version by version: manual backups, before ha
 
 ## Main tasks
 
-- **Manual backup:** "New Backup" → asset, device type, SSH user name and password (and for Cisco the enable secret) → "Take Backup". Credentials are not stored.
+- **Manual backup:** "New Backup" → asset, device type, SSH user name and password (and for Cisco the enable secret) → "Take Backup". Credentials are not stored. The list has every asset with the device type told from its type, vendor and system (or from its last backup); choosing an asset sets the device type, which you can change (MongoDB on a Linux host, say). An asset whose type cannot be told asks you to choose it; one without an IP address cannot be chosen.
 - **See the versions:** "View Backups" on the device. The "Changes only" filter shows only changed versions.
 - **What changed:** each version against the previous one; or tick two versions and "Compare selected".
 - **Who changed it:** changes from hardening or a restore are "by NGCorion", the rest "outside NGCorion". If the device reported the change by syslog, the user name and their address are shown too.

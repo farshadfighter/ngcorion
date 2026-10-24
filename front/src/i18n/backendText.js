@@ -382,6 +382,8 @@ const TEMPLATES = [
     msg("{{address}} is already an address of {{asset_name}}"),
     msg("{{address}} is the IP address of {{asset_name}}"),
     msg("{{name}} is not a network zone"),
+    msg("Asset '{{asset_name}}' has no IP address configured"),
+    msg("Backup failed: {{error}}"),
     msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily for good, at most {{gb}} GB"),
     msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily {{days_1d}} days, at most {{gb}} GB"),
 ];
@@ -1172,6 +1174,8 @@ msg("Unknown status");
 msg("Choose an owner or location that exists");
 msg("Zone not found");
 msg("Zone name already exists");
+msg("Choose the device type; it could not be told from the asset");
+msg("A backup can be taken from Cisco, Fortinet, Linux, Apache and MongoDB devices");
 msg("Cannot delete zone with assigned assets");
 msg("Type the number of assets to confirm the deletion");
 msg("Credential profile not found");

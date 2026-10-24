@@ -165,3 +165,41 @@ class TestRestoreHistory:
         paths = [r.path for r in backup_router.router.routes]
         assert paths.index("/api/backups/restores/history") < paths.index("/api/backups/restores/{job_id}")
         assert paths.index("/api/backups/overview") < paths.index("/api/backups/{backup_id}")
+
+
+class TestNewBackupChoices:
+    """The New Backup dialog: every asset (the asset list API pages by at most 100, which the dialog's
+    page_size=500 broke), each with the family detected for it, and a backup taken as that family."""
+
+    def test_devices_route_is_not_parsed_as_a_backup_id(self):
+        paths = [r.path for r in backup_router.router.routes]
+        assert paths.index("/api/backups/devices") < paths.index("/api/backups/{backup_id}")
+
+    def test_every_asset_with_its_family(self, db, user):
+        fgt = _asset(db, "bk-dev-fgt", "Firewall", os_name="FortiOS")
+        win = _asset(db, "bk-dev-win", "Server", os_name="Windows Server 2022")
+        known_by_backup = _asset(db, "bk-dev-box", "Appliance")
+        _backup(db, known_by_backup, "mongodb", 3)
+        rows = {d.asset_id: d for d in backup_router.list_backup_devices(current_user=user, db=db)}
+        assert len(rows) == db.query(Asset).count()
+        assert (rows[fgt.id].family, rows[win.id].family, rows[known_by_backup.id].family) == ("fortinet", None, "mongodb")
+
+    def test_a_backup_is_taken_as_the_detected_family(self, db, user, monkeypatch):
+        from fastapi import HTTPException
+        taken = []
+        monkeypatch.setattr(backup_router, "_take_backup", lambda device_type, ip, *a, **k: taken.append(device_type) or "cfg")
+        fgt = _asset(db, "bk-dev-fgt2", "Firewall", os_name="FortiOS")
+        win = _asset(db, "bk-dev-win2", "Server", os_name="Windows Server 2022")
+        body = backup_router.ManualBackupRequest
+        out = backup_router.create_manual_backup(body(asset_id=fgt.id, ssh_username="u", ssh_password="p"),
+                                                  current_user=user, db=db)
+        assert out.device_type == "fortinet" and taken == ["fortinet"]
+        backup_router.create_manual_backup(body(asset_id=fgt.id, device_type="Linux", ssh_username="u",
+                                                ssh_password="p"), current_user=user, db=db)
+        assert taken[-1] == "linux"                                    # a chosen type wins
+        for request, words in ((body(asset_id=win.id, ssh_username="u", ssh_password="p"), "Choose the device type"),
+                               (body(asset_id=fgt.id, device_type="windows", ssh_username="u", ssh_password="p"),
+                                "Cisco, Fortinet, Linux, Apache and MongoDB")):
+            with pytest.raises(HTTPException) as e:
+                backup_router.create_manual_backup(request, current_user=user, db=db)
+            assert e.value.status_code == 400 and words in e.value.detail

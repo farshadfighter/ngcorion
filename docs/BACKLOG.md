@@ -63,6 +63,7 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
+| New Backup: every asset listed, device type detected from the asset; dialogs styled on their own | recorded with the next item |
 | Architecture Validation: the topology against Cisco SAFE only (segmentation, edge, management, availability, visibility), with evidence; zone place in the network | 2c11d53 |
 | One list of network zones: an asset's zone the same in Asset List, Risk, groups, alerts and reports; zone exposure score in Asset Requirements | 861c9b3 |
 | SNMP address of a host; other addresses of an asset for syslog; assign an unknown sender | d87a0c1 |

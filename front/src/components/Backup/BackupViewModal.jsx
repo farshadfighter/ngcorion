@@ -4,6 +4,9 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../config/api.js';
 import { t, uiLocale } from "../../i18n";
+import { familyLabel, sourceLabel } from "./restoreConstants.js";
+import "../../assets/AssetRequirement.css";
+import "../../assets/BackupModule.css";
 
 const BackupViewModal = ({ backupId, onClose }) => {
     const [backup, setBackup] = useState(null);
@@ -51,15 +54,15 @@ const BackupViewModal = ({ backupId, onClose }) => {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div
-                className="modal modal-lg"
-                style={{ maxWidth: 860 }}
+                className="modal-content"
+                style={{ maxWidth: 860, maxHeight: '90vh', overflowY: 'auto' }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-header">
-                    <div className="modal-title-group">
-                        <h2>{t("Backup Config")}</h2>
+                    <div>
+                        <h3>{t("Backup Config")}</h3>
                         {backup && (
-                            <span className="modal-subtitle">
+                            <span style={{ fontSize: 13, color: '#6B7280' }}>
                                 {backup.asset_name || t("Asset #{{asset_id}}", { asset_id: backup.asset_id })} — {backup.device_ip}
                             </span>
                         )}
@@ -79,13 +82,13 @@ const BackupViewModal = ({ backupId, onClose }) => {
                             <div style={{ display: 'flex', gap: 24, marginBottom: 16, flexWrap: 'wrap' }}>
                                 <div>
                                     <span style={{ fontSize: 12, color: '#6B7280' }}>{t("Device Type")}</span>
-                                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{backup.device_type || '-'}</div>
+                                    <div style={{ fontWeight: 600 }}>{backup.device_type ? familyLabel(backup.device_type) : '-'}</div>
                                 </div>
                                 <div>
                                     <span style={{ fontSize: 12, color: '#6B7280' }}>{t("Source")}</span>
                                     <div>
                                         <span className={`status-badge status-${backup.source === 'manual' ? 'completed' : 'running'}`}>
-                                            {backup.source}
+                                            {sourceLabel(backup.source)}
                                         </span>
                                     </div>
                                 </div>
@@ -120,13 +123,13 @@ const BackupViewModal = ({ backupId, onClose }) => {
                     )}
                 </div>
 
-                <div className="modal-footer">
+                <div className="modal-actions">
+                    <button className="btn-cancel" onClick={onClose}>{t("Close")}</button>
                     {backup && (
-                        <button className="btn btn-primary" onClick={handleDownload}>
+                        <button className="bkm-btn bkm-btn-primary" onClick={handleDownload}>
                             {t("Download .txt")}
                         </button>
                     )}
-                    <button className="btn btn-ok" onClick={onClose}>{t("Close")}</button>
                 </div>
             </div>
         </div>

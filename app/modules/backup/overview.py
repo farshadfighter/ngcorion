@@ -31,6 +31,24 @@ RESTORE_GROUPS = {
 }
 
 
+def backup_family(asset, last_backup_type: Optional[str] = None) -> Optional[str]:
+    """The device family a backup of `asset` is taken as: the one its type, vendor or system says
+    (app/utils/device_classification.py), else the type of a backup already taken, when it is one a
+    backup can be taken from; None when neither says."""
+    family = infer_device_family(asset)
+    if family in SUPPORTED_FAMILIES:
+        return family
+    return last_backup_type if last_backup_type in SUPPORTED_FAMILIES else None
+
+
+def last_backup_types(db: Session) -> Dict[int, str]:
+    """asset id -> the device type of its latest backup."""
+    return {asset_id: (device_type or "").lower() for asset_id, device_type in
+            db.query(DeviceBackup.asset_id, DeviceBackup.device_type)
+            .order_by(DeviceBackup.asset_id, DeviceBackup.created_at.desc())
+            .distinct(DeviceBackup.asset_id)}
+
+
 def compute_overview(db: Session, now: Optional[datetime] = None, stale_days: int = STALE_DAYS) -> Dict:
     """Backup coverage of the devices that can be backed up: how many have a recent backup, an old one
     or none, per device family, and which devices need attention.
@@ -51,9 +69,7 @@ def compute_overview(db: Session, now: Optional[datetime] = None, stale_days: in
     devices: List[Dict] = []
     for a in db.query(Asset).options(joinedload(Asset.asset_type)).all():
         when, backup_type = last.get(a.id, (None, None))
-        family = infer_device_family(a)
-        if family not in SUPPORTED_FAMILIES:
-            family = backup_type if backup_type in SUPPORTED_FAMILIES else None
+        family = backup_family(a, backup_type)
         if family is None:
             continue
         state = "never" if when is None else "stale" if when < stale_before else "fresh"
