@@ -137,7 +137,7 @@ class Asset(Base):
         comment="Number of physical ports this device actually has - drives "
                 "how many port handles Topology/Design draw on its node. "
                 "Null falls back to a keyword-guessed default (see "
-                "front/src/components/shared/portCatalog.js)."
+                "front/src/utils/devicePorts.js)."
     )
 
 

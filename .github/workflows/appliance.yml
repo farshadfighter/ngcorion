@@ -3,7 +3,7 @@
 # Release. A draft is visible only to people with write access to the
 # repository; publish it by hand once the images have been tried.
 #
-#   * push a version tag (v2.0.0)  -> release for that tag; the tag must match
+#   * push a version tag (v2.1.2)  -> release for that tag; the tag must match
 #                                     VERSION in app/core/config.py
 #   * Actions -> Appliance -> Run   -> release for the tag given, or
 #                                     v<VERSION> when left empty

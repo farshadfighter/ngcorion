@@ -52,9 +52,12 @@ What happens:
 (with KVM, `BASE_REGISTRY=docker.io`, PyPI and npmjs instead of the Iranian
 mirrors) and attaches the result to a **draft** release:
 
-* push a version tag, e.g. `git tag v2.1.0 && git push origin v2.1.0` (the
+* push a version tag, e.g. `git tag v2.1.2 && git push origin v2.1.2` (the
   tag must match `VERSION` in `app/core/config.py`), or
 * Actions → Appliance → Run workflow (the tag defaults to `v<VERSION>`).
+* Actions → Release tag → Run workflow with *build_appliance* (it creates the tag
+  and starts this build; a tag pushed by a workflow does not start other
+  workflows). The release steps are in `docs/RELEASING.md`.
 
 A draft is visible only to people with write access to the repository; publish
 it once the images have been tried. GitHub takes at most 2 GiB per release

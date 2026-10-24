@@ -145,7 +145,8 @@ def create_user(
     
     - **username**: Username (3-50 characters, unique)
     - **email**: Email address (unique)
-    - **password**: Password (minimum 4 characters)
+    - **password**: Password (at least 8 characters with an upper- and a lower-case letter, a digit and a
+      special character); the user must replace it at the first sign-in
     - **role**: User role (admin, manager, user, guest)
     - **is_active**: Activity status (default: true)
     - **permissions**: List of module permissions (optional)

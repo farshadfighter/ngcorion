@@ -994,7 +994,7 @@ def _users(ctx: Ctx) -> Dict[str, List[dict]]:
         ])]
 
     if ctx.on("users"):
-        role = lambda u: tr({"admin": "System administrator", "manager": "Manager", "user": "User", "guest": "Guest"}  # noqa
+        role = lambda u: tr({"admin": "System administrator", "manager": "Manager", "user": "User", "guest": "Guest"}
                             .get(u.role.value if hasattr(u.role, "value") else str(u.role), str(u.role)))
         per_ok, per_fail, per_act = defaultdict(int), defaultdict(int), defaultdict(int)
         for g in logins:

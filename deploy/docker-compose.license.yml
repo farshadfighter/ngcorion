@@ -21,7 +21,7 @@
 # Start with:  docker compose up -d
 # With TLS:    docker compose --profile tls up -d
 #
-# Full procedure: docs/LICENSE_SERVER_MIGRATION.md
+# Full procedure: the license server's own repository (it moved out of this one).
 # ---------------------------------------------------------------------------
 
 services:
@@ -89,7 +89,7 @@ services:
     ports:
       # Bind to the interface the app server reaches, e.g.
       # LICENSE_BIND_ADDR=10.0.0.20 — never leave 0.0.0.0 on a public host
-      # without the firewall rules from docs/LICENSE_SERVER_MIGRATION.md.
+      # without firewall rules that admit only the app servers.
       - "${LICENSE_BIND_ADDR:-0.0.0.0}:8001:8001"
     depends_on:
       postgres-license:
@@ -125,7 +125,7 @@ services:
     container_name: license-admin
     ports:
       # Admin panel. Restrict this to your admin IP in the firewall — it is the
-      # interface that issues licenses (see docs/LICENSE_SERVER_MIGRATION.md).
+      # interface that issues licenses.
       - "5174:80"
     depends_on:
       license-server:

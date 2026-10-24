@@ -4,9 +4,8 @@ a type marked virtual (AssetType.is_virtual - a virtual server, VM or
 appliance runs on a physical server), and, for types created before that
 flag, VM, Application and Database - keyword-matched against the free-text asset
 type name, the same convention already used elsewhere in this app for
-asset-type classification (e.g. front/src/components/shared/DeviceIcon.jsx's
-icon rules) since asset types have no fixed code enum, just an
-operator-managed name.
+asset-type classification (e.g. the icon rules of app/core/asset_icons.py)
+since asset types have no fixed code enum, just an operator-managed name.
 """
 import re
 

@@ -12,7 +12,7 @@ delivery; the AFTA / Common Criteria classes ALC_CMC, ALC_CMS and ALC_DEL in
 * PATCH — fixes only; MINOR — new features, compatible upgrades (database
   migrations run by themselves); MAJOR — an upgrade that needs a manual step.
 * The version lives in one place, `VERSION` in `app/core/config.py`; the web
-  UI's `front/package.json` carries the same number. `/api/health` reports it,
+  UI's `front/package.json` carries the same number. `/health` reports it,
   and backups record it.
 
 ## Tags
@@ -25,6 +25,7 @@ Tags are never moved or deleted once pushed; a fix gets a new number.
 |---|---|---|
 | `v2.0.0` | `7f5be33` | 2026-10-04; not on GitHub as a tag yet. The draft release "NGCorion 2.0.0 appliance" was built from `11f65b0` (20 commits later, before VERSION moved on), so it is not this commit |
 | `v2.1.0` | the "Version 2.1.0" commit | 2026-10-17; first release with the license server key built in (`02f8c805e424e285`). The release candidate `2.1.0-rc.1` was never tagged |
+| `v2.1.1` | `5e1ae2c` | 2026-10-24; tagged by the Release tag workflow, without an appliance build |
 
 ## Making a release
 
