@@ -210,7 +210,7 @@ async def read_reports(db: Session) -> Tuple[Dict[int, lldp.NeighborReport], Dic
 
     reachable = {s.asset_id for s in db.query(AssetSnmpStatus).filter(AssetSnmpStatus.reachable.is_(True))}
     creds = [c for c in db.query(AssetSnmpCredential).options(joinedload(AssetSnmpCredential.asset))
-             if c.asset and c.asset.ip_address and c.asset_id in reachable]
+             if c.asset and c.target and c.asset_id in reachable]
     interfaces: Dict[int, list] = defaultdict(list)
     if creds:
         for r in db.query(AssetSnmpInterface).filter(AssetSnmpInterface.asset_id.in_([c.asset_id for c in creds])):
@@ -222,7 +222,7 @@ async def read_reports(db: Session) -> Tuple[Dict[int, lldp.NeighborReport], Dic
     async def read(c: AssetSnmpCredential):
         async with semaphore:
             try:
-                client = PyWrapper(Client(c.asset.ip_address, _build_credentials(c), port=c.port))
+                client = PyWrapper(Client(c.target, _build_credentials(c), port=c.port))
                 rep = await lldp.collect(client, interfaces.get(c.asset_id, []))
             except Exception as exc:  # noqa: BLE001 - one device must not stop the sweep
                 errors[c.asset_id] = f"{type(exc).__name__}: {exc}"

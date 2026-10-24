@@ -60,6 +60,8 @@ class NocService:
 
         row.version = data.get("version", "v2c")
         row.port = data.get("port", 161)
+        if "poll_address" in data:
+            row.poll_address = (data["poll_address"] or "").strip() or None
 
         community = data.get("community")
         if community:
@@ -268,13 +270,13 @@ class NocService:
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if asset is None:
             raise ValueError(f"Asset {asset_id} not found")
-        if not asset.ip_address:
-            raise ValueError(f"Asset {asset_id} has no IP address configured")
         credential = NocService.get_credential(db, asset_id)
         if credential is None:
             raise ValueError(f"Asset {asset_id} has no SNMP credential configured")
+        if not credential.target:
+            raise ValueError(f"Asset {asset_id} has no IP address configured")
 
-        result = await poll_asset(asset.ip_address, credential)
+        result = await poll_asset(credential.target, credential)
         return NocService._persist_poll_result(db, asset_id, result)
 
     @staticmethod
@@ -288,14 +290,14 @@ class NocService:
             .options(joinedload(AssetSnmpCredential.asset))
             .all()
         )
-        targets = [c for c in credentials if c.asset and c.asset.ip_address]
+        targets = [c for c in credentials if c.asset and c.target]
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_POLLS)
 
         async def _poll_and_persist(credential: AssetSnmpCredential):
             async with semaphore:
                 try:
-                    result = await poll_asset(credential.asset.ip_address, credential)
+                    result = await poll_asset(credential.target, credential)
                     NocService._persist_poll_result(db, credential.asset_id, result)
                 except Exception:
                     logger.exception("[NOC] Poll failed for asset %s", credential.asset_id)

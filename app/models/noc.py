@@ -35,6 +35,9 @@ class AssetSnmpCredential(Base):
     )
     version = Column(String(10), nullable=False, default="v2c")  # v2c | v3
     port = Column(Integer, nullable=False, default=161)
+    # Where to reach the device over SNMP when that is not its inventory address (a FortiGate's
+    # management interface, say); NULL = the asset's IP address.
+    poll_address = Column(String(255), nullable=True)
 
     # v2c
     community_encrypted = Column(Text, nullable=True)
@@ -51,6 +54,11 @@ class AssetSnmpCredential(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     asset = relationship("Asset")
+
+    @property
+    def target(self):
+        """The address SNMP talks to: the SNMP address when set, else the asset's IP address."""
+        return (self.poll_address or "").strip() or (self.asset.ip_address if self.asset else None)
 
 
 class AssetSnmpStatus(Base):

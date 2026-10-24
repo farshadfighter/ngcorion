@@ -368,3 +368,6 @@ from app.models.api_key import ApiKey  # noqa: E402,F401
 # An asset's last audit and last hardening dates, kept from the audits and hardening that ran
 # (see app/models/asset_dates.py)
 from app.models import asset_dates  # noqa: E402,F401
+
+# Other addresses of an asset (syslog from another interface; see app/models/asset_address.py)
+from app.models.asset_address import AssetAddress  # noqa: E402,F401

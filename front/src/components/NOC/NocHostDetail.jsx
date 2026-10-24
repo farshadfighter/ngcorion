@@ -105,6 +105,7 @@ export const NocHostDetail = () => {
 
     const [version, setVersion] = useState("v2c");
     const [port, setPort] = useState(161);
+    const [pollAddress, setPollAddress] = useState("");
     const [community, setCommunity] = useState("");
     const [username, setUsername] = useState("");
     const [authProtocol, setAuthProtocol] = useState("SHA");
@@ -126,6 +127,7 @@ export const NocHostDetail = () => {
         if (currentHost.credential) {
             setVersion(currentHost.credential.version);
             setPort(currentHost.credential.port);
+            setPollAddress(currentHost.credential.poll_address || "");
             setUsername(currentHost.credential.username || "");
             setAuthProtocol(currentHost.credential.auth_protocol || "SHA");
             setPrivProtocol(currentHost.credential.priv_protocol || "AES");
@@ -167,7 +169,7 @@ export const NocHostDetail = () => {
     }
 
     const handleSaveCredential = () => {
-        const payload = { version, port: Number(port) };
+        const payload = { version, port: Number(port), poll_address: pollAddress.trim() };
         if (version === "v2c") {
             payload.community = community || undefined;
         } else {
@@ -381,6 +383,13 @@ export const NocHostDetail = () => {
                     <div className="noc-field">
                         <label>{t("Port")}</label>
                         <input type="number" value={port} onChange={(e) => setPort(e.target.value)} />
+                    </div>
+                    <div className="noc-field">
+                        <label>{t("SNMP address")}</label>
+                        <input type="text" dir="ltr" value={pollAddress} maxLength={253}
+                               placeholder={currentHost.ip_address || t("IP address or host name")}
+                               onChange={(e) => setPollAddress(e.target.value)} />
+                        <small className="noc-field-hint">{t("Only when SNMP answers on another address than the asset's IP, such as a management interface. Empty: the asset's IP address.")}</small>
                     </div>
 
                     {version === "v2c" ? (

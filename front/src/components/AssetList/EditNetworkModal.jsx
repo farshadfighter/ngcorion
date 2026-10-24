@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { fetchOSCatalog } from "../../store/requirementSlice";
 import { t } from "../../i18n";
+import { OtherAddresses } from "./OtherAddresses.jsx";
 
 // Validation functions
 const validateIP = (ip) => {
@@ -249,6 +250,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                     {t("How many physical ports this device has - drives the port count shown on Topology/Design.")}
                                 </span>
                             </div>
+                            <OtherAddresses assetId={asset.id} disabled={isSubmitting} />
                         </div>
                         {error && <div className="alert alert-error" style={{ marginTop: "12px" }}>{error}</div>}
                     </div>

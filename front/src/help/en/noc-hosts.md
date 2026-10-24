@@ -16,6 +16,8 @@ Every asset with its SNMP monitoring status, CPU, memory and disk use, and the t
 
 SNMP credentials are stored encrypted. Prefer v3 with Auth and Priv over v2c (a community string).
 
+When the device answers SNMP on another address than its IP in the inventory - a FortiGate's management interface, say - enter it in "SNMP address" (an IP address or a host name). Empty, SNMP uses the asset's IP address.
+
 ## The host page
 
 | Section | What |

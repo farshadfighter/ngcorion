@@ -84,7 +84,9 @@ class Intake:
     # -- assets -------------------------------------------------------------------------------
     def load_assets(self, db: Session) -> None:
         from app.models import Asset
-        mapping: Dict[str, int] = {}
+        from app.modules.assets.addresses import address_map
+        # An asset's other addresses (a logging interface, HA units) first, so an inventory address wins.
+        mapping: Dict[str, int] = dict(address_map(db))
         for asset_id, ip in db.query(Asset.id, Asset.ip_address).filter(Asset.ip_address.isnot(None)) \
                 .order_by(Asset.id.desc()):
             norm = normalize_ip(ip)

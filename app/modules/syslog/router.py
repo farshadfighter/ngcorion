@@ -251,3 +251,35 @@ def save_settings(body: SyslogSettings, request: Request, current_user: User = D
                module="system_config", ip_address=ip,
                detail=f"Syslog intake settings: {protocols}, kept {days} days, at most {gb} GB, levels up to {level}")
     return saved
+
+
+class AssignSource(BaseModel):
+    """The asset an unknown syslog sender is: its address becomes one of the asset's addresses."""
+    asset_id: int
+
+
+@router.post("/sources/{source_ip}/assign")
+def assign_source(source_ip: str, body: AssignSource, request: Request,
+                  current_user: User = Depends(require_permission("asset_list", "write")),
+                  db: Session = Depends(get_db)):
+    """An unknown sender is one of the assets (it sends from another interface than its inventory
+    address): the address is added to the asset's addresses, and its messages are kept from the next
+    minute on (what it sent before was not stored)."""
+    from app.models.security_audit_log import log_action
+    from app.modules.assets import addresses
+    asset = db.get(Asset, body.asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    try:
+        row = addresses.add(db, asset, source_ip, "Syslog sender", current_user.id)
+    except addresses.AddressError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    source = db.get(SyslogSource, row.address)
+    if source is not None:
+        source.asset_id = asset.id
+        db.commit()
+    address = row.address
+    log_action(db, user_id=current_user.id, username=current_user.username, action="syslog.source_assigned",
+               module="asset_list", target_id=asset.id, ip_address=request.client.host if request.client else None,
+               detail=f"Syslog sender {address} assigned to {asset.asset_name}")
+    return addresses.as_dict(row)

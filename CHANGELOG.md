@@ -4,6 +4,19 @@
 
 ### Fixes
 
+- Addresses of a host besides its inventory IP: a FortiGate may be managed
+  on one address and answer SNMP or send syslog on another.
+  - SNMP: "SNMP address" in the host's SNMP credential (an IP address or a
+    host name); polling, LLDP/topology and endpoint discovery use it,
+    the asset's IP address when empty.
+  - Syslog: an asset has "Other addresses" (Network & System edit; table
+    asset_addresses, migration d9f1b3c5e7a8), and syslog from any of them
+    is the asset's. Under Syslog, Sources, an address outside the
+    inventory can be assigned to the asset it is. An address belongs to
+    one asset and is never another asset's IP; each change is in the
+    audit trail.
+- Asset edit dialogs: a taller form ran under its buttons; it scrolls
+  inside now.
 - Monitoring storage: how long SNMP metrics are kept (raw, 5-minute,
   hourly, daily) and their disk space were only settable in .env. A
   system administrator sets them under NOC hosts, "Storage" (System

@@ -31,6 +31,7 @@ from app.modules.logs import router as logs_router
 from app.modules.logs import clear_router as logs_clear_router
 from app.modules.users import router as users_router
 from app.modules.assets.enums_router import enums_router
+from app.modules.assets.addresses_router import router as asset_addresses_router
 from app.modules.discovery import router as discovery_router
 from app.modules.discovery.discovery_logs_router import router as discovery_logs_router
 from app.modules.hardening.hardening_logs_router import router as hardening_logs_router
@@ -474,6 +475,7 @@ app.include_router(asset_groups_router)
 app.include_router(credential_profiles_router)
 app.include_router(group_runs_router)
 app.include_router(assets_router)
+app.include_router(asset_addresses_router)
 app.include_router(owners_router)
 app.include_router(locations_router)
 app.include_router(zones_router)

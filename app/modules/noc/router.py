@@ -64,6 +64,7 @@ def _credential_info(credential) -> SnmpCredentialInfo | None:
     return SnmpCredentialInfo(
         version=credential.version,
         port=credential.port,
+        poll_address=credential.poll_address,
         has_community=bool(credential.community_encrypted),
         username=credential.username,
         auth_protocol=credential.auth_protocol,

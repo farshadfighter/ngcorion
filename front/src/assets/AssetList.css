@@ -414,6 +414,8 @@
 .modal-body {
     margin-bottom: 24px;
     max-height: 60vh;
+    /* a taller form scrolls inside instead of running under the buttons */
+    overflow-y: auto;
 }
 
 .modal-body p {
@@ -1072,3 +1074,11 @@ td.completeness-indicator.incomplete {
 }
 .asset-name-link { color: inherit; text-decoration: none; }
 .asset-name-link:hover { color: #1e3a5f; text-decoration: underline; }
+
+/* Other addresses of an asset (OtherAddresses.jsx, in the Network & System edit). */
+.other-addresses-list { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.other-addresses-list li { display: flex; align-items: center; gap: 10px; padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 6px; }
+.other-addresses-ip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.other-addresses-note { flex: 1; min-width: 0; color: #6b7280; font-size: 12px; overflow-wrap: anywhere; }
+.other-addresses-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; margin-top: 6px; }
+@media (max-width: 520px) { .other-addresses-add { grid-template-columns: 1fr; } }

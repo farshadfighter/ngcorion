@@ -376,6 +376,11 @@ const TEMPLATES = [
     msg("An asset that sends syslog has sent nothing for {{hours}} hours"),
     msg("Exported {{rows}} syslog messages"),
     msg("Syslog intake settings: {{protocols}}, kept {{days}} days, at most {{gb}} GB, levels up to {{level}}"),
+    msg("Address {{address}} added to {{asset_name}}"),
+    msg("Address {{address}} removed from {{asset_name}}"),
+    msg("Syslog sender {{address}} assigned to {{asset_name}}"),
+    msg("{{address}} is already an address of {{asset_name}}"),
+    msg("{{address}} is the IP address of {{asset_name}}"),
     msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily for good, at most {{gb}} GB"),
     msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily {{days_1d}} days, at most {{gb}} GB"),
 ];
@@ -1257,3 +1262,8 @@ msg("Certificate authority not found");
 msg("This certificate authority is already trusted");
 msg("The file is not a PEM certificate");
 msg("This certificate is not a certificate authority");
+// other addresses of an asset, the SNMP address of a host (app/modules/assets/addresses.py, app/modules/noc/schemas.py)
+msg("Enter an IPv4 or IPv6 address");
+msg("This is the asset's own IP address");
+msg("Address not found");
+msg("Enter an IP address or a host name");

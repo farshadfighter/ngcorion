@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
+import { hasPermission } from "../../store/authSlice.jsx";
 
 import api from "../../config/api.js";
 import { n, t } from "../../i18n";
@@ -201,14 +202,47 @@ function Messages({ assets, initial }) {
     );
 }
 
-function Sources({ data }) {
+/** Assign an unknown sender to an asset: its address becomes one of the asset's addresses. */
+function AssignSender({ ip, onDone }) {
+    const [open, setOpen] = useState(false);
+    const [assets, setAssets] = useState(null);
+    const [assetId, setAssetId] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState(null);
+    const start = () => {
+        setOpen(true);
+        if (!assets) api.get("/api/assets/").then(({ data: d }) => setAssets(Array.isArray(d) ? d : [])).catch(() => setAssets([]));
+    };
+    const save = () => {
+        setBusy(true);
+        setError(null);
+        api.post(`/api/syslog/sources/${encodeURIComponent(ip)}/assign`, { asset_id: Number(assetId) })
+            .then(() => { setOpen(false); onDone(); })
+            .catch((e) => setError(errorText(e, t("Could not assign the address"))))
+            .finally(() => setBusy(false));
+    };
+    if (!open) return <button type="button" className="bkm-btn bkm-btn-sm" onClick={start}>{t("Assign to an asset…")}</button>;
+    return (
+        <div className="sl-assign">
+            <select className="bkm-select" value={assetId} onChange={(e) => setAssetId(e.target.value)} disabled={!assets || busy}>
+                <option value="">{assets ? t("Choose the asset") : t("Loading...")}</option>
+                {(assets || []).map((a) => <option key={a.id} value={a.id}>{a.asset_name}{a.ip_address ? ` · ${a.ip_address}` : ""}</option>)}
+            </select>
+            <button type="button" className="bkm-btn bkm-btn-primary bkm-btn-sm" disabled={!assetId || busy} onClick={save}>{t("Assign")}</button>
+            <button type="button" className="bkm-btn bkm-btn-sm" disabled={busy} onClick={() => setOpen(false)}>{t("Cancel")}</button>
+            {error && <span className="sl-assign-error">{error}</span>}
+        </div>
+    );
+}
+
+function Sources({ data, canAssign, onChanged }) {
     return (
         <>
             <section className="bkm-card bkm-flush">
                 <div className="bkm-card-head">
                     <div>
                         <h2>{t("Assets sending syslog")}</h2>
-                        <p>{t("An asset is recognised by its IP address in the inventory.")}</p>
+                        <p>{t("An asset is recognised by its IP address in the inventory, or by one of its other addresses.")}</p>
                     </div>
                 </div>
                 {data.assets.length === 0 ? (
@@ -237,7 +271,7 @@ function Sources({ data }) {
                 <div className="bkm-card-head">
                     <div>
                         <h2>{t("Addresses outside the inventory")}</h2>
-                        <p>{t("These addresses sent syslog but are not assets, so their messages were dropped. Add the device to the inventory to keep them.")}</p>
+                        <p>{t("These addresses sent syslog but are not assets, so their messages were dropped. Add the device to the inventory, or assign the address to the asset that sends from it, to keep them.")}</p>
                     </div>
                 </div>
                 {data.unknown.length === 0 ? (
@@ -245,7 +279,7 @@ function Sources({ data }) {
                 ) : (
                     <div className="bkm-table-wrap">
                         <table className="bkm-table">
-                            <thead><tr><th>{t("Address")}</th><th>{t("Host name it reports")}</th><th>{t("First seen")}</th><th>{t("Last seen")}</th><th>{t("Messages dropped")}</th></tr></thead>
+                            <thead><tr><th>{t("Address")}</th><th>{t("Host name it reports")}</th><th>{t("First seen")}</th><th>{t("Last seen")}</th><th>{t("Messages dropped")}</th>{canAssign && <th />}</tr></thead>
                             <tbody>
                                 {data.unknown.map((s) => (
                                     <tr key={s.source_ip}>
@@ -254,6 +288,7 @@ function Sources({ data }) {
                                         <td>{relativeDays(s.first_seen)}</td>
                                         <td title={formatDateTime(s.last_seen)}>{formatWhen(s.last_seen)}</td>
                                         <td>{n(s.dropped)}</td>
+                                        {canAssign && <td><AssignSender ip={s.source_ip} onDone={onChanged} /></td>}
                                     </tr>
                                 ))}
                             </tbody>
@@ -329,7 +364,7 @@ function Settings({ data, isAdmin, onSaved, msg, setMsg }) {
             </section>
             <section className="bkm-card">
                 <h2 className="bkm-h3">{t("Pointing a device at NGCorion")}</h2>
-                <p className="bkm-small bkm-muted">{t("Send to this server's address, port 514. The device must be in the inventory with the same IP address it sends from.")}</p>
+                <p className="bkm-small bkm-muted">{t("Send to this server's address, port 514. The device must be in the inventory with the IP address it sends from, as its IP address or one of its other addresses (Network & System).")}</p>
                 <div className="sl-howto">
                     <b>Cisco IOS</b>
                     <pre dir="ltr">{`logging host ${host} transport udp port 514\nlogging trap informational\nservice timestamps log datetime msec`}</pre>
@@ -347,7 +382,9 @@ function Settings({ data, isAdmin, onSaved, msg, setMsg }) {
 export function SyslogPage() {
     const [search, setSearch] = useSearchParams();
     const role = useSelector((s) => s.auth.role);
+    const permissions = useSelector((s) => s.auth.permissions);
     const isAdmin = role === "admin";
+    const canAssign = hasPermission(permissions, role, "asset_list", "write");
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
     const [settingsMsg, setSettingsMsg] = useState(null);
@@ -418,7 +455,7 @@ export function SyslogPage() {
             </div>
 
             {tab === "messages" && data && <Messages key={`${initial.asset}-${initial.severity}`} assets={data.assets} initial={initial} />}
-            {tab === "sources" && data && <Sources data={data} />}
+            {tab === "sources" && data && <Sources data={data} canAssign={canAssign} onChanged={loadOverview} />}
             {tab === "settings" && data && <Settings key={JSON.stringify(data.settings)} data={data} isAdmin={isAdmin}
                                                     onSaved={loadOverview} msg={settingsMsg} setMsg={setSettingsMsg} />}
         </div>

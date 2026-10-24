@@ -156,10 +156,10 @@ def vlan_client(c: AssetSnmpCredential, vlan: int):
     from app.modules.noc.snmp_client import _build_credentials
 
     if c.version == "v3":
-        return PyWrapper(Client(c.asset.ip_address, _build_credentials(c), port=c.port,
+        return PyWrapper(Client(c.target, _build_credentials(c), port=c.port,
                                 context_name=f"vlan-{vlan}".encode()))
     community = decrypt_secret(c.community_encrypted) if c.community_encrypted else "public"
-    return PyWrapper(Client(c.asset.ip_address, V2C(f"{community}@{vlan}"), port=c.port))
+    return PyWrapper(Client(c.target, V2C(f"{community}@{vlan}"), port=c.port))
 
 
 async def read_tables(db: Session) -> Tuple[Dict[int, neighbors.NeighborTables], Dict[int, str]]:
@@ -170,7 +170,7 @@ async def read_tables(db: Session) -> Tuple[Dict[int, neighbors.NeighborTables],
 
     reachable = {s.asset_id for s in db.query(AssetSnmpStatus).filter(AssetSnmpStatus.reachable.is_(True))}
     creds = [c for c in db.query(AssetSnmpCredential).options(joinedload(AssetSnmpCredential.asset))
-             if c.asset and c.asset.ip_address and c.asset_id in reachable]
+             if c.asset and c.target and c.asset_id in reachable]
     tables: Dict[int, neighbors.NeighborTables] = {}
     errors: Dict[int, str] = {}
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_READS)
@@ -178,7 +178,7 @@ async def read_tables(db: Session) -> Tuple[Dict[int, neighbors.NeighborTables],
     async def read(c: AssetSnmpCredential):
         async with semaphore:
             try:
-                client = PyWrapper(Client(c.asset.ip_address, _build_credentials(c), port=c.port))
+                client = PyWrapper(Client(c.target, _build_credentials(c), port=c.port))
                 t = await neighbors.collect(client, vlan_client=lambda vlan, c=c: vlan_client(c, vlan))
             except Exception as exc:  # noqa: BLE001 - one device must not stop the sweep
                 errors[c.asset_id] = f"{type(exc).__name__}: {exc}"

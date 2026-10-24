@@ -1,7 +1,9 @@
 """Pydantic schemas for the NOC (SNMP monitoring) module."""
+import ipaddress
+import re
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class HealthNow(BaseModel):
@@ -19,6 +21,8 @@ class SnmpCredentialSet(BaseModel):
     storage - never echoed back (see SnmpCredentialInfo)."""
     version: str = "v2c"  # v2c | v3
     port: int = 161
+    # Where SNMP reaches the device when not its inventory address; "" = the asset's IP address.
+    poll_address: Optional[str] = None
     community: Optional[str] = None
     username: Optional[str] = None
     auth_protocol: Optional[str] = None  # MD5 | SHA
@@ -26,11 +30,28 @@ class SnmpCredentialSet(BaseModel):
     priv_protocol: Optional[str] = None  # DES | AES
     priv_key: Optional[str] = None
 
+    @field_validator("poll_address")
+    @classmethod
+    def _address(cls, v):
+        """An IP address or a host name; empty = the asset's IP address."""
+        v = (v or "").strip()
+        if not v:
+            return ""
+        try:
+            ipaddress.ip_address(v)
+            return v
+        except ValueError:
+            pass
+        if len(v) > 253 or not re.fullmatch(r"[A-Za-z0-9]([A-Za-z0-9-]{0,62}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,62}[A-Za-z0-9])?)*", v):
+            raise ValueError("Enter an IP address or a host name")
+        return v
+
 
 class SnmpCredentialInfo(BaseModel):
     """Output - secrets are never returned, only whether one is set."""
     version: str
     port: int
+    poll_address: Optional[str] = None
     has_community: bool
     username: Optional[str] = None
     auth_protocol: Optional[str] = None

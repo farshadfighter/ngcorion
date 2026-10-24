@@ -51,7 +51,7 @@ Configuration-change messages from Cisco (`%SYS-5-CONFIG_I`), NX-OS and FortiGat
 
 | Situation | Cause |
 |---|---|
-| A device's messages do not arrive | Its sending address is not the asset's IP; look under "Addresses outside the inventory" |
+| A device's messages do not arrive | Its sending address is not the asset's IP; under Sources, "Addresses outside the inventory", "Assign to an asset…" makes it one of the asset's addresses (also in the asset's Network & System edit, "Other addresses") |
 | "Syslog intake is on but not receiving" | Port 514 blocked by a firewall or taken; ask a system administrator |
 | Low-severity messages are not kept | "Keep messages at" in Settings is set higher |
 

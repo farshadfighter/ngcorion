@@ -306,7 +306,6 @@
   "Refuses TLS 1.0 and 1.1": "TLS 1.0 و 1.1 را نمی‌پذیرد",
   "Release": "نسخهٔ توزیع",
   "release not recorded yet; read at the next audit": "نسخهٔ سیستم‌عامل هنوز ثبت نشده؛ در ممیزی بعدی خوانده می‌شود",
-  "Remove": "حذف",
   "Remove {{label}}": "حذف {{label}}",
   "Removed": "حذف",
   "Renew it before that day; on many devices the new certificate has to be installed by hand.": "پیش از آن روز تمدیدش کنید؛ روی بسیاری از دستگاه‌ها گواهی تازه باید دستی نصب شود.",

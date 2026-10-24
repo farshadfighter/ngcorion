@@ -332,6 +332,7 @@
 }
 
 .noc-field input::placeholder { color: var(--noc-text-faint); }
+.noc-field-hint { color: var(--noc-text-faint); font-size: 11px; line-height: 1.5; }
 
 .noc-credential-actions {
     display: flex;
