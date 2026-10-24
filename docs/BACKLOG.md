@@ -63,7 +63,7 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Version 2.1.2 | (this commit) |
+| Version 2.1.2 | 6811f28 |
 | Training and product documents brought up to date; overview and training course as PDF | c84e744 |
 | Review of code annotations: references to deleted files, a wrong password rule, health route, unused lint suppressions, release examples | 17a34bc |
 | Security review (OWASP WSTG): peer account takeover through its email, asset data without the Asset List permission, request body limit, error text in license activation, imported links | f95e62b |
