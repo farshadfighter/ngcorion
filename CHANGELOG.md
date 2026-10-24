@@ -4,6 +4,8 @@
 
 ### Fixes
 
+- Restore preview: a device that answers but refuses (no sudo, a missing
+  file) showed only "see the server logs"; the reason it gave is shown.
 - Full review of every page (desktop and phone width, each tab, every
   New/Add dialog) and of every API call the web UI makes against the
   backend's routes, methods and query limits. Found and fixed:

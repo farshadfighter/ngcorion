@@ -497,3 +497,16 @@ class TestApi:
         assert service.fail_interrupted_restores(db) >= 1
         db.refresh(job)
         assert job.status == "failed" and "restart" in job.error
+
+    def test_preview_says_why_the_device_refused(self, db, setup, monkeypatch):
+        """A device that answers but refuses (no sudo) is named in the error, not "see the server logs"."""
+        from app.modules.backup.restore.drivers import RestoreApplyError
+        user, asset, backup = setup
+
+        def refuse(*a, **k):
+            raise RestoreApplyError("Reading configuration files failed: auditor is not in the sudoers file.")
+        monkeypatch.setattr(backup_router.restore_service, "preview", refuse)
+        body = backup_router.RestoreConnection(ssh_username="admin", ssh_password="x")
+        with pytest.raises(HTTPException) as exc:
+            backup_router.preview_restore(backup.id, body, current_user=user, db=db)
+        assert exc.value.status_code == 502 and "not in the sudoers file" in exc.value.detail

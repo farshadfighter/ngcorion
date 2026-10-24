@@ -19,7 +19,7 @@ from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, Asset, DeviceBackup
 from app.models.backup_restore import RESTORE_ACTIVE_STATUSES, BackupRestore
 from app.modules.backup.restore import service as restore_service
-from app.modules.backup.restore.drivers import SUPPORTED_FAMILIES, Credentials
+from app.modules.backup.restore.drivers import SUPPORTED_FAMILIES, Credentials, RestoreApplyError
 from app.modules.backup.overview import (RESTORE_GROUPS, backup_family, compute_overview,
                                          last_backup_types, restore_history)
 from app.modules.backup import changes  # noqa: F401 - registers the change summary of every new backup
@@ -316,6 +316,10 @@ def preview_restore(
         result = restore_service.preview(backup, _credentials(body, asset))
     except SSHConnectionError as exc:
         raise HTTPException(status_code=exc.http_status, detail=exc.to_dict())
+    except RestoreApplyError as exc:
+        # The device answered but refused (no sudo, a missing file): say what it said.
+        logger.warning("Restore preview of backup %s refused by the device: %s", backup_id, exc)
+        raise HTTPException(status_code=502, detail=f"Could not read the device's configuration: {exc}")
     except Exception:
         logger.exception("Restore preview failed for backup %s", backup_id)
         raise HTTPException(status_code=502, detail="Could not read the device's configuration. See the server logs for details.")

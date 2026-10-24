@@ -384,6 +384,7 @@ const TEMPLATES = [
     msg("{{name}} is not a network zone"),
     msg("Asset '{{asset_name}}' has no IP address configured"),
     msg("Backup failed: {{error}}"),
+    msg("Could not read the device's configuration: {{reason}}"),
     msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily for good, at most {{gb}} GB"),
     msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily {{days_1d}} days, at most {{gb}} GB"),
 ];

@@ -315,6 +315,7 @@
   "Core Switch 1": "سوئیچ هستهٔ ۱",
   "Core Switch 2": "سوئیچ هستهٔ ۲",
   "Could not connect to the asset": "اتصال به دارایی برقرار نشد",
+  "Could not read the device's configuration: {{reason}}": "پیکربندی دستگاه خوانده نشد: {{reason}}",
   "Could not work out the next run": "زمان اجرای بعدی مشخص نشد",
   "CPU at {{value}}%, at or above {{percent}}% for {{minutes}} min": "پردازنده در {{value}}٪؛ {{minutes}} دقیقه در {{percent}}٪ یا بیشتر",
   "CPU at or above {{percent}}% for {{minutes}} minutes": "پردازنده {{minutes}} دقیقه در {{percent}}٪ یا بیشتر",
