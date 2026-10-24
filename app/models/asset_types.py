@@ -7,7 +7,7 @@ Examples: Firewall, Router, Switch, Server, etc.
 This table is shared among all users.
 """
 
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Boolean, Column, Integer, String, Text
 from app.core.database import Base
 
 
@@ -68,6 +68,16 @@ class AssetType(Base):
         String(32),
         nullable=True,
         comment="Icon key used to draw assets of this type"
+    )
+
+    # A virtual type (virtual server, VM, virtual appliance) runs on another asset: each asset of it
+    # names the physical server it runs on (Asset.hosted_on_asset_id), see app/modules/assets/hosting.py.
+    is_virtual = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="Virtual: its assets run on a physical server"
     )
 
 

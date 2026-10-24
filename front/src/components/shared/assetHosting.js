@@ -6,7 +6,25 @@
 // adjacent *letter* (e.g. "VMware") should block a match.
 const HOSTED_TYPE_PATTERN = /(?<![A-Za-z])(vm|virtual\s*machine|application|app|database|db)(?![A-Za-z])/i;
 
-export function requiresHosting(typeName) {
-    if (!typeName) return false;
-    return HOSTED_TYPE_PATTERN.test(typeName);
+/**
+ * Whether assets of this type must name their host: a virtual type (asset type `is_virtual`), or a
+ * type whose name reads as a VM, application or database (types created before the flag). Takes the
+ * asset type or its name.
+ */
+export function requiresHosting(type) {
+    if (!type) return false;
+    if (typeof type === "object") return !!type.is_virtual || requiresHosting(type.type_name);
+    return HOSTED_TYPE_PATTERN.test(type);
+}
+
+/** A virtual type: its assets run on a physical server. */
+export const isVirtualType = (type) => !!type?.is_virtual;
+
+/**
+ * The assets an asset may name as its host: never itself, and for a virtual asset only a physical one
+ * (the API refuses a virtual host for it).
+ */
+export function hostChoices(assets, types, { virtual = false, selfId } = {}) {
+    const virtualTypes = new Set((types || []).filter((t) => t.is_virtual).map((t) => t.id));
+    return (assets || []).filter((a) => a.id !== selfId && !(virtual && virtualTypes.has(a.asset_type_id)));
 }

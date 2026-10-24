@@ -123,16 +123,29 @@ ASSET_LIST_COLUMNS = [
 ]
 
 
+def _yes_no(value):
+    """A Yes/No cell: True, False, or None when empty or unreadable."""
+    if isinstance(value, bool):
+        return value
+    text = str(value or "").strip().lower()
+    if text in ("yes", "y", "true", "1", "virtual", "بله", "مجازی"):
+        return True
+    if text in ("no", "n", "false", "0", "physical", "خیر", "فیزیکی"):
+        return False
+    return None
+
+
 ASSET_REQUIREMENT_SHEETS = [
     {
         "key": "asset_types",
         "title": "Asset Types",
-        "columns": ["ID", "Type Name", "Category", "Description"],
+        "columns": ["ID", "Type Name", "Category", "Description", "Virtual"],
         "map_row": lambda item: [
             item.id,
             item.type_name,
             item.category,
             item.description,
+            "Yes" if item.is_virtual else "No",
         ],
     },
     {
@@ -815,6 +828,8 @@ def import_asset_requirements_from_excel(
                         "type_name": row[1],
                         "category": row[2],
                         "description": row[3] if len(row) > 3 else None,
+                        # "Virtual" (Yes/No); a file without the column leaves the type as it is.
+                        "is_virtual": _yes_no(row[4]) if len(row) > 4 else None,
                     }
 
                     # Check if exists by ID or name
@@ -838,7 +853,7 @@ def import_asset_requirements_from_excel(
                                 setattr(existing, key, value)
                         results["asset_types"]["updated"] += 1
                     else:
-                        new_item = AssetType(**data)
+                        new_item = AssetType(**{k: v for k, v in data.items() if v is not None})
                         db_session.add(new_item)
                         results["asset_types"]["created"] += 1
 

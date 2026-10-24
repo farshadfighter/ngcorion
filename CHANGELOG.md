@@ -4,6 +4,13 @@
 
 ### Fixes
 
+- Assets: physical and virtual servers could not be told apart. An asset
+  type is now physical or virtual ("Runs as"; migration c7e9a1b3d5f6 marks
+  types named VM or Virtual ... virtual). An asset of a virtual type must
+  name the physical server it runs on: the Add and Location forms say so,
+  offer only physical assets, and the API refuses a virtual host. The
+  asset types sheet of the Excel file has a "Virtual" column (Yes/No; a
+  file without it leaves the types as they are).
 - Assets: an asset could not be saved without a serial number, a value or
   the last audit and patch dates. The edit forms sent an empty field as
   "", which the API refused for a date or a number (422) and stored for

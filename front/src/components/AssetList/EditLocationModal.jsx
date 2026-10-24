@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { useAssetFormOptions } from "./useAssetFormOptions";
-import { requiresHosting } from "../shared/assetHosting";
+import { hostChoices, isVirtualType, requiresHosting } from "../shared/assetHosting";
 import { t as tr } from "../../i18n";
 
 export const EditLocationModal = ({ asset, isOpen, onClose }) => {
@@ -23,8 +23,10 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
         status: asset.status ?? "active"
     });
 
-    const selectedTypeName = assetTypes.find(t => String(t.id) === String(asset.asset_type_id))?.type_name;
-    const hostingRequired = requiresHosting(selectedTypeName);
+    const selectedType = assetTypes.find(t => String(t.id) === String(asset.asset_type_id));
+    const selectedTypeName = selectedType?.type_name;
+    const hostingRequired = requiresHosting(selectedType);
+    const isVirtual = isVirtualType(selectedType);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -120,7 +122,7 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>{tr("Hosted on server")}{hostingRequired && <span className="required"> *</span>}</label>
+                                    <label>{isVirtual ? tr("Physical server it runs on") : tr("Hosted on server")}{hostingRequired && <span className="required"> *</span>}</label>
                                     <select
                                         name="hosted_on_asset_id"
                                         value={formData.hosted_on_asset_id}
@@ -129,14 +131,16 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                                         style={fieldErrors.hosted_on_asset_id ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                                     >
                                         <option value="">{tr("Select server")}</option>
-                                        {existingAssets.filter((a) => a.id !== asset.id).map((a) => (
+                                        {hostChoices(existingAssets, assetTypes, { virtual: isVirtual, selfId: asset.id }).map((a) => (
                                             <option key={a.id} value={a.id}>{a.asset_name}</option>
                                         ))}
                                     </select>
                                     {fieldErrors.hosted_on_asset_id && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.hosted_on_asset_id}</span>}
                                     {hostingRequired && !fieldErrors.hosted_on_asset_id && (
                                         <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
-                                            {tr("{{selectedTypeName}} runs inside a server - Topology draws a dashed line to it.", { selectedTypeName })}
+                                            {isVirtual
+                                                ? tr("{{selectedTypeName}} is virtual: it runs on a physical server - Topology draws a dashed line to it.", { selectedTypeName })
+                                                : tr("{{selectedTypeName}} runs inside a server - Topology draws a dashed line to it.", { selectedTypeName })}
                                         </span>
                                     )}
                                 </div>

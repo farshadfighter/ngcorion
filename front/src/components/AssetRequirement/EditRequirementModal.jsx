@@ -28,6 +28,8 @@ const REQUIREMENT_FORMS = {
         fields: [
             { name: "type_name", label: t("Type Name"), required: true },
             { name: "category", label: t("Category") },
+            { name: "is_virtual", label: t("Runs as"), type: "virtual",
+              hint: t("Each asset of a virtual type names the physical server it runs on.") },
             { name: "description", label: t("Description"), type: "textarea" },
             // "" = automatic, suggested live from the type name.
             { name: "icon", label: t("Icon"), type: "icon", suggestFrom: "type_name" },
@@ -157,6 +159,14 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
                                         value={form[f.name]}
                                         onChange={(e) => setField(f.name, e.target.value)}
                                     />
+                                ) : f.type === "virtual" ? (
+                                    <select
+                                        value={form[f.name] ? "virtual" : "physical"}
+                                        onChange={(e) => setField(f.name, e.target.value === "virtual")}
+                                    >
+                                        <option value="physical">{t("Physical")}</option>
+                                        <option value="virtual">{t("Virtual (runs on a physical server)")}</option>
+                                    </select>
                                 ) : (
                                     <input
                                         type={f.type || "text"}
@@ -164,6 +174,7 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
                                         onChange={(e) => setField(f.name, e.target.value)}
                                     />
                                 )}
+                                {f.hint && <span className="field-hint">{f.hint}</span>}
                                 {errors[f.name] && (
                                     <span className="error-text">{errors[f.name]}</span>
                                 )}

@@ -6,7 +6,7 @@ The base lists you pick from when registering an asset: asset types, owners, loc
 
 | Tab | What | Example |
 |---|---|---|
-| Asset Type | Type with icon and category | Firewall, switch, server, camera |
+| Asset Type | Type with icon and category, physical or virtual | Firewall, switch, physical server, virtual server |
 | Owners | Name, department, role, email and phone of who is responsible | "Network team" |
 | Location | Site, floor, room, rack and unit | HQ / 3 / Server room / A2 |
 | Network Zone | Zones and the risk score of each | Internal, DMZ, card data environment |
@@ -20,6 +20,10 @@ The base lists you pick from when registering an asset: asset types, owners, loc
 2. **Import many:** "Download Template" → fill in the Excel file → "Import".
 3. **Back up or move:** "Export" gives every list in one file.
 4. **Delete several:** tick the rows and "Delete selected".
+
+## Physical and virtual
+
+An asset type is physical or virtual ("Runs as"). Each asset of a virtual type - a virtual server, a VM, a virtual appliance - names the physical server it runs on, and only a physical asset is offered as its host. Make two types, e.g. "Physical Server" and "Virtual Server", rather than one "Server". In the Excel file the "Virtual" column takes Yes or No.
 
 ## Why it matters
 

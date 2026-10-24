@@ -113,3 +113,33 @@ def test_audit_and_hardening_set_the_asset_dates(db, kind):
     db.add(old)
     db.flush()
     assert asset.last_audit_date == date(2026, 6, 1)               # dates only move forward
+
+
+def test_a_virtual_asset_names_the_physical_server_it_runs_on(db):
+    """Asset types are physical or virtual: an asset of a virtual type must name its host, and the host is a
+    physical one."""
+    from app.modules.assets.hosting import requires_hosting
+    from app.modules.assets.service import _validate_hosting
+    physical = AssetType(type_name=f"Physical Server {_n()}", category="server")
+    virtual = AssetType(type_name=f"Guest {_seq[0]}", category="server", is_virtual=True)
+    db.add_all([physical, virtual])
+    db.flush()
+    host = Asset(asset_name=f"esx-{_seq[0]}", asset_type_id=physical.id)
+    guest = Asset(asset_name=f"vm-{_seq[0]}", asset_type_id=virtual.id)
+    db.add_all([host, guest])
+    db.flush()
+
+    assert requires_hosting("Guest", is_virtual=True) and not requires_hosting("Physical Server")
+    assert requires_hosting("Virtual Machine")                     # by name, for types made before the flag
+    with pytest.raises(ValueError, match="must specify which server"):
+        _validate_hosting(db, virtual.id, None)
+    _validate_hosting(db, virtual.id, host.id)                     # on a physical server: fine
+    with pytest.raises(ValueError, match="runs on a physical server"):
+        _validate_hosting(db, virtual.id, guest.id)                # on a virtual one: refused
+    _validate_hosting(db, physical.id, None)                       # a physical asset needs no host
+
+
+def test_asset_type_sheet_virtual_column():
+    from app.utils.excel_utils import _yes_no
+    assert [_yes_no(v) for v in ("Yes", "no", "مجازی", "فیزیکی", True, "", None, "maybe")] == \
+        [True, False, True, False, True, None, None, None]

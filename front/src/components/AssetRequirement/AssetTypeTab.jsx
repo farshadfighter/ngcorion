@@ -197,7 +197,10 @@ export const AssetTypeTab = () => {
                                     <AssetIcon icon={item.effective_icon || item.type_name} size={28}
                                                title={item.icon ? undefined : t("Automatic (from the name)")} />
                                 </td>
-                                <td>{item.type_name}</td>
+                                <td>
+                                    {item.type_name}
+                                    {item.is_virtual && <span className="type-virtual-badge">{t("Virtual")}</span>}
+                                </td>
                                 <td>{item.category || "-"}</td>
                                 <td>{item.description || "-"}</td>
                                 <td className="actions">

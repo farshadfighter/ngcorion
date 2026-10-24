@@ -1,6 +1,8 @@
 """
-Classification for asset types that must record which server hosts them
-(VM, Application, Database) - keyword-matched against the free-text asset
+Classification for asset types that must record which server hosts them:
+a type marked virtual (AssetType.is_virtual - a virtual server, VM or
+appliance runs on a physical server), and, for types created before that
+flag, VM, Application and Database - keyword-matched against the free-text asset
 type name, the same convention already used elsewhere in this app for
 asset-type classification (e.g. front/src/components/shared/DeviceIcon.jsx's
 icon rules) since asset types have no fixed code enum, just an
@@ -19,10 +21,13 @@ _HOSTED_TYPE_PATTERN = re.compile(
 )
 
 
-def requires_hosting(asset_type_name: str) -> bool:
-    """True when this asset type name looks like a VM/Application/Database -
-    something that necessarily runs inside a physical or virtual server,
-    rather than being network/compute hardware itself."""
+def requires_hosting(asset_type_name: str, is_virtual: bool = False) -> bool:
+    """True when assets of this type must name their host: the type is
+    virtual, or its name looks like a VM/Application/Database - something
+    that necessarily runs inside a physical or virtual server, rather than
+    being network/compute hardware itself."""
+    if is_virtual:
+        return True
     if not asset_type_name:
         return False
     return bool(_HOSTED_TYPE_PATTERN.search(asset_type_name))

@@ -39,6 +39,8 @@ class AssetTypeBase(BaseModel):
     description: Optional[str] = None
     # None = suggested from the type name (see app/core/asset_icons.py).
     icon: Optional[str] = None
+    # Virtual (virtual server, VM): its assets name the physical server they run on.
+    is_virtual: bool = False
 
 class AssetTypeCreate(AssetTypeBase):
     """Body of creating or editing an asset type; the icon must be one of the known icon keys."""

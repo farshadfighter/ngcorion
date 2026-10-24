@@ -1,5 +1,5 @@
 /**
- * Dialog adding or editing an asset type (name, category, icon).
+ * Dialog adding or editing an asset type (name, category, physical or virtual, icon).
  */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
@@ -16,6 +16,7 @@ export const AssetTypeModal = ({ onClose }) => {
         category: "",
         description: "",
         icon: "", // automatic until one is picked
+        is_virtual: false,
     });
 
     const [errors, setErrors] = useState({});
@@ -99,6 +100,19 @@ export const AssetTypeModal = ({ onClose }) => {
                         {errors.category && (
                             <span className="error-message">{errors.category}</span>
                         )}
+                    </div>
+
+                    <div className="form-group">
+                        <label>{t("Runs as")}</label>
+                        <select
+                            name="is_virtual"
+                            value={formData.is_virtual ? "virtual" : "physical"}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, is_virtual: e.target.value === "virtual" }))}
+                        >
+                            <option value="physical">{t("Physical")}</option>
+                            <option value="virtual">{t("Virtual (runs on a physical server)")}</option>
+                        </select>
+                        <span className="field-hint">{t("Each asset of a virtual type names the physical server it runs on.")}</span>
                     </div>
 
                     <div className="form-group">

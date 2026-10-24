@@ -63,7 +63,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Fix: assets save with empty serial, value and dates; last audit and last hardening dates kept automatically | recorded with the next item |
+| Assets: physical or virtual asset types; a virtual asset names its physical server | recorded with the next item |
+| Fix: assets save with empty serial, value and dates; last audit and last hardening dates kept automatically | b2394fc |
 | Fix: risk detail Audit Findings shows hardening and verification status | ba63175 |
 | Risk detail: Hardening Impact before/now (failed controls, audit risk, risk score) | b45ebff |
 | Fix: Linux/Windows/SQL Server/Apache/MongoDB/benchmark hardening recorded; risk counts fixes already PASS | 5979e48 |

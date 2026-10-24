@@ -9,7 +9,7 @@ import api from "../../config/api";
 // Shared with EditSecurityModal (via useAssetFormOptions) so both forms offer
 // exactly the risk tiers the scoring engine can score — see the note there.
 import { dropUnscoredRiskLevels } from "./useAssetFormOptions";
-import { requiresHosting } from "../shared/assetHosting";
+import { hostChoices, isVirtualType, requiresHosting } from "../shared/assetHosting";
 import { t as tr } from "../../i18n";
 import { DateInput } from "../shared/DateInput.jsx";
 
@@ -174,8 +174,10 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         }
     };
 
-    const selectedTypeName = assetTypes.find(t => String(t.id) === String(formData.asset_type_id))?.type_name;
-    const hostingRequired = requiresHosting(selectedTypeName);
+    const selectedType = assetTypes.find(t => String(t.id) === String(formData.asset_type_id));
+    const selectedTypeName = selectedType?.type_name;
+    const hostingRequired = requiresHosting(selectedType);
+    const isVirtual = isVirtualType(selectedType);
 
     const validateCurrentStep = () => {
         const errors = {};
@@ -476,7 +478,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>{tr("Hosted on server")}{hostingRequired && <span className="required"> *</span>}</label>
+                        <label>{isVirtual ? tr("Physical server it runs on") : tr("Hosted on server")}{hostingRequired && <span className="required"> *</span>}</label>
                         <select
                             name="hosted_on_asset_id"
                             value={formData.hosted_on_asset_id}
@@ -485,12 +487,14 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             style={fieldErrors.hosted_on_asset_id ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                         >
                             <option value="">{tr("Select server")}</option>
-                            {existingAssets.map(a => <option key={a.id} value={a.id}>{a.asset_name}</option>)}
+                            {hostChoices(existingAssets, assetTypes, { virtual: isVirtual }).map(a => <option key={a.id} value={a.id}>{a.asset_name}</option>)}
                         </select>
                         {fieldErrors.hosted_on_asset_id && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.hosted_on_asset_id}</span>}
                         {hostingRequired && !fieldErrors.hosted_on_asset_id && (
                             <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
-                                {tr("{{selectedTypeName}} runs inside a server - Topology draws a dashed line to it.", { selectedTypeName })}
+                                {isVirtual
+                                    ? tr("{{selectedTypeName}} is virtual: it runs on a physical server - Topology draws a dashed line to it.", { selectedTypeName })
+                                    : tr("{{selectedTypeName}} runs inside a server - Topology draws a dashed line to it.", { selectedTypeName })}
                             </span>
                         )}
                     </div>

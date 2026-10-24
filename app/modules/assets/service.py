@@ -22,21 +22,26 @@ logger = logging.getLogger(__name__)
 
 
 def _validate_hosting(db: Session, asset_type_id: Optional[int], hosted_on_asset_id: Optional[int], asset_id: Optional[int] = None) -> None:
-    """Raises ValueError if `asset_type_id` needs a hosting server (VM/
-    Application/Database) but `hosted_on_asset_id` isn't set, if the
-    referenced host doesn't exist, or if an asset is set to host itself."""
+    """Raises ValueError if `asset_type_id` needs a hosting server (a virtual
+    type, or VM/Application/Database by name) but `hosted_on_asset_id` isn't
+    set, if the referenced host doesn't exist, if an asset is set to host
+    itself, or if a virtual asset names another virtual asset: it runs on a
+    physical server."""
+    asset_type = (db.query(AssetType).filter(AssetType.id == asset_type_id).first()
+                  if asset_type_id is not None else None)
     if hosted_on_asset_id is not None:
         if hosted_on_asset_id == asset_id:
             raise ValueError("An asset cannot be hosted on itself")
         host = db.query(Asset).filter(Asset.id == hosted_on_asset_id).first()
         if not host:
             raise ValueError(f"Host asset with id {hosted_on_asset_id} does not exist")
+        if asset_type is not None and asset_type.is_virtual:
+            host_type = db.query(AssetType).filter(AssetType.id == host.asset_type_id).first()
+            if host_type is not None and host_type.is_virtual:
+                raise ValueError(f"A virtual asset runs on a physical server: '{host.asset_name}' is virtual")
         return
 
-    if asset_type_id is None:
-        return
-    asset_type = db.query(AssetType).filter(AssetType.id == asset_type_id).first()
-    if asset_type and requires_hosting(asset_type.type_name):
+    if asset_type and requires_hosting(asset_type.type_name, asset_type.is_virtual):
         raise ValueError(
             f"Asset type '{asset_type.type_name}' must specify which server "
             f"it's hosted on (hosted_on_asset_id)"
