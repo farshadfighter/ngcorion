@@ -63,7 +63,7 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| SNMP address of a host; other addresses of an asset for syslog; assign an unknown sender | recorded with the next item |
+| SNMP address of a host; other addresses of an asset for syslog; assign an unknown sender | d87a0c1 |
 | NOC: SNMP metrics retention and space in the app; usage of syslog and metrics against their limits | 4fe23da |
 | Fix: syslog and NOC metrics storage budgets measure the stored rows, not the files | ca1fe8a |
 | Assets: physical or virtual asset types; a virtual asset names its physical server | f2f7064 |
