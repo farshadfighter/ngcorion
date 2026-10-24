@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app.models.eol import SOURCE_CUSTOM, SOURCE_IMPORT, SOURCE_ONLINE, EolProduct
+from app.modules.cve.feeds import safe_url
 
 logger = logging.getLogger(__name__)
 
@@ -112,8 +113,9 @@ def parse_file(raw: bytes) -> List[dict]:
         cycles = [c for c in p.get("cycles") or [] if _valid_cycle(c)][:MAX_CYCLES]
         if not cycles:
             raise ValueError(f"The product {p['key']} has no valid release cycle")
-        out.append({"key": p["key"], "name": str(p.get("name") or p["key"])[:120], "link": p.get("link"),
-                    "cycles": cycles})
+        link = p.get("link")
+        out.append({"key": p["key"], "name": str(p.get("name") or p["key"])[:120],
+                    "link": link if safe_url(link) and len(link) <= 300 else None, "cycles": cycles})
     return out
 
 

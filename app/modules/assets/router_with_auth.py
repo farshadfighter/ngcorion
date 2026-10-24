@@ -800,7 +800,7 @@ dependencies_router = APIRouter(prefix="/api/dependencies", tags=["Dependencies"
 @dependencies_router.get("/asset/{asset_id}", response_model=List[AssetDependencyResponse])
 def get_dependencies(
     asset_id: int,
-    _current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """Get asset dependencies"""
@@ -836,7 +836,7 @@ security_router = APIRouter(prefix="/api/security", tags=["Security"])
 @security_router.get("/asset/{asset_id}", response_model=AssetSecurityStatusResponse)
 def get_security(
     asset_id: int,
-    _current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """Get security status"""
@@ -876,7 +876,7 @@ views_router = APIRouter(prefix="/api/asset-views", tags=["Asset Views"])
 
 @views_router.get("/overview")
 def get_overview(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """Get overview view"""
@@ -888,7 +888,7 @@ def get_overview(
 
 @views_router.get("/network-system")
 def get_network_system(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """Get network & system view"""
@@ -900,7 +900,7 @@ def get_network_system(
 
 @views_router.get("/location-ownership")
 def get_location_ownership(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """Get location & ownership view"""
@@ -912,7 +912,7 @@ def get_location_ownership(
 
 @views_router.get("/security-audit")
 def get_security_audit(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """Get security/audit view"""

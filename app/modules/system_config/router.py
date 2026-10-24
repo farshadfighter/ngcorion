@@ -496,6 +496,17 @@ def get_certificate(
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+CERT_FILE_MAX = 1024 * 1024
+
+
+async def _read_small(file: UploadFile) -> bytes:
+    """A certificate, key or PFX file: a few kilobytes; anything over 1 MB is not one."""
+    data = await file.read(CERT_FILE_MAX + 1)
+    if len(data) > CERT_FILE_MAX:
+        raise HTTPException(status_code=413, detail="File too large (max 1 MB)")
+    return data
+
+
 @router.post("/certificate/upload")
 async def upload_certificate(
     cert_file: Optional[UploadFile] = File(
@@ -528,13 +539,13 @@ async def upload_certificate(
     try:
         if pfx_file is not None:
             cert_pem, key_pem = service.extract_pfx(
-                await pfx_file.read(), pfx_password
+                await _read_small(pfx_file), pfx_password
             )
             source = pfx_file.filename or "bundle.pfx"
         else:
-            cert_pem = service.normalize_certificate(await cert_file.read())
+            cert_pem = service.normalize_certificate(await _read_small(cert_file))
             key_pem = (
-                service.validate_private_key(await key_file.read())
+                service.validate_private_key(await _read_small(key_file))
                 if key_file is not None else None
             )
             source = cert_file.filename or "certificate"

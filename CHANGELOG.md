@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Security
+
+Review against the OWASP Web Security Testing Guide (docs/SECURITY_REMEDIATION_CHECKLIST.md, phase 4):
+
+- A user with user management could change the email of another account
+  of the same role and take it over with the emailed reset code; only an
+  account holding nothing the changer lacks can have its email changed.
+- Asset dependencies, security status and the asset views require the
+  Asset List permission (they needed only a sign-in).
+- Request bodies are limited (32 MB, multipart 64 MB, 413 beyond);
+  certificate files to 1 MB.
+- License activation no longer returns an unexpected error's text.
+- An imported end-of-life catalog keeps only http(s) links.
+
 ### Changes
 
 - Two assets may have the same IP address (NAT, a virtual address); the

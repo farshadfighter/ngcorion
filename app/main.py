@@ -165,6 +165,7 @@ from app.core.heartbeat import start_heartbeat, stop_heartbeat
 import app.core.asset_entitlement  # noqa: F401,E402
 from app.modules.noc.poller import start_noc_poller, stop_noc_poller
 from app.modules.noc.metrics_retention import start_metrics_retention_worker, stop_metrics_retention_worker
+from app.middleware.body_limit import BodySizeLimitMiddleware
 from app.middleware.license_middleware import LicenseMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
@@ -423,6 +424,10 @@ app.add_middleware(
     # refusal because of the license's asset limit (the UI's dialog for it).
     expose_headers=["Content-Disposition", "X-Asset-Limit"],
 )
+
+# A body larger than the limit is refused before anything reads it (app/middleware/body_limit.py);
+# inside the security headers, so the refusal carries them too.
+app.add_middleware(BodySizeLimitMiddleware)
 
 # Added last so it is outermost (see the ordering note above) - every
 # response, including the ones LicenseMiddleware/CORSMiddleware short-circuit,

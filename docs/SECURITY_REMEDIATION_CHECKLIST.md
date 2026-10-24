@@ -814,14 +814,95 @@ verifiable and revertible.
   documented reason found for keeping it.
 - **Status**: [x] — Done 2026-10-04: the stray root package.json/package-lock.json were removed (`git rm`); front/ builds and the backend imports unchanged.
 
+## Phase 4 — Review of 2.1.2 (OWASP WSTG, 2026-10-24)
+
+A second pass over the whole code after the features added since the first audit (end of life, TLS
+certificates, global search, API keys, syslog intake, one zone list, Cisco SAFE checks, duplicate IPs).
+Tools: bandit (medium and high, every finding read), pip-audit over uv.lock, npm audit, a secret scan of
+the tracked files, and an inventory of all 710 API routes with the authentication and permission each
+one depends on. Probes against a running instance on loopback.
+
+| WSTG | Checked | Result |
+|---|---|---|
+| CONF-05/07/12 | Security headers, HSTS, CSP, Traefik TLS, admin interfaces | No finding |
+| IDNT-04, ATHN-03/07/09 | Account enumeration (message and time), login, two-step code and reset-code rate limits, password policy | No finding |
+| ATHZ-01 | Path traversal in downloads and the SPA catch-all | No finding |
+| ATHZ-02 | Every route's permission | **4.2** |
+| ATHZ-03 | Role and permission escalation in user management | **4.1** |
+| SESS | Revocation, idle timeout, token kinds (two-step token is not a session) | No finding; token in localStorage accepted (below) |
+| INPV-05/12 | SQL (every f-string query: fixed names only), OS commands (argv lists, validated nmap input) | No finding |
+| INPV-07 | XML parsing (Sophos API, nmap output) | Accepted (below) |
+| INPV-19 | SSRF: webhooks, SMS, report renderer URL fetcher | No finding |
+| ERRH-01 | Exception text in answers | **4.4** |
+| BUSL-08/09 | Upload size limits | **4.3** |
+| CLNT-01/04 | DOM XSS sinks, links from imported data | **4.5** |
+| Dependencies | pip-audit, npm audit | Only the documented paramiko exception (SECURITY.md) |
+
+### 4.1 — Taking over a peer account through its email
+
+- **Finding**: a non-administrator with user management (write) could change the email of another
+  account of the same role, then reset its password with the code emailed to the new address - and
+  hold that account's permissions, including ones they do not hold.
+- **Fix**: `UserService.update_user` refuses to change another account's email unless the account
+  holds nothing the one changing it lacks (the rule permissions are granted by). A system
+  administrator is not limited.
+- **Test**: tests/test_security_review_findings.py::test_an_account_holding_more_cannot_have_its_email_changed
+- **Status**: [x] — Fixed 2026-10-24.
+
+### 4.2 — Asset data with a sign-in only
+
+- **Finding**: GET /api/dependencies/asset/{id}, /api/security/asset/{id} and /api/asset-views/* needed
+  a sign-in but not the Asset List permission (any user or API key, e.g. one for reports only).
+- **Fix**: they require ASSET_LIST read, like GET /api/assets/{id}.
+- **Test**: test_asset_data_routes_need_the_asset_list_permission; checked live with a reports-only API
+  key (403).
+- **Status**: [x] — Fixed 2026-10-24.
+
+### 4.3 — No request body limit
+
+- **Finding**: a JSON body is read whole into memory before a route runs, sign-in included; nothing
+  limited its size (Traefik neither), so one unauthenticated request could exhaust the memory. A
+  certificate upload was also read whole.
+- **Fix**: app/middleware/body_limit.py refuses with 413 a body over 32 MB (64 MB multipart) - at once
+  from Content-Length, else as it is read; the streamed uploads keep their own limits. Certificate,
+  key and PFX files: 1 MB.
+- **Test**: test_a_body_over_the_limit_is_refused, test_a_certificate_file_over_1_mb_is_refused; checked
+  live (40 MB to /auth/login, with Content-Length and chunked: 413 with the security headers).
+- **Status**: [x] — Fixed 2026-10-24.
+
+### 4.4 — Unexpected error text in license activation
+
+- **Finding**: an unexpected error during activation returned its text, and activation is open
+  before a license is installed.
+- **Fix**: only the error's type is returned; the text stays in the server log.
+- **Status**: [x] — Fixed 2026-10-24.
+
+### 4.5 — Links in an imported end-of-life catalog
+
+- **Finding**: a product link from an imported catalog was stored as given: any text, any length (a
+  link over 300 characters failed the import with 500) and any scheme. React 19 blocks javascript:
+  links, but the stored value should not depend on it.
+- **Fix**: only http(s) links of at most 300 characters are kept (the rule CVE references already
+  had, `safe_url`).
+- **Test**: test_an_imported_catalog_keeps_only_web_links
+- **Status**: [x] — Fixed 2026-10-24.
+
+### Accepted
+
+- **Access token in localStorage**: readable by script on the page. The CSP allows scripts from the
+  application only, the UI has no HTML sinks (no dangerouslySetInnerHTML, innerHTML or eval), and
+  links from data are http(s) only. A cookie session would need CSRF protection across the API.
+- **XML from devices** (Sophos API answers, nmap output) is parsed with the standard library: it does
+  not fetch external entities, and the bundled expat (2.6) limits entity expansion.
+- **paramiko SHA-1 fallback** (PYSEC-2026-2858): see SECURITY.md.
+- **Secrets in git history** (1.2) stays open as recorded there.
+
 ---
 
 ## Cross-cutting notes
 
-- **MFA**: Not implemented anywhere in the auth flow. Explicitly out of scope for
-  this checklist (documented as an accepted scoping decision for an internal
-  admin tool) unless the user decides otherwise — revisit if NGCorion becomes
-  externally exposed.
+- **MFA**: Two-step sign-in (TOTP, recovery codes, required per role with a
+  grace period) was added after this audit: app/core/mfa.py, app/modules/auth/mfa_router.py.
 - **Positive findings (already verified, no action needed, re-check only if
   surrounding code changes)**:
   - `get_current_user` re-validates role from the DB on every request; JWT

@@ -345,8 +345,10 @@ def _activate(data: LicenseActivateRequest, request: Request):
         raise
 
     except Exception as e:
+        # The cause is in the server log only: this answer may go to someone not signed in (no valid
+        # license yet), and an unexpected error's text can name files, hosts or queries.
         logger.exception("License activation failed unexpectedly")
         raise HTTPException(
             status_code=500,
-            detail=f"Activation failed ({type(e).__name__}): {e}",
+            detail=f"Activation failed ({type(e).__name__}). The cause is in the server log.",
         )

@@ -63,6 +63,9 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
+| Security review (OWASP WSTG): peer account takeover through its email, asset data without the Asset List permission, request body limit, error text in license activation, imported links | (security review) |
+| Two assets may share an IP: saved with a warning | e75dba6 |
+| Restore preview names the device's refusal | 5e1ae2c |
 | Version 2.1.1 | 4968377 |
 | Review of every page and API call; fixes found by it | 7a971f1 |
 | New Backup: every asset listed, device type detected from the asset; dialogs styled on their own | 75f55f0 |

@@ -386,6 +386,8 @@ const TEMPLATES = [
     msg("Asset '{{asset_name}}' has no IP address configured"),
     msg("Backup failed: {{error}}"),
     msg("Could not read the device's configuration: {{reason}}"),
+    msg("Request body too large (max {{mb}} MB)"),
+    msg("Activation failed ({{error}}). The cause is in the server log."),
     msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily for good, at most {{gb}} GB"),
     msg("SNMP metrics storage: raw {{raw}} hours, 5-minute {{days_5m}} days, hourly {{days_1h}} days, daily {{days_1d}} days, at most {{gb}} GB"),
 ];
@@ -1324,3 +1326,7 @@ msg("Enter an IPv4 or IPv6 address");
 msg("This is the asset's own IP address");
 msg("Address not found");
 msg("Enter an IP address or a host name");
+
+// security review 2.1.2 (app/middleware/body_limit.py, app/modules/users/service.py, system_config)
+msg("File too large (max 1 MB)");
+msg("You cannot change the email of a user who holds permissions you do not hold yourself");

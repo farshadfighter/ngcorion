@@ -70,7 +70,7 @@ class UserService:
         held = {p.module.value if hasattr(p.module, "value") else p.module: p
                 for p in self.get_user_permissions(actor.id)}
         for perm in permissions_data:
-            mine = held.get(perm.module)
+            mine = held.get(perm.module.value if hasattr(perm.module, "value") else perm.module)
             for flag in ("can_read", "can_write", "can_delete"):
                 if getattr(perm, flag) and not (mine and getattr(mine, flag)):
                     raise HTTPException(
@@ -168,6 +168,15 @@ class UserService:
         if current_user_id != user_id:
             self._assert_role_within_reach(current_user, user.role, "modify")
         self._assert_can_grant(current_user, user_data.permissions)
+        # The password reset code is emailed: whoever sets another account's email can take the account
+        # over, so only an account holding nothing the one changing it lacks.
+        if current_user_id != user_id and user_data.email is not None and user_data.email != user.email:
+            try:
+                self._assert_can_grant(current_user, self.get_user_permissions(user_id))
+            except HTTPException:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="You cannot change the email of a user who holds permissions you "
+                                           "do not hold yourself") from None
         # A directory account's name and password are the directory's, and its role and permissions
         # follow its directory groups (app/modules/directory): only the rest can be edited here.
         if user.auth_source != "local" and (

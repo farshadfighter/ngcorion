@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report suspected vulnerabilities privately to the maintainers (not in a public
-issue). Include the affected version (`/api/health` shows it), the steps to
+issue). Include the affected version (`/health` shows it), the steps to
 reproduce, and the impact you observed.
 
 ## Security controls
@@ -14,7 +14,7 @@ controls are mapped to the AFTA / Common Criteria requirements in
 
 | Area | Control |
 |---|---|
-| Accounts | Personal accounts, roles (admin, manager, user) and per-module read/write/delete permissions, checked on every API call. |
+| Accounts | Personal accounts, roles (admin, manager, user, guest) and per-module read/write/delete permissions, checked on every API call; API keys for other systems with their own read/write scopes, expiry and address list. A user can neither grant a permission nor change the email of an account holding one they do not hold themselves. |
 | Passwords | Strength rules on every new password; bcrypt hashes; a password set by an admin (new account, reset) must be changed at the next sign-in; reset codes by e-mail are single-use, short-lived and rate-limited. |
 | Sign-in | 5 failures from one address or 10 for one account within 15 minutes block further attempts for 15 minutes; every attempt is recorded (`login_logs`). |
 | Sessions | JWT with a random id: logout revokes it at the server; a password change ends every other session; a session unused for `SESSION_IDLE_TIMEOUT_MINUTES` (30) is ended, and the UI signs out after the same time without input; a token lasts `ACCESS_TOKEN_EXPIRE_MINUTES` (120) at most. |
@@ -23,6 +23,7 @@ controls are mapped to the AFTA / Common Criteria requirements in
 | Device credentials | Entered per run and never stored, except for scheduled jobs, whose credentials are encrypted (Fernet) with a key outside the database; SSH host keys are pinned (trust on first use). |
 | Licensing | Answers from the license server are Ed25519-signed and verified against keys built into the code; no configuration can switch this off. |
 | Transport | HTTPS only (Traefik, TLS 1.2+), HSTS and security headers; the API is not reachable without TLS. |
+| Requests | A request body over 32 MB (64 MB for an upload) is refused before it is read; each upload has its own smaller limit. |
 
 ## Dependency checks
 
