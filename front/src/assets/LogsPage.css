@@ -321,6 +321,12 @@
     font-size: 12px;
 }
 
+.zone-place-auto {
+    display: block;
+    color: #9ca3af;
+    font-size: 11px;
+}
+
 .type-virtual-badge {
     display: inline-block;
     margin-inline-start: 8px;

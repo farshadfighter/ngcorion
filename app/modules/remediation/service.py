@@ -19,6 +19,7 @@ reporting the problem: marking it fixed by hand only moves it to
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -196,6 +197,13 @@ def _audit_found(db: Session) -> Tuple[List[Found], Set[int], Set[str]]:
     return out, set(sessions), by_policy
 
 
+@lru_cache(maxsize=1)
+def _arch_rule_codes() -> frozenset:
+    """The architecture checks made now (the rule set is fixed for the life of the process)."""
+    from app.modules.architecture_validation.engine import load_rules
+    return frozenset(r["code"] for r in load_rules())
+
+
 def _arch_found(db: Session) -> List[Found]:
     assets = {a.id: a for a in db.query(Asset)}
     out = []
@@ -207,7 +215,7 @@ def _arch_found(db: Session) -> List[Found]:
             key=f"arch:{asset.id}:{f.rule_code}", source="arch", ref=f.rule_code, asset=asset,
             title=f.title, severity=_severity(f.severity), source_accepted=f.status in ("accepted", "ignored"),
             detail={"rule_code": f.rule_code, "category": f.category, "recommendation": f.recommendation,
-                    "finding_id": f.id, "source_status": f.status},
+                    "evidence": f.evidence, "finding_id": f.id, "source_status": f.status},
         ))
     return out
 
@@ -398,6 +406,8 @@ def sync(db: Session, now: Optional[datetime] = None) -> Dict[str, int]:
             reason = "no_data"
         elif item.key in by_policy:
             reason = "by_policy"
+        elif item.source == "arch" and item.ref not in _arch_rule_codes():
+            reason = "rule_retired"         # the check is no longer made (architecture_validation/rules)
         else:
             reason = "fixed"
         was_accepted = item.status == ITEM_ACCEPTED

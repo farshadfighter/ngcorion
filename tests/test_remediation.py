@@ -205,12 +205,12 @@ def test_deleted_asset_closes_its_items(db):
 
 def test_architecture_findings_follow_their_page_decision(db):
     asset = _asset(db)
-    f = ArchitectureFinding(rule_code="AV-012", title="Critical asset lacks redundancy", severity="high",
-                            category="topology", asset_id=asset.id, asset_name=asset.asset_name, status="open")
+    f = ArchitectureFinding(rule_code="AV-133", title="Critical asset connected to a single device", severity="high",
+                            category="availability", asset_id=asset.id, asset_name=asset.asset_name, status="open")
     db.add(f)
     db.flush()
     service.sync(db, now=datetime(2026, 9, 1))
-    item = _items(db, asset)[f"arch:{asset.id}:AV-012"]
+    item = _items(db, asset)[f"arch:{asset.id}:AV-133"]
     assert item.status == "open" and item.severity == "high"
     f.status = "ignored"
     db.flush()
@@ -221,7 +221,22 @@ def test_architecture_findings_follow_their_page_decision(db):
     db.flush()
     service.sync(db, now=datetime(2026, 9, 3))
     db.refresh(item)
-    assert item.status == "resolved"
+    assert item.status == "resolved" and item.closed_reason == "fixed"
+
+
+def test_a_retired_architecture_check_is_not_a_fix(db):
+    """AV-012 was an inventory-era check; its item closes as retired, not as fixed."""
+    asset = _asset(db)
+    f = ArchitectureFinding(rule_code="AV-012", title="Critical asset lacks redundancy", severity="high",
+                            category="topology", asset_id=asset.id, asset_name=asset.asset_name, status="open")
+    db.add(f)
+    db.flush()
+    service.sync(db, now=datetime(2026, 9, 1))
+    db.delete(f)
+    db.flush()
+    service.sync(db, now=datetime(2026, 9, 2))
+    item = _items(db, asset)[f"arch:{asset.id}:AV-012"]
+    assert item.status == "resolved" and item.closed_reason == "rule_retired"
 
 
 def _load_cve(db, asset):

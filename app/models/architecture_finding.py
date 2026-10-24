@@ -1,8 +1,8 @@
 """
 Architecture Finding Model
 
-Stores the results of an Architecture Validation run: one row per rule that
-matched an asset, with a workflow (open -> accepted | ignored) so a finding
+Stores the results of an Architecture Validation run (the topology against
+Cisco SAFE): one row per rule that matched an asset, with a workflow (open -> accepted | ignored) so a finding
 doesn't have to be re-triaged on every re-run.
 """
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
@@ -22,6 +22,8 @@ class ArchitectureFinding(Base):
     severity = Column(String(20), nullable=False, default="medium")  # low | medium | high
     category = Column(String(50), nullable=True)
     recommendation = Column(Text, nullable=True)
+    # What the topology shows: the unfiltered path, the link, the assets cut off (rules/safe.yaml, evidence)
+    evidence = Column(Text, nullable=True)
 
     asset_id = Column(
         Integer,

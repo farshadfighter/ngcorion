@@ -1,5 +1,5 @@
 /**
- * Redux slice: architecture findings, analysis, accept and ignore.
+ * Redux slice: architecture findings (the topology against Cisco SAFE), the checks, analysis, accept and ignore.
  */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
@@ -18,6 +18,18 @@ export const fetchFindings = createAsyncThunk(
             if (status) params.status = status;
             if (severity) params.severity = severity;
             const res = await api.get("/api/architecture-validation/findings", { params });
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(apiErrorDetail(err, t("Failed to load findings")));
+        }
+    }
+);
+
+export const fetchRules = createAsyncThunk(
+    "architectureValidation/fetchRules",
+    async (_arg, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/api/architecture-validation/rules");
             return res.data;
         } catch (err) {
             return rejectWithValue(apiErrorDetail(err, t("Failed to load findings")));
@@ -69,6 +81,7 @@ const architectureValidationSlice = createSlice({
     name: "architectureValidation",
     initialState: {
         findings: [],
+        rules: [],
         isLoading: false,
         isAnalyzing: false,
         error: null,
@@ -86,6 +99,8 @@ const architectureValidationSlice = createSlice({
             .addCase(fetchFindings.pending, (state) => { state.isLoading = true; state.error = null; })
             .addCase(fetchFindings.fulfilled, (state, action) => { state.isLoading = false; state.findings = action.payload; })
             .addCase(fetchFindings.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+
+            .addCase(fetchRules.fulfilled, (state, action) => { state.rules = action.payload; })
 
             .addCase(runAnalysis.pending, (state) => { state.isAnalyzing = true; state.error = null; })
             .addCase(runAnalysis.fulfilled, (state, action) => {

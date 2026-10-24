@@ -13,6 +13,7 @@ import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
 import { t, n } from "../../i18n";
+import { PLACE_LABEL } from "../ArchitectureValidation/architectureFormat.js";
 
 const DescriptionModal = ({ description, zoneName, onClose }) => {
     return (
@@ -296,6 +297,7 @@ export const NetworkZoneTab = () => {
                             <th onClick={() => handleSort("score")} style={{ cursor: "pointer" }}>
                                 {t("Exposure score")}{renderSortIcon("score")}
                             </th>
+                            <th>{t("Place in the network")}</th>
                             <th>{t("Description")}</th>
                             <th>{t("Actions")}</th>
                         </tr>
@@ -303,7 +305,7 @@ export const NetworkZoneTab = () => {
                         <tbody>
                         {paged.length === 0 ? (
                             <tr>
-                                <td colSpan="6" className="no-data">
+                                <td colSpan="7" className="no-data">
                                     {t("No zones found")}
                                 </td>
                             </tr>
@@ -321,6 +323,10 @@ export const NetworkZoneTab = () => {
                                     <td>{n((page - 1) * pageSize + index + 1)}</td>
                                     <td>{item.zone_name}</td>
                                     <td>{item.score != null ? n(item.score) : "-"}</td>
+                                    <td>
+                                        {item.place_in_effect ? PLACE_LABEL[item.place_in_effect] : "-"}
+                                        {item.place_in_effect && !item.place && <span className="zone-place-auto">{t("from the name")}</span>}
+                                    </td>
                                     <td>
                                         {item.description ? (
                                             <button style={{paddingInlineStart:"35px",}}

@@ -189,6 +189,8 @@ def _zone_to_dict(zone: RiskZone) -> dict:
         "name": zone.name,
         "description": zone.description,
         "score": _num(zone.score),
+        "place": zone.place,
+        "place_in_effect": zone.place_in_effect,
         "status": zone.status,
         "created_at": _dt(zone.created_at),
         "updated_at": _dt(zone.updated_at),

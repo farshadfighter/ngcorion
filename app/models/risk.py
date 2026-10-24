@@ -56,6 +56,9 @@ class RiskZone(Base):
     name = Column(String(100), unique=True, nullable=False)
     description = Column(String(500), nullable=True)
     score = Column(Numeric(5, 2), nullable=False)  # 0-100 exposure score
+    # Cisco SAFE place in the network; None = read from the name
+    # (app/modules/architecture_validation/places.py)
+    place = Column(String(20), nullable=True)
     status = Column(String(30), default="active", nullable=False)  # active, disabled
     created_by = Column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -71,6 +74,12 @@ class RiskZone(Base):
     risk_profiles = relationship("AssetRiskProfile", back_populates="zone")
     # Asset List's name for it (the zone list there is this one; app/models/asset_zone.py)
     zone_name = synonym("name")
+
+    @property
+    def place_in_effect(self):
+        """The zone's place in the network: the one chosen, else the one its name says."""
+        from app.modules.architecture_validation.places import place_of
+        return place_of(self)
 
 
 # Per-asset risk inputs: business criticality + assigned network zone

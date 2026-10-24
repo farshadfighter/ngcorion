@@ -40,6 +40,7 @@ export const CLOSED_REASON = {
     asset_deleted: t("The asset was deleted"),
     no_data: t("Its audit history was cleared"),
     by_policy: t("The benchmark policy does not require this check"),
+    rule_retired: t("Architecture Validation no longer makes this check"),
 };
 
 const DAY = 86400000;

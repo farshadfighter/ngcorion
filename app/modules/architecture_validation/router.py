@@ -1,8 +1,8 @@
 """
 Architecture Validation Router
 
-Runs the rule engine over every asset and manages the resulting findings
-(open -> accepted | ignored).
+Checks the topology against Cisco SAFE (rules/safe.yaml) for every asset and
+manages the resulting findings (open -> accepted | ignored).
 """
 import logging
 from typing import Optional
@@ -17,7 +17,9 @@ from app.modules.architecture_validation.schemas import (
     ArchitectureFindingSummary,
     AnalyzeResult,
     ResolveFindingRequest,
+    RuleInfo,
 )
+from app.modules.architecture_validation.engine import load_rules
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,14 @@ def analyze(
     findings = ArchitectureValidationService.analyze(db)
     asset_count = db.query(Asset).count()
     return AnalyzeResult(findings=findings, asset_count=asset_count, finding_count=len(findings))
+
+
+@router.get("/rules", response_model=list[RuleInfo])
+def list_rules(
+    current_user: User = Depends(require_permission("architecture_validation", "read")),
+):
+    """What is checked: every rule of the set, with its SAFE domain and place."""
+    return [RuleInfo(**{k: r.get(k) for k in RuleInfo.model_fields}) for r in load_rules()]
 
 
 @router.get("/findings", response_model=list[ArchitectureFindingSummary])

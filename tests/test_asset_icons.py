@@ -98,8 +98,10 @@ class TestResolveOrder:
         assert resolve_icon(asset("Generic Asset", vendor="American Power Conversion")) == "ups"
         assert resolve_icon(asset("Generic Asset", vendor="Rockwell Automation")) == "plc"
 
-    def test_role_counts_as_a_keyword(self):
-        assert resolve_icon(asset("Appliance", role="Perimeter firewall")) == "firewall"
+    def test_the_zone_is_not_a_keyword(self):
+        """asset_role holds the asset's network zone: a server in "Internet / Public" is a server."""
+        assert resolve_icon(asset("Server", role="Internet / Public")) == "server"
+        assert resolve_icon(asset("Appliance", role="Perimeter firewall")) == "other"
 
     def test_unknown_stored_values_are_ignored(self):
         assert resolve_icon(asset("Switch", type_icon="spaceship", icon="nope")) == "switch"

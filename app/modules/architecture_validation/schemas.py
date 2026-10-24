@@ -12,6 +12,7 @@ class ArchitectureFindingSummary(BaseModel):
     severity: str
     category: Optional[str]
     recommendation: Optional[str]
+    evidence: Optional[str] = None
     asset_id: Optional[int]
     asset_name: Optional[str]
     status: str
@@ -33,3 +34,14 @@ class AnalyzeResult(BaseModel):
 class ResolveFindingRequest(BaseModel):
     """Body of ignoring a finding: an optional reason."""
     reason: Optional[str] = None
+
+
+class RuleInfo(BaseModel):
+    """One check of the rule set (rules/safe.yaml), for the page's list of what is checked."""
+    code: str
+    title: str
+    severity: str
+    category: Optional[str] = None
+    place: Optional[str] = None
+    evidence_label: Optional[str] = None
+    recommendation: Optional[str] = None

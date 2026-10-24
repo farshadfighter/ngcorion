@@ -12,6 +12,7 @@ import {
     updateVendor,
 } from "../../store/requirementSlice";
 import { t } from "../../i18n";
+import { PLACES } from "../ArchitectureValidation/architectureFormat.js";
 
 /**
  * One edit dialog for all six requirement tabs.
@@ -64,6 +65,9 @@ const REQUIREMENT_FORMS = {
             { name: "zone_name", label: t("Zone Name"), required: true },
             { name: "score", label: t("Exposure score (0-100)"), type: "number", min: 0, max: 100,
               hint: t("How exposed an asset in this zone is; its risk score uses it. A change recalculates the zone's assets.") },
+            { name: "place", label: t("Place in the network (Cisco SAFE)"), type: "select",
+              options: [["", t("From the zone's name")], ...PLACES],
+              hint: t("Architecture Validation checks the firewalls between places by it.") },
             { name: "description", label: t("Description"), type: "textarea" },
         ],
     },
@@ -166,6 +170,13 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
                                         value={form[f.name]}
                                         onChange={(e) => setField(f.name, e.target.value)}
                                     />
+                                ) : f.type === "select" ? (
+                                    <select
+                                        value={form[f.name] ?? ""}
+                                        onChange={(e) => setField(f.name, e.target.value)}
+                                    >
+                                        {f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                    </select>
                                 ) : f.type === "virtual" ? (
                                     <select
                                         value={form[f.name] ? "virtual" : "physical"}

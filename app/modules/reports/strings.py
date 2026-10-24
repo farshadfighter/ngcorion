@@ -57,7 +57,8 @@ def collect() -> Set[str]:
     found.update(templates3.TLS_PROBLEM.values())
     found.update(templates3.TLS_LEVEL.values())
     found.update(["System administrator", "Manager", "User", "Guest", "Redundancy", "Exposure", "Best practice", "Inventory",
-                  "Topology", "Resilience", "Compliance"])
+                  "Topology", "Resilience", "Compliance", "Segmentation", "Threat defense", "Management",
+                  "Availability", "Visibility", "What the topology shows"])
     from app.modules.alerts.events import EVENTS
     found.update(e.name for e in EVENTS.values())
     from app.modules.architecture_validation.engine import load_rules

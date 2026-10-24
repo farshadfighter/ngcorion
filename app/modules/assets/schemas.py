@@ -361,13 +361,26 @@ class NetworkZoneCreate(BaseModel):
     zone_name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     score: Optional[float] = Field(None, ge=0, le=100)
+    # Cisco SAFE place in the network (architecture_validation/places.py); "" = read from the name
+    place: Optional[str] = None
+
+    @field_validator("place")
+    @classmethod
+    def _known_place(cls, value):
+        from app.modules.architecture_validation.places import PLACES
+        if value not in (None, "") and value not in PLACES:
+            raise ValueError(f"place is one of: {', '.join(PLACES)}")
+        return value
 
 class NetworkZoneResponse(BaseModel):
-    """A network zone."""
+    """A network zone. `place` is the place chosen on it, `place_in_effect` the one Architecture
+    Validation uses (the chosen one, else the one its name says)."""
     id: int
     zone_name: str
     description: Optional[str] = None
     score: float
+    place: Optional[str] = None
+    place_in_effect: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

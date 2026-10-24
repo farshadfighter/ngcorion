@@ -8,7 +8,8 @@ returned key to a glyph (front/src/components/shared/assetIcons.js).
 Order, first hit wins:
   1. the asset's own icon (an explicit per-asset override)
   2. the icon chosen on its Asset Type
-  3. keywords in the asset type name and the asset role
+  3. keywords in the asset type name (not asset_role: it holds the asset's network zone, and a
+     server in "Internet / Public" is not an Internet link; app/models/asset_zone.py)
   4. keywords in the operating system   (Ubuntu -> linux, FortiOS -> firewall)
   5. keywords in the manufacturer       (Fortinet -> firewall, Synology -> storage)
   6. "other"
@@ -123,7 +124,7 @@ def resolve_icon(asset, use_override: bool = True) -> str:
         return asset_type.icon
     type_name = asset_type.type_name if asset_type is not None else None
     return (
-        _match(_NAME_RULES, type_name, getattr(asset, "asset_role", None))
+        _match(_NAME_RULES, type_name)
         or _match(_OS_RULES, getattr(asset, "os_name", None))
         or _match(_VENDOR_RULES, getattr(asset, "manufacturer", None))
         or "other"

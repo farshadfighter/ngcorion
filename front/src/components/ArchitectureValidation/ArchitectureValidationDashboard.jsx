@@ -1,20 +1,24 @@
 /**
- * Architecture Validation page: runs the rule engine over the inventory and topology and lists the
- * findings, which can be accepted or ignored with a reason.
+ * Architecture Validation page: checks the topology against Cisco SAFE - segmentation between places in
+ * the network, the Internet edge, the management network, redundant paths - and lists what it finds,
+ * grouped by check, with what the topology shows (the unfiltered path, the link, the assets cut off).
+ * A finding can be accepted, or ignored with a reason; "What is checked" lists every check.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
     fetchFindings,
+    fetchRules,
     runAnalysis,
     acceptFinding,
     ignoreFinding,
     clearMessages,
 } from "../../store/architectureValidationSlice.jsx";
 import "../../assets/ArchitectureValidation.css";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 import { tb, tv } from "../../i18n/backendText";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
+import { DOMAINS, DOMAIN_LABEL, PLACE_LABEL, countByDomain, evidenceText, groupByRule } from "./architectureFormat.js";
 
 const STATUS_TABS = [
     { key: "open", label: t("Open") },
@@ -24,23 +28,32 @@ const STATUS_TABS = [
 ];
 
 const EMPTY_TEXT = {
-    open: t("No open findings. Click \"Run Analysis\" to check every asset against the architecture rule set."),
-    accepted: t("No accepted findings. Click \"Run Analysis\" to check every asset against the architecture rule set."),
-    ignored: t("No ignored findings. Click \"Run Analysis\" to check every asset against the architecture rule set."),
-    "": t("No findings. Click \"Run Analysis\" to check every asset against the architecture rule set."),
+    open: t("No open findings. \"Run Analysis\" checks the topology against Cisco SAFE."),
+    accepted: t("No accepted findings."),
+    ignored: t("No ignored findings."),
+    "": t("No findings. \"Run Analysis\" checks the topology against Cisco SAFE."),
 };
 
-const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 };
 const SEVERITY_CLASS = { low: "av-badge-low", medium: "av-badge-medium", high: "av-badge-high" };
+
+const Chips = ({ rule }) => (
+    <span className="av-chips">
+        {rule.category && <span className="av-chip">{DOMAIN_LABEL[rule.category] || tv(rule.category)}</span>}
+        {rule.place && <span className="av-chip av-chip-place">{PLACE_LABEL[rule.place] || rule.place}</span>}
+    </span>
+);
 
 export const ArchitectureValidationDashboard = () => {
     const dispatch = useDispatch();
-    const { findings, isLoading, isAnalyzing, error, successMessage, lastRun } = useSelector(
+    const { findings, rules, isLoading, isAnalyzing, error, successMessage, lastRun } = useSelector(
         (state) => state.architectureValidation
     );
+    const [view, setView] = useState("findings");
     const [statusFilter, setStatusFilter] = useState("open");
     const [ignoringId, setIgnoringId] = useState(null);
     const [ignoreReason, setIgnoreReason] = useState("");
+
+    useEffect(() => { dispatch(fetchRules()); }, [dispatch]);
 
     useEffect(() => {
         dispatch(fetchFindings({ status: statusFilter || undefined }));
@@ -56,32 +69,40 @@ export const ArchitectureValidationDashboard = () => {
         dispatch(runAnalysis()).then(() => dispatch(fetchFindings({ status: statusFilter || undefined })));
     };
 
-    const handleAccept = (id) => dispatch(acceptFinding(id));
-
     const handleIgnoreConfirm = () => {
         dispatch(ignoreFinding({ findingId: ignoringId, reason: ignoreReason || undefined }));
         setIgnoringId(null);
         setIgnoreReason("");
     };
 
-    const sortedFindings = [...findings].sort(
-        (a, b) => (SEVERITY_ORDER[a.severity] ?? 3) - (SEVERITY_ORDER[b.severity] ?? 3)
-    );
+    const groups = useMemo(() => groupByRule(findings, rules), [findings, rules]);
+    const perDomain = useMemo(() => countByDomain(findings), [findings]);
 
     return (
         <div className="av-container">
             <div className="rep-shortcut-row"><ReportShortcut template="architecture" className="bkm-btn bkm-btn-sm" /></div>
+            <p className="av-intro">
+                {t("Checks the topology against Cisco SAFE: traffic between places of different trust (Internet, DMZ, users, guests, data center, management) passes a firewall, the edge and the paths to critical assets are redundant. Each asset's place comes from its network zone.")}
+            </p>
+
+            {statusFilter === "open" && view === "findings" && (
+                <div className="av-domains">
+                    {DOMAINS.map(([key, label]) => (
+                        <div key={key} className={`av-domain ${perDomain[key] ? "av-domain-hit" : ""}`}>
+                            <b>{n(perDomain[key])}</b><span>{label}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <div className="av-toolbar">
                 <div className="av-tabs">
-                    {STATUS_TABS.map((tab) => (
-                        <button
-                            key={tab.key}
-                            className={`av-tab ${statusFilter === tab.key ? "active" : ""}`}
-                            onClick={() => setStatusFilter(tab.key)}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+                    <button className={`av-tab ${view === "findings" ? "active" : ""}`} onClick={() => setView("findings")}>
+                        {t("Findings")}
+                    </button>
+                    <button className={`av-tab ${view === "rules" ? "active" : ""}`} onClick={() => setView("rules")}>
+                        {t("What is checked")}
+                    </button>
                 </div>
                 <div className="av-toolbar-actions">
                     {lastRun && (
@@ -90,7 +111,7 @@ export const ArchitectureValidationDashboard = () => {
                         </span>
                     )}
                     <button className="av-btn av-btn-primary" onClick={handleAnalyze} disabled={isAnalyzing}>
-                        <i className="fa-solid fa-clipboard-check" /> {isAnalyzing ? t("Analyzing…") : t("Run Analysis")}
+                        <i className="fa-solid fa-diagram-project" /> {isAnalyzing ? t("Analyzing…") : t("Run Analysis")}
                     </button>
                 </div>
             </div>
@@ -101,61 +122,102 @@ export const ArchitectureValidationDashboard = () => {
                 </div>
             )}
 
-            <div className="av-table-container">
-                {isLoading ? (
-                    <div className="av-empty">{t("Loading findings…")}</div>
-                ) : sortedFindings.length === 0 ? (
-                    <div className="av-empty">
-                        {EMPTY_TEXT[statusFilter]}
-                    </div>
-                ) : (
+            {view === "rules" ? (
+                <div className="av-table-container av-scroll">
                     <table className="av-table">
                         <thead>
                             <tr>
                                 <th>{t("Severity")}</th>
-                                <th>{t("Rule")}</th>
-                                <th>{t("Asset")}</th>
-                                <th>{t("Category")}</th>
+                                <th>{t("Check")}</th>
+                                <th>{t("SAFE domain and place")}</th>
                                 <th>{t("Recommendation")}</th>
-                                {statusFilter === "open" && <th>{t("Actions")}</th>}
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedFindings.map((f) => (
-                                <tr key={f.id}>
+                            {rules.map((r) => (
+                                <tr key={r.code}>
+                                    <td><span className={`av-badge ${SEVERITY_CLASS[r.severity] || ""}`}>{tv(r.severity)}</span></td>
                                     <td>
-                                        <span className={`av-badge ${SEVERITY_CLASS[f.severity] || ""}`}>
-                                            {tv(f.severity)}
-                                        </span>
+                                        <div className="av-rule-code">{r.code}</div>
+                                        <div className="av-rule-title">{tb(r.title)}</div>
                                     </td>
-                                    <td>
-                                        <div className="av-rule-code">{f.rule_code}</div>
-                                        <div className="av-rule-title bidi-auto">{tb(f.title)}</div>
-                                    </td>
-                                    <td>{f.asset_name || "—"}</td>
-                                    <td>{tv(f.category) || "—"}</td>
-                                    <td className="av-recommendation bidi-auto">{tb(f.recommendation) || "—"}</td>
-                                    {statusFilter === "open" && (
-                                        <td>
-                                            <div className="av-row-actions">
-                                                <button className="av-link-btn" onClick={() => handleAccept(f.id)}>
-                                                    {t("Accept")}
-                                                </button>
-                                                <button
-                                                    className="av-link-btn av-link-btn-muted"
-                                                    onClick={() => setIgnoringId(f.id)}
-                                                >
-                                                    {t("Ignore")}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    )}
+                                    <td><Chips rule={r} /></td>
+                                    <td className="av-recommendation">{tb(r.recommendation)}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                )}
-            </div>
+                </div>
+            ) : (
+                <>
+                    <div className="av-tabs av-status-tabs">
+                        {STATUS_TABS.map((tab) => (
+                            <button
+                                key={tab.key}
+                                className={`av-tab av-tab-sm ${statusFilter === tab.key ? "active" : ""}`}
+                                onClick={() => setStatusFilter(tab.key)}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                    {isLoading ? (
+                        <div className="av-table-container"><div className="av-empty">{t("Loading findings…")}</div></div>
+                    ) : groups.length === 0 ? (
+                        <div className="av-table-container"><div className="av-empty">{EMPTY_TEXT[statusFilter]}</div></div>
+                    ) : (
+                        <div className="av-groups">
+                            {groups.map(({ rule, findings: rows }) => (
+                                <section key={rule.code} className="av-group">
+                                    <header className="av-group-head">
+                                        <span className={`av-badge ${SEVERITY_CLASS[rule.severity] || ""}`}>{tv(rule.severity)}</span>
+                                        <span className="av-rule-code">{rule.code}</span>
+                                        <h3 className="av-rule-title">{tb(rule.title)}</h3>
+                                        <Chips rule={rule} />
+                                        <span className="av-group-count">{t("{{total}} asset(s)", { total: n(rows.length) })}</span>
+                                    </header>
+                                    {rule.recommendation && <p className="av-recommendation">{tb(rule.recommendation)}</p>}
+                                    <div className="av-scroll">
+                                        <table className="av-table av-table-compact">
+                                            <tbody>
+                                                {rows.map((f) => (
+                                                    <tr key={f.id}>
+                                                        <td className="av-asset">{f.asset_name || "—"}</td>
+                                                        <td className="av-evidence-cell">
+                                                            {f.evidence ? (
+                                                                <>
+                                                                    {rule.evidence_label && <span className="av-evidence-label">{tb(rule.evidence_label)}</span>}
+                                                                    <span className="av-evidence" dir="ltr">{evidenceText(f.evidence)}</span>
+                                                                </>
+                                                            ) : null}
+                                                        </td>
+                                                        <td className="av-row-end">
+                                                            {f.status === "open" ? (
+                                                                <div className="av-row-actions">
+                                                                    <button className="av-link-btn" onClick={() => dispatch(acceptFinding(f.id))}>
+                                                                        {t("Accept")}
+                                                                    </button>
+                                                                    <button className="av-link-btn av-link-btn-muted" onClick={() => setIgnoringId(f.id)}>
+                                                                        {t("Ignore")}
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="av-decided" title={f.ignored_reason || ""}>
+                                                                    {f.status === "accepted" ? t("Accepted") : t("Ignored")}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
 
             {ignoringId !== null && (
                 <div className="av-modal-backdrop" onClick={() => setIgnoringId(null)}>

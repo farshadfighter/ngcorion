@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createZone } from "../../store/requirementSlice";
 import { t } from "../../i18n";
+import { PLACES } from "../ArchitectureValidation/architectureFormat.js";
 
 export const NetworkZoneModal = ({ onClose }) => {
     const dispatch = useDispatch();
@@ -12,6 +13,7 @@ export const NetworkZoneModal = ({ onClose }) => {
     const [formData, setFormData] = useState({
         zone_name: "",
         score: "",
+        place: "",
         description: "",
     });
 
@@ -99,6 +101,15 @@ export const NetworkZoneModal = ({ onClose }) => {
                         {errors.score && (
                             <span className="error-message">{errors.score}</span>
                         )}
+                    </div>
+
+                    <div className="form-group">
+                        <label>{t("Place in the network (Cisco SAFE)")}</label>
+                        <select name="place" value={formData.place} onChange={handleChange}>
+                            <option value="">{t("From the zone's name")}</option>
+                            {PLACES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                        <span className="field-hint">{t("Architecture Validation checks the firewalls between places by it.")}</span>
                     </div>
 
                     <div className="form-group">

@@ -93,6 +93,9 @@ export function RemediationDrawer({ itemId, canWrite, onClose, onChanged }) {
                                     <div className="bkm-kv"><span>{t("Check")}</span><b className="bkm-mono">{d.check_number}{d.vdom ? ` · ${d.vdom}` : ""}</b></div>
                                     {d.evidence && <pre className="rem-evidence">{d.evidence}</pre>}
                                 </>}
+                                {item.source === "arch" && d.evidence && (
+                                    <div className="bkm-kv"><span>{t("What the topology shows")}</span><b dir="ltr" className="bkm-mono">{d.evidence}</b></div>
+                                )}
                                 {item.source === "arch" && d.recommendation && (
                                     <div className="bkm-kv"><span>{t("Recommendation")}</span><b className="bidi-auto">{itemTitle({ ...item, title: d.recommendation })}</b></div>
                                 )}

@@ -275,3 +275,202 @@
     gap: 10px;
     margin-top: 16px;
 }
+
+/* ── The topology against Cisco SAFE: findings grouped by check ── */
+
+.av-intro {
+    margin: 0 0 16px;
+    max-width: 920px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: #4b5563;
+}
+
+.av-domains {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.av-domain {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 14px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.av-domain b {
+    font-size: 22px;
+    color: #9ca3af;
+    font-variant-numeric: tabular-nums;
+}
+
+.av-domain span {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.av-domain-hit b {
+    color: #b91c1c;
+}
+
+.av-status-tabs {
+    margin-bottom: 14px;
+}
+
+.av-tab-sm {
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+.av-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.av-group {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 14px 16px 6px;
+    min-width: 0;
+}
+
+.av-group-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+}
+
+.av-group-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.av-group-count {
+    margin-inline-start: auto;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.av-group .av-recommendation {
+    max-width: none;
+    margin: 8px 0 6px;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.av-chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.av-chip {
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: #1e3a5f;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.av-chip-place {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.av-scroll {
+    overflow-x: auto;
+}
+
+.av-table-compact td {
+    padding: 9px 4px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.av-table-compact tr {
+    border-top: 1px solid #f3f4f6;
+}
+
+.av-asset {
+    font-weight: 600;
+    white-space: nowrap;
+    width: 1%;
+    padding-inline-end: 18px !important;
+}
+
+.av-evidence-cell {
+    min-width: 0;
+}
+
+.av-evidence-label {
+    display: block;
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.av-evidence {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: #1e3a5f;
+    unicode-bidi: isolate;
+    word-break: break-word;
+}
+
+.av-row-end {
+    width: 1%;
+    white-space: nowrap;
+    text-align: end;
+}
+
+.av-decided {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+@media (max-width: 640px) {
+    .av-container {
+        padding: 16px;
+    }
+    .av-toolbar-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .av-group-count {
+        margin-inline-start: 0;
+    }
+    /* each finding: the asset and its actions on one line, the evidence under them */
+    .av-table-compact,
+    .av-table-compact tbody {
+        display: block;
+    }
+    .av-table-compact tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 12px;
+        padding: 10px 0;
+    }
+    .av-table-compact td {
+        display: block;
+        width: auto;
+        padding: 0 !important;
+    }
+    .av-table-compact .av-asset {
+        flex: 1 1 auto;
+    }
+    .av-table-compact .av-evidence-cell {
+        order: 3;
+        flex: 1 1 100%;
+    }
+}

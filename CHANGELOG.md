@@ -4,6 +4,33 @@
 
 ### Fixes
 
+- Architecture Validation checks the topology against Cisco SAFE, and only
+  the topology. Most of its checks were about the inventory, backups and
+  audits (no IP, no owner, never audited ...), which other modules cover.
+  - Rules (rules/safe.yaml, AV-101 to AV-141), by SAFE domain:
+    segmentation (an unfiltered path - over active links, past no firewall -
+    from the Internet, the DMZ, the guest network, users or a lab to hosts of
+    more trusted places; servers and user devices in the wrong place),
+    management (the management network reachable without a firewall),
+    threat defense at the edge (one edge firewall), availability (one
+    Internet connection, single points of failure with the assets they cut
+    off, servers and critical assets on one device, single uplinks, links
+    down or no longer reported over LLDP/CDP) and visibility (devices not
+    in the topology, places unknown).
+  - Each asset's place in the network comes from its zone: Network Zones
+    has a "Place in the network (Cisco SAFE)" choice, read from the zone's
+    name when not chosen ("DMZ" is the Edge, "Internal Server Zone" the Data
+    Center).
+  - A finding shows what the topology shows: the path, the only link, the
+    assets cut off. The page groups findings by check, counts open ones per
+    SAFE domain, and lists every check under "What is checked". The report
+    has the evidence too.
+  - Migration f5a7c9e1b3d4 adds architecture_findings.evidence and
+    risk_zones.place, and removes the findings of the retired checks;
+    Remediation closes their items as "Architecture Validation no longer
+    makes this check", not as fixed.
+- Asset icons no longer read the asset's zone as a keyword (a server in
+  "Internet / Public" was drawn as an Internet link).
 - One list of network zones. Asset List's zones (network_zones) and the
   zones Risk scores (risk_zones) were two lists: a zone set on an asset in
   Asset List ("Data Center", a new "Edge") counted in Risk only when a risk

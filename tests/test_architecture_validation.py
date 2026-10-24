@@ -1,4 +1,5 @@
-"""Tests for the Architecture Validation module (rule engine + findings workflow).
+"""Tests for the Architecture Validation module: the rule engine, the topology checked against
+Cisco SAFE (rules/safe.yaml, topology.py, places.py) and the findings workflow.
 
 Needs a migrated PostgreSQL database; each test runs inside a transaction that
 is rolled back, so nothing here touches real rows (same pattern as
@@ -12,6 +13,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from datetime import datetime
+
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import event
@@ -21,7 +24,9 @@ from app.core.database import engine
 from app.models.asset import Asset
 from app.models.asset_types import AssetType
 from app.models.architecture_finding import ArchitectureFinding
-from app.models.backup import DeviceBackup
+from app.models.asset_zone import find_zone
+from app.models.risk import RiskZone
+from app.models.topology import TopologyLink
 from app.models.user import User
 from app.modules.architecture_validation.engine import (
     evaluate_condition,
@@ -29,8 +34,8 @@ from app.modules.architecture_validation.engine import (
     load_rules,
     RuleConditionError,
 )
+from app.modules.architecture_validation.places import place_from_name, place_of
 from app.modules.architecture_validation.service import ArchitectureValidationService
-from app.modules.topology.service import TopologyService
 
 
 @pytest.fixture
@@ -70,11 +75,20 @@ def user(db) -> User:
     return row
 
 
-def _make_asset(db, **overrides) -> Asset:
-    asset_type = AssetType(type_name=f"AVType_{_next()}", category="server")
+_types = {}
+
+
+def _make_asset(db, kind: str = "Server", zone: str = None, **overrides) -> Asset:
+    """An asset of a type named `kind` ("Firewall", "Switch", "Server", "ISP Link", ...) in `zone`."""
+    name = f"{kind} {_next()}"
+    asset_type = AssetType(type_name=name, category="network")
     db.add(asset_type)
     db.flush()
-    defaults = dict(asset_name=f"av-asset-{_next()}", asset_type_id=asset_type.id)
+    if zone and find_zone(db, zone) is None:
+        db.add(RiskZone(name=zone, score=50, status="active"))
+        db.flush()
+    defaults = dict(asset_name=f"av-{kind.split()[0].lower()}-{_seq[0]}", asset_type_id=asset_type.id,
+                    asset_role=zone)
     defaults.update(overrides)
     row = Asset(**defaults)
     db.add(row)
@@ -82,24 +96,38 @@ def _make_asset(db, **overrides) -> Asset:
     return row
 
 
+def _link(db, a, b, status="active", a_if=None, b_if=None):
+    db.add(TopologyLink(source_asset_id=a.id, destination_asset_id=b.id, status=status,
+                        source_interface=a_if, destination_interface=b_if))
+    db.flush()
+
+
+def _found(db) -> dict:
+    """{(rule code, asset name): evidence} of one analysis run."""
+    return {(f.rule_code, f.asset_name): f.evidence for f in ArchitectureValidationService.analyze(db)}
+
+
+INTERNET, DMZ, DC, USERS, MGMT = "Internet / Public", "DMZ", "Internal Server Zone", "User Network", "Management"
+
+
 # ======================================================================
 # Engine: condition evaluation
 # ======================================================================
 
 def test_evaluate_condition_basic_comparison():
-    assert evaluate_condition("topology_degree == 0", {"topology_degree": 0}) is True
-    assert evaluate_condition("topology_degree == 0", {"topology_degree": 2}) is False
+    assert evaluate_condition("links == 0", {"links": 0}) is True
+    assert evaluate_condition("links == 0", {"links": 2}) is False
 
 
 def test_evaluate_condition_boolean_ops():
-    ctx = {"is_critical": True, "has_backup": False}
-    assert evaluate_condition("is_critical and not has_backup", ctx) is True
-    assert evaluate_condition("is_critical and has_backup", ctx) is False
+    ctx = {"is_critical": True, "in_topology": False}
+    assert evaluate_condition("is_critical and not in_topology", ctx) is True
+    assert evaluate_condition("is_critical and in_topology", ctx) is False
 
 
 def test_evaluate_condition_in_operator():
-    assert evaluate_condition('risk_level in ("high", "critical")', {"risk_level": "high"}) is True
-    assert evaluate_condition('risk_level in ("high", "critical")', {"risk_level": "low"}) is False
+    assert evaluate_condition('place in ("campus", "guest")', {"place": "guest"}) is True
+    assert evaluate_condition('place in ("campus", "guest")', {"place": "data_center"}) is False
 
 
 def test_evaluate_condition_rejects_unknown_name():
@@ -119,9 +147,24 @@ def test_load_rules_are_all_unique_and_valid():
     assert len(codes) == len(set(codes)), "duplicate rule codes"
     for rule in rules:
         assert rule["severity"] in ("low", "medium", "high")
+        assert rule["category"] in ("segmentation", "threat_defense", "management", "availability", "visibility")
+        assert rule.get("place") in ("edge", "data_center", "campus", "branch", "management", "lab", None)
+        assert bool(rule.get("evidence")) == bool(rule.get("evidence_label"))
         # Every condition must at least parse.
         import ast as _ast
         _ast.parse(rule["condition"], mode="eval")
+
+
+def test_every_rule_reads_only_topology_facts(db):
+    """Every name a condition uses is a fact the topology gives (no inventory, backup or audit)."""
+    import ast as _ast
+    from app.modules.architecture_validation.topology import load
+    asset = _make_asset(db, "Server", DC)
+    context = ArchitectureValidationService.build_asset_context(asset, load(db).facts({})[asset.id])
+    for rule in load_rules():
+        names = {n.id for n in _ast.walk(_ast.parse(rule["condition"], mode="eval")) if isinstance(n, _ast.Name)}
+        assert names <= set(context), (rule["code"], names - set(context))
+        assert rule.get("evidence") is None or rule["evidence"] in context
 
 
 def test_run_rules_returns_only_matching_rules():
@@ -134,75 +177,161 @@ def test_run_rules_returns_only_matching_rules():
 
 
 # ======================================================================
-# Service: context building
+# Places in the network
 # ======================================================================
 
-def test_build_asset_context_no_ip_flags_missing(db):
-    asset = _make_asset(db, ip_address=None)
-    ctx = ArchitectureValidationService.build_asset_context(asset, 0, False, None)
-    assert ctx["ip_address"] is None
-    assert ctx["topology_degree"] == 0
-    assert ctx["has_backup"] is False
-    assert ctx["last_audit_status"] is None
-    assert ctx["days_since_audit"] is None
+def test_a_zone_says_its_place():
+    assert [place_from_name(n) for n in (INTERNET, DMZ, DC, USERS, MGMT, "Isolated / Lab", "Guest Wi-Fi",
+                                         "Data Center", "Edge", "Branch Tehran", "Unknown")] == [
+        "internet", "edge", "data_center", "campus", "management", "lab", "guest", "data_center", "edge",
+        "branch", None]
+    assert place_of(RiskZone(name="Core", place="data_center")) == "data_center"     # chosen wins
+    assert place_of(RiskZone(name="DMZ", place=None)) == "edge"
+
+
+def test_a_place_chosen_on_the_zone(db):
+    from app.modules.assets.service import AssetService
+    zone = AssetService.create_zone(db, {"zone_name": "Core Block", "score": 40, "place": "data_center"})
+    assert (zone.place, zone.place_in_effect) == ("data_center", "data_center")
+    zone, _ = AssetService.update_zone(db, zone.id, {"place": ""})          # back to the name: says nothing
+    assert (zone.place, zone.place_in_effect) == (None, None)
+    srv = _make_asset(db, "Server", "Core Block")
+    sw = _make_asset(db, "Switch", USERS)
+    _link(db, sw, srv)
+    assert ("AV-141", srv.asset_name) in _found(db)
+    AssetService.update_zone(db, zone.id, {"place": "data_center"})
+    assert ("AV-104", srv.asset_name) in _found(db)
 
 
 # ======================================================================
-# Service: full analyze() run
+# The topology against Cisco SAFE
 # ======================================================================
 
-def test_analyze_flags_orphan_asset_with_no_ip(db):
-    _make_asset(db, ip_address=None)
-    findings = ArchitectureValidationService.analyze(db)
-    codes = {f.rule_code for f in findings}
-    assert "AV-001" in codes  # no IP
-    assert "AV-010" in codes  # no topology links
+def test_a_flat_network_is_reachable_from_the_internet(db):
+    isp = _make_asset(db, "ISP Link", INTERNET)
+    core = _make_asset(db, "Switch", USERS)
+    srv = _make_asset(db, "Server", DC)
+    _link(db, isp, core)
+    _link(db, core, srv)
+    found = _found(db)
+    assert found[("AV-101", srv.asset_name)] == f"{isp.asset_name} -> {core.asset_name} -> {srv.asset_name}"
+    assert ("AV-104", srv.asset_name) in found                     # users reach the server too
+    assert found[("AV-121", core.asset_name)] == f"{isp.asset_name} - {core.asset_name}"
+    assert ("AV-132", srv.asset_name) in found                     # on one switch
 
 
-def test_analyze_flags_critical_asset_without_backup(db, user):
-    from app.models.enums import RiskLevelEnum
+def test_a_firewall_filters(db):
+    isp = _make_asset(db, "ISP Link", INTERNET)
+    fw = _make_asset(db, "Firewall", DMZ)
+    core = _make_asset(db, "Switch", USERS)
+    srv = _make_asset(db, "Server", DC)
+    for a, b in ((isp, fw), (fw, core), (fw, srv)):
+        _link(db, a, b)
+    found = _found(db)
+    assert not [k for k in found if k[0] in ("AV-101", "AV-104")]
+    assert ("AV-120", fw.asset_name) in found                      # but it is the only one
 
-    asset = _make_asset(db, ip_address="10.0.0.5", risk_level=RiskLevelEnum.CRITICAL)
-    findings = ArchitectureValidationService.analyze(db)
-    codes = {f.rule_code: f for f in findings if f.asset_id == asset.id}
-    assert "AV-020" in codes
+    fw2 = _make_asset(db, "Firewall", DMZ)
+    for a, b in ((isp, fw2), (fw2, core), (fw2, srv)):
+        _link(db, a, b)
+    assert ("AV-120", fw.asset_name) not in _found(db)
 
-    # Adding a backup and re-running should clear AV-020 for this asset.
-    db.add(DeviceBackup(asset_id=asset.id, config_content="hostname x", source="manual"))
+
+def test_the_dmz_and_guests_must_not_reach_inside(db):
+    web = _make_asset(db, "Server", DMZ)
+    ap = _make_asset(db, "Access Point", "Guest")
+    core = _make_asset(db, "Switch", USERS)
+    db_srv = _make_asset(db, "Server", DC)
+    jump = _make_asset(db, "Server", MGMT)
+    for a in (web, ap, db_srv, jump):
+        _link(db, a, core)
+    found = _found(db)
+    assert found[("AV-102", db_srv.asset_name)] == f"{web.asset_name} -> {core.asset_name} -> {db_srv.asset_name}"
+    assert ("AV-103", db_srv.asset_name) in found and ("AV-103", web.asset_name) in found
+    assert ("AV-105", jump.asset_name) in found
+
+
+def test_a_single_point_of_failure(db):
+    core = _make_asset(db, "Switch", USERS)
+    core2 = _make_asset(db, "Switch", USERS)
+    dist = _make_asset(db, "Switch", DC)
+    access = _make_asset(db, "Switch", DC)
+    srv = _make_asset(db, "Server", DC)
+    _link(db, core, core2)
+    _link(db, core, dist)
+    _link(db, core2, dist)
+    _link(db, dist, access)
+    _link(db, access, srv)
+    found = _found(db)
+    assert found[("AV-130", dist.asset_name)] == ", ".join(sorted([access.asset_name, srv.asset_name]))
+    assert ("AV-130", core.asset_name) not in found                # core2 is there when core fails
+    assert ("AV-134", access.asset_name) in found                  # one uplink
+
+
+def test_placement_links_down_and_what_cannot_be_checked(db):
+    sw = _make_asset(db, "Switch", USERS)
+    srv = _make_asset(db, "Server", USERS)                         # a server among users
+    pc = _make_asset(db, "Workstation", DC)                        # a PC in the data center
+    lonely = _make_asset(db, "Switch", USERS)
+    nowhere = _make_asset(db, "Server")
+    _link(db, sw, srv)
+    _link(db, sw, pc)
+    _link(db, sw, nowhere)
+    _link(db, sw, lonely, status="down", a_if="Gi1/0/1", b_if="Gi0/1")
+    found = _found(db)
+    assert ("AV-111", srv.asset_name) in found and ("AV-112", pc.asset_name) in found
+    assert found[("AV-135", sw.asset_name)] == f"{sw.asset_name} Gi1/0/1 - {lonely.asset_name} Gi0/1"
+    assert ("AV-141", nowhere.asset_name) in found
+    assert ("AV-140", lonely.asset_name) not in found              # its link is down, not missing
+    gone = _make_asset(db, "Server", USERS)                        # LLDP no longer reports its link
+    db.add(TopologyLink(source_asset_id=sw.id, destination_asset_id=gone.id, origin="lldp",
+                        missing_since=datetime(2026, 10, 1)))
     db.flush()
-    findings2 = ArchitectureValidationService.analyze(db)
-    codes2 = {f.rule_code for f in findings2 if f.asset_id == asset.id}
-    assert "AV-020" not in codes2
+    assert ("AV-135", sw.asset_name) in _found(db)
+    assert (sw.asset_name + " - " + gone.asset_name) in _found(db)[("AV-135", sw.asset_name)]
+    alone = _make_asset(db, "Router", USERS)
+    assert ("AV-140", alone.asset_name) in _found(db)
 
 
-def test_analyze_respects_topology_redundancy(db, user):
-    a = _make_asset(db, ip_address="10.0.0.1")
-    b = _make_asset(db, ip_address="10.0.0.2")
-    TopologyService.create_link(db, {"source_asset_id": a.id, "destination_asset_id": b.id}, user.id)
-
-    findings = ArchitectureValidationService.analyze(db)
-    codes_a = {f.rule_code for f in findings if f.asset_id == a.id}
-    assert "AV-010" not in codes_a  # has a link
-    assert "AV-011" in codes_a      # but only one -> no redundancy
+def test_only_topology_findings(db):
+    """An asset with no IP, owner, backup or audit, in a sound place, has nothing to fix here."""
+    fw = _make_asset(db, "Firewall", DMZ)
+    fw2 = _make_asset(db, "Firewall", DMZ)
+    srv = _make_asset(db, "Server", DC, ip_address=None)
+    _link(db, fw, srv)
+    _link(db, fw2, srv)
+    assert not [k for k in _found(db) if k[1] == srv.asset_name]
 
 
 def test_analyze_does_not_recreate_resolved_findings(db, user):
-    _make_asset(db, ip_address=None)
-    first_run = ArchitectureValidationService.analyze(db)
-    av001 = next(f for f in first_run if f.rule_code == "AV-001")
+    srv = _make_asset(db, "Server", DC)
+    first = [f for f in ArchitectureValidationService.analyze(db) if f.asset_name == srv.asset_name]
+    finding = next(f for f in first if f.rule_code == "AV-140")
+    ArchitectureValidationService.resolve_finding(db, finding, "accepted", user.id)
+    again = [f for f in ArchitectureValidationService.analyze(db) if f.asset_name == srv.asset_name]
+    assert all(f.rule_code != "AV-140" for f in again)
+    assert db.get(ArchitectureFinding, finding.id) is not None
 
-    ArchitectureValidationService.resolve_finding(db, av001, "accepted", user.id)
 
-    second_run = ArchitectureValidationService.analyze(db)
-    assert all(f.rule_code != "AV-001" for f in second_run)
-
-    # The accepted finding itself must still exist (not deleted).
-    assert db.query(ArchitectureFinding).filter(ArchitectureFinding.id == av001.id).first() is not None
+def test_retired_checks_go(db, user):
+    srv = _make_asset(db, "Server", DC)
+    old = ArchitectureFinding(rule_code="AV-021", title="Asset has never been audited", severity="medium",
+                              asset_id=srv.id, asset_name=srv.asset_name, status="accepted")
+    db.add(old)
+    db.flush()
+    ArchitectureValidationService.analyze(db)
+    assert db.query(ArchitectureFinding).filter(ArchitectureFinding.rule_code == "AV-021").count() == 0
 
 
 # ======================================================================
 # Router behaviour
 # ======================================================================
+
+def test_route_lists_the_rules(user):
+    from app.modules.architecture_validation.router import list_rules
+    rules = list_rules(current_user=user)
+    assert rules[0].code == "AV-101" and rules[0].evidence_label == "Unfiltered path"
+
 
 def test_route_accept_404s_for_missing_finding(db, user):
     from app.modules.architecture_validation.router import accept_finding as route
@@ -215,10 +344,26 @@ def test_route_accept_404s_for_missing_finding(db, user):
 def test_route_accept_marks_status(db, user):
     from app.modules.architecture_validation.router import accept_finding as route
 
-    _make_asset(db, ip_address=None)
+    _make_asset(db, "Router")
     findings = ArchitectureValidationService.analyze(db)
     finding = findings[0]
 
     result = route(finding_id=finding.id, current_user=user, db=db)
     assert result.status == "accepted"
     assert result.resolved_at is not None
+
+
+def test_every_rule_text_has_a_persian_translation():
+    """Titles, recommendations and evidence labels are shown translated (front/src/i18n/backendText.js)."""
+    import json
+    root = PROJECT_ROOT / "front" / "src" / "i18n"
+    registered = (root / "backendText.js").read_text()
+    persian = {}
+    for path in (root / "locales" / "fa").glob("*.json"):       # a text used elsewhere too sits in one file
+        persian.update(json.loads(path.read_text()))
+    for rule in load_rules():
+        for key in ("title", "recommendation", "evidence_label"):
+            text = rule.get(key)
+            if text:
+                assert f"msg({json.dumps(text, ensure_ascii=False)})" in registered, (rule["code"], key)
+                assert persian.get(text), (rule["code"], key)

@@ -1,0 +1,184 @@
+# Architecture Validation: the topology against Cisco SAFE.
+#
+# Each rule's `condition` is a boolean expression over what the topology says about one asset
+# (topology.py, Topology.facts; service.py, build_asset_context). A rule fires - producing a finding
+# for that asset - when its condition is true. `evidence` names the fact shown with the finding (the
+# path, the link, the assets cut off) under `evidence_label`. `domain` is the SAFE secure domain or
+# design concern, `place` the SAFE place in the network the rule is about (none: anywhere).
+
+# ── Segmentation: traffic between places of different trust passes a firewall ──
+
+- code: AV-101
+  title: Reachable from the Internet without a firewall
+  severity: high
+  category: segmentation
+  place: edge
+  condition: "path_from_internet is not None"
+  evidence: path_from_internet
+  evidence_label: Unfiltered path
+  recommendation: "Put an edge firewall between the Internet and this asset; SAFE's Edge filters every flow from outside before it reaches a host."
+
+- code: AV-102
+  title: The DMZ reaches the inside without a firewall
+  severity: high
+  category: segmentation
+  place: edge
+  condition: "path_from_edge is not None"
+  evidence: path_from_edge
+  evidence_label: Unfiltered path
+  recommendation: "Separate the DMZ from the inside with a firewall; a compromised public server must not reach internal hosts directly."
+
+- code: AV-103
+  title: The guest network reaches other networks without a firewall
+  severity: high
+  category: segmentation
+  place: campus
+  condition: "path_from_guest is not None"
+  evidence: path_from_guest
+  evidence_label: Unfiltered path
+  recommendation: "Give guests Internet access only: send guest traffic through a firewall (or a separate VRF to the edge) that blocks every inside network."
+
+- code: AV-104
+  title: Users reach the data center without a firewall
+  severity: medium
+  category: segmentation
+  place: data_center
+  condition: "path_from_users is not None"
+  evidence: path_from_users
+  evidence_label: Unfiltered path
+  recommendation: "Put a data center firewall between the user networks and the servers; SAFE's Data Center allows users only the services they need."
+
+- code: AV-105
+  title: The management network is reachable without a firewall
+  severity: high
+  category: management
+  place: management
+  condition: "path_to_management is not None"
+  evidence: path_to_management
+  evidence_label: Unfiltered path
+  recommendation: "Keep management hosts in their own network behind a firewall or jump host; only administrators reach it, never users, guests or the DMZ."
+
+- code: AV-106
+  title: A lab network is connected to production without a firewall
+  severity: medium
+  category: segmentation
+  place: lab
+  condition: "path_from_lab is not None"
+  evidence: path_from_lab
+  evidence_label: Unfiltered path
+  recommendation: "Isolate the lab, or connect it only through a firewall that allows what tests need."
+
+# ── Placement: each kind of asset in the place SAFE gives it ──
+
+- code: AV-110
+  title: Server in the Internet zone
+  severity: high
+  category: segmentation
+  place: edge
+  condition: "device_class == \"server\" and place == \"internet\""
+  recommendation: "Move public services into a DMZ behind the edge firewall; nothing but the edge itself sits on the Internet side."
+
+- code: AV-111
+  title: Server in a user or guest network
+  severity: medium
+  category: segmentation
+  place: data_center
+  condition: "device_class == \"server\" and place in (\"campus\", \"branch\", \"guest\")"
+  recommendation: "Move the server into the data center (or a branch server network) so a data center firewall stands between it and users."
+
+- code: AV-112
+  title: User device in the data center or DMZ
+  severity: low
+  category: segmentation
+  place: data_center
+  condition: "device_class == \"endpoint\" and place in (\"data_center\", \"edge\")"
+  recommendation: "Keep workstations, phones, printers and cameras in user networks; the data center and DMZ hold servers only."
+
+# ── Threat defense at the Edge ──
+
+- code: AV-120
+  title: Only one edge firewall
+  severity: medium
+  category: threat_defense
+  place: edge
+  condition: "only_edge_firewall"
+  recommendation: "Add a second edge firewall as a high-availability pair; SAFE's Edge has no single device every outside flow depends on."
+
+- code: AV-121
+  title: Only one Internet connection
+  severity: medium
+  category: availability
+  place: edge
+  condition: "only_internet_link is not None"
+  evidence: only_internet_link
+  evidence_label: The only link
+  recommendation: "Add a second Internet connection, ideally from another provider and to another edge device."
+
+# ── Availability: redundant paths at every layer ──
+
+- code: AV-130
+  title: Single point of failure for critical or data center assets
+  severity: high
+  category: availability
+  place: data_center
+  condition: "cut_off is not None and cut_off_critical"
+  evidence: cut_off
+  evidence_label: Cut off when it fails
+  recommendation: "Add a redundant device or path so these assets stay reachable when this one fails."
+
+- code: AV-131
+  title: Single point of failure in the network
+  severity: medium
+  category: availability
+  condition: "cut_off is not None and not cut_off_critical"
+  evidence: cut_off
+  evidence_label: Cut off when it fails
+  recommendation: "Add a redundant device or path so these assets stay reachable when this one fails."
+
+- code: AV-132
+  title: Data center or DMZ server connected to a single device
+  severity: medium
+  category: availability
+  place: data_center
+  condition: "device_class == \"server\" and place in (\"data_center\", \"edge\") and links == 1 and not is_critical"
+  recommendation: "Connect the server to two switches (NIC teaming or a port channel across a switch pair)."
+
+- code: AV-133
+  title: Critical asset connected to a single device
+  severity: high
+  category: availability
+  place: data_center
+  condition: "is_critical and in_topology and links <= 1"
+  recommendation: "Give this critical asset a second connection to another device."
+
+- code: AV-134
+  title: Network device with a single uplink
+  severity: low
+  category: availability
+  condition: "device_class in (\"network\", \"firewall\") and network_uplinks == 1 and links > 1"
+  recommendation: "Uplink the device to two upstream devices so a failed uplink or upstream device does not cut off what hangs from it."
+
+- code: AV-135
+  title: Link down
+  severity: medium
+  category: availability
+  condition: "links_down is not None"
+  evidence: links_down
+  evidence_label: Down
+  recommendation: "Bring the link back up, or remove it from the topology if it was taken out on purpose; the redundancy it gave is gone while it is down."
+
+# ── Visibility: what the checks cannot see ──
+
+- code: AV-140
+  title: Network device or server not in the topology
+  severity: low
+  category: visibility
+  condition: "device_class in (\"network\", \"firewall\", \"server\") and not in_topology"
+  recommendation: "Add its links in Topology (or discover them over LLDP/CDP); without them it cannot be checked."
+
+- code: AV-141
+  title: Place in the network unknown
+  severity: low
+  category: visibility
+  condition: "in_topology and place is None"
+  recommendation: "Set the asset's network zone, and the zone's place in the network (Asset Requirements, Network Zones); segmentation cannot be checked without it."

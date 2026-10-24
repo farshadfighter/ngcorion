@@ -618,7 +618,7 @@ def update_zone(
     the risk of the zone's assets in the background."""
     from app.modules.risk.router import _recalculate_zone_assets_background
     try:
-        result, score_changed = AssetService.update_zone(db, zone_id, data.model_dump(), current_user.id)
+        result, score_changed = AssetService.update_zone(db, zone_id, data.model_dump(exclude_unset=True), current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not result:

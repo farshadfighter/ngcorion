@@ -433,7 +433,7 @@ class AssetService:
         if score is None:
             score = risk_calculation_service._load_settings(db)["unknown_zone_score"]
         zone = RiskZone(name=name, description=data.get("description"), score=score, status="active",
-                        created_by=user_id, updated_by=user_id)
+                        place=data.get("place") or None, created_by=user_id, updated_by=user_id)
         db.add(zone)
         db.commit()
         db.refresh(zone)
@@ -452,6 +452,8 @@ class AssetService:
             row.name = name
         if data.get("description") is not None:
             row.description = data["description"]
+        if "place" in data:
+            row.place = data["place"] or None          # "" or None: read from the name again
         score_changed = data.get("score") is not None and float(row.score) != float(data["score"])
         if score_changed:
             row.score = data["score"]

@@ -824,12 +824,14 @@ def _architecture(ctx: Ctx) -> Dict[str, List[dict]]:
     if ctx.on("open"):
         rows = [[_sev_cell(ctx, (f.severity or "").lower()), cell(f.rule_code, cls="mono nowrap"), cell(tr(f.title)),
                  cell(f.asset_name or _name(ctx, f.asset_id) if f.asset_id else tr("Whole network"), cls="mono"),
+                 cell(f.evidence or "—", cls="mono small"),
                  cell(tr(f.recommendation) if f.recommendation else "—", cls="small"),
                  cell(ctx.date(f.created_at), cls="nowrap")]
                 for f in sorted(open_, key=lambda f: (sev(f), f.rule_code))]
         out["open"] = [table(tr("Open findings"), [col(tr("Severity")), col(tr("Rule"), mono=True), col(tr("Finding")),
-                                                   col(tr("Asset"), mono=True), col(tr("Recommendation")),
-                                                   col(tr("Found"))], rows, tr("No open finding."), pdf_limit=200)]
+                                                   col(tr("Asset"), mono=True), col(tr("What the topology shows")),
+                                                   col(tr("Recommendation")), col(tr("Found"))],
+                             rows, tr("No open finding."), pdf_limit=200)]
 
     if ctx.on("decisions"):
         rows = [[cell(tr(f.title)), cell(f.rule_code, cls="mono"),

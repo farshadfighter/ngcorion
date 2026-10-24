@@ -176,7 +176,7 @@ export const DashboardLayout = () => {
     const pageSubtitles = {
         "topology": t("The network as it actually is right now - every real asset and the cabling between them."),
         "design-suggestion": t("A standard Cisco SAFE campus design sized to your real asset inventory, with matching assets slotted in - review it, then turn it into a real Design."),
-        "architecture-validation": t("Automated checks against the current topology (redundancy, exposure, best practice)."),
+        "architecture-validation": t("The topology checked against Cisco SAFE: segmentation between places in the network, the edge, management and redundancy."),
         "design-configuration": t("Draw a planned blueprint here, even for devices that don't exist yet. Versioned, so you can compare a design's history over time."),
         "noc-dashboard": t("Live SNMP status for every asset, plotted on the same topology graph as Topology."),
         "noc-hosts": t("Every asset, searchable - open one to see its SNMP details and set up monitoring."),
