@@ -11,6 +11,7 @@ import api from "../../config/api";
 import { dropUnscoredRiskLevels } from "./useAssetFormOptions";
 import { hostChoices, isVirtualType, requiresHosting } from "../shared/assetHosting";
 import { t as tr } from "../../i18n";
+import { IpInUseHint } from "./IpInUseHint.jsx";
 import { DateInput } from "../shared/DateInput.jsx";
 
 const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
@@ -423,6 +424,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             style={fieldErrors.ip_address ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                         />
                         {fieldErrors.ip_address && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.ip_address}</span>}
+                        <IpInUseHint ip={formData.ip_address} />
                     </div>
                     <div className="form-group">
                         <label>{tr("MAC Address")}</label>

@@ -63,3 +63,24 @@ def add(db: Session, asset: Asset, address: str, note: Optional[str], user_id: O
 def address_map(db: Session) -> Dict[str, int]:
     """address -> asset id of every other address (the inventory addresses are mapped by the caller and win)."""
     return {address: asset_id for address, asset_id in db.query(AssetAddress.address, AssetAddress.asset_id)}
+
+
+def shared_with(db: Session, ip: Optional[str], exclude_asset_id: Optional[int] = None) -> List[Asset]:
+    """Other assets that already have this address, as their IP or as one of their other addresses.
+    Two assets may share an IP (NAT, a virtual address): it is saved with a warning, since syslog and
+    devices seen at that address are matched to only one of them."""
+    address = normalize(ip)
+    if not address:
+        return []
+    by_ip = db.query(Asset).filter(Asset.ip_address == address)
+    by_other = db.query(Asset).join(AssetAddress, AssetAddress.asset_id == Asset.id).filter(AssetAddress.address == address)
+    found = {a.id: a for a in list(by_ip) + list(by_other) if a.id != exclude_asset_id}
+    return sorted(found.values(), key=lambda a: a.id)
+
+
+def shared_warning(db: Session, ip: Optional[str], exclude_asset_id: Optional[int] = None) -> List[str]:
+    others = shared_with(db, ip, exclude_asset_id)
+    if not others:
+        return []
+    names = ", ".join(a.asset_name for a in others[:5])
+    return [f"{normalize(ip)} is also the IP address of {names}"]

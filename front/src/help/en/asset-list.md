@@ -4,7 +4,7 @@ Every server, network device, database and service NGCorion knows about. Every o
 
 ## Main tasks
 
-1. **Add an asset:** "Add asset" → name, host name, IP address, type, OS, location, owner, zone and importance.
+1. **Add an asset:** "Add asset" → name, host name, IP address, type, OS, location, owner, zone and importance. An IP another asset already has is accepted with a warning naming that asset: syslog and devices seen at a shared address are matched to only one of them.
    Only the name and type are required; everything else (serial number, value, …) can be added later. The last audit and last hardening dates fill themselves when an audit of the asset completes and when a hardening change on it succeeds.
 2. **Add many:** "Download Template" → fill in the Excel file → "Import". Wrong rows are reported with the reason.
 3. **Change many:** tick several rows; the bar above the table changes tags, owner, location, status, zone and group at once.

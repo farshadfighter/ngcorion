@@ -381,6 +381,7 @@ const TEMPLATES = [
     msg("Syslog sender {{address}} assigned to {{asset_name}}"),
     msg("{{address}} is already an address of {{asset_name}}"),
     msg("{{address}} is the IP address of {{asset_name}}"),
+    msg("{{address}} is also the IP address of {{assets}}"),
     msg("{{name}} is not a network zone"),
     msg("Asset '{{asset_name}}' has no IP address configured"),
     msg("Backup failed: {{error}}"),

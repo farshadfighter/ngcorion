@@ -1082,3 +1082,15 @@ td.completeness-indicator.incomplete {
 .other-addresses-note { flex: 1; min-width: 0; color: #6b7280; font-size: 12px; overflow-wrap: anywhere; }
 .other-addresses-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; margin-top: 6px; }
 @media (max-width: 520px) { .other-addresses-add { grid-template-columns: 1fr; } }
+
+/* An IP another asset has too (IpInUseHint): saved, with a warning. */
+.ip-in-use-hint {
+    display: block;
+    margin-top: 4px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 11px;
+    line-height: 1.6;
+}

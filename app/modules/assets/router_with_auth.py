@@ -38,6 +38,7 @@ from .schemas import (
     AssetSecurityStatusCreate, AssetSecurityStatusResponse
 )
 from .service import AssetInUseError, AssetService
+from .addresses import shared_warning, shared_with
 from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager, require_permission
 from app.models import User
 from app.models import (
@@ -201,7 +202,20 @@ def create_asset(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     log_asset_created(db, current_user.id, result.id, result.asset_name, result.ip_address)
+    result.warnings = shared_warning(db, result.ip_address, result.id)
     return result
+
+
+@assets_router.get("/ip-in-use")
+def ip_in_use(
+    ip: str = Query(..., max_length=64),
+    exclude_id: Optional[int] = Query(None),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
+    db: Session = Depends(get_db),
+):
+    """Other assets that already have this IP address (as theirs or as another address), for the asset
+    forms' warning; saving is still allowed."""
+    return {"assets": [{"id": a.id, "asset_name": a.asset_name} for a in shared_with(db, ip, exclude_id)]}
 
 
 @assets_router.get("/{asset_id}/360")
@@ -246,6 +260,8 @@ def update_asset(
         if not asset:
             raise HTTPException(status_code=404, detail="Asset not found")
         log_asset_updated(db, current_user.id, asset.id, asset.asset_name, field_changes, asset.ip_address)
+        if "ip_address" in changes:
+            asset.warnings = shared_warning(db, asset.ip_address, asset.id)
         return asset
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -170,3 +170,25 @@ def _only_assets(db, asset_id):
             q = q.filter(AssetSnmpCredential.asset_id == asset_id)
         return q
     return query
+
+
+def test_an_ip_two_assets_share_is_saved_with_a_warning(db, admin):
+    """Asked from the server: an IP another asset has is allowed (NAT, a virtual address), with a warning."""
+    from app.modules.assets.router_with_auth import ip_in_use, update_asset
+    from app.modules.assets.schemas import AssetUpdate
+    first = _asset(db, "10.88.6.1")
+    second = _asset(db, "10.88.6.2")
+    third = _asset(db, "10.88.6.3")
+    addresses.add(db, third, "10.88.6.9", None, admin.id)
+
+    assert [a.id for a in addresses.shared_with(db, "10.88.6.1")] == [first.id]
+    assert addresses.shared_with(db, "10.88.6.1", exclude_asset_id=first.id) == []
+    assert [a.id for a in addresses.shared_with(db, " 10.88.6.9 ")] == [third.id]       # another address counts
+    assert ip_in_use(ip="10.88.6.1", exclude_id=second.id, current_user=admin, db=db) == {
+        "assets": [{"id": first.id, "asset_name": first.asset_name}]}
+
+    saved = update_asset(second.id, AssetUpdate(ip_address="10.88.6.1"), current_user=admin, db=db)
+    assert saved.ip_address == "10.88.6.1"                                               # saved, not refused
+    assert saved.warnings == [f"10.88.6.1 is also the IP address of {first.asset_name}"]
+    unchanged = update_asset(first.id, AssetUpdate(hostname="fw-a"), current_user=admin, db=db)
+    assert getattr(unchanged, "warnings", []) == []                                      # only when the IP is set

@@ -8,6 +8,7 @@ import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { fetchOSCatalog } from "../../store/requirementSlice";
 import { t } from "../../i18n";
 import { OtherAddresses } from "./OtherAddresses.jsx";
+import { IpInUseHint } from "./IpInUseHint.jsx";
 
 // Validation functions
 const validateIP = (ip) => {
@@ -220,6 +221,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                     style={fieldErrors.ip_address ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                                 />
                                 {fieldErrors.ip_address && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.ip_address}</span>}
+                                <IpInUseHint ip={formData.ip_address} excludeId={asset.id} />
                             </div>
                             <div className="form-group">
                                 <label>{t("MAC Address")}</label>

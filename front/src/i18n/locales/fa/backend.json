@@ -4,6 +4,7 @@
   "{{added_lines}} line(s) added and {{removed_lines}} removed since the previous backup": "{{added_lines}} خط افزوده و {{removed_lines}} خط حذف شده نسبت به پشتیبان قبلی",
   "{{added_lines}} line(s) added and {{removed_lines}} removed; changed by {{user}} from {{address}} (reported over syslog)": "{{added_lines}} خط افزوده و {{removed_lines}} خط حذف شد؛ تغییر توسط {{user}} از {{address}} (گزارش‌شده از راه syslog)",
   "{{address}} is already an address of {{asset_name}}": "{{address}} از قبل نشانی دارایی {{asset_name}} است",
+  "{{address}} is also the IP address of {{assets}}": "نشانی {{address}} نشانی IP دارایی {{assets}} هم هست",
   "{{address}} is the IP address of {{asset_name}}": "{{address}} نشانی IP دارایی {{asset_name}} است",
   "{{before}}% -> {{after}}% since the audit of {{date}}": "از {{before}}٪ به {{after}}٪ نسبت به ممیزی {{date}}",
   "{{code}} from {{code2}}": "{{code}} از روی {{code2}}",

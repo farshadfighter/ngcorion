@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- Two assets may have the same IP address (NAT, a virtual address); the
+  asset forms say which other assets have it as their IP or as another
+  address, since syslog and devices seen at that address are matched to
+  only one of them. The create and update API answer it in `warnings`;
+  GET /api/assets/ip-in-use is the check.
+
 ## 2.1.1 — 2026-10-24
 
 ### Fixes

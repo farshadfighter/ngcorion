@@ -271,6 +271,8 @@ class AssetUpdate(BaseModel):
 class AssetResponse(AssetBase):
     """An asset as the API returns it, with its related names and the inferred device family."""
     id: int
+    # Set on a create or update that saved with something to know (an IP another asset has too).
+    warnings: List[str] = []
     # Set by NGCorion when a hardening change on the asset succeeds (not editable).
     last_hardening_date: Optional[date] = None
     # None once the user who owned it is deleted (the column is ON DELETE SET NULL).
