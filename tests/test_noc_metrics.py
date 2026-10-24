@@ -269,14 +269,10 @@ def test_enforce_storage_budget_evicts_raw_before_5m_and_leaves_1h_alone(db, use
     db.add(kept_1h)
     db.flush()
 
-    def fake_size(_db):
-        raw_left = _db.query(AssetMetricSample).filter(AssetMetricSample.asset_id == asset.id).count()
-        five_m_left = _db.query(AssetMetricRollup).filter(
-            AssetMetricRollup.asset_id == asset.id, AssetMetricRollup.granularity == "5m",
-        ).count()
-        return 10**12 if (raw_left > 0 or five_m_left > 0) else 0
-
-    monkeypatch.setattr(metrics_retention, "get_metrics_storage_bytes", fake_size)
+    # 6 rows of 0.75 x the threshold each: removing 5 brings it under, so raw (3) and 5m (2) go, 1h stays.
+    from app.core.config import settings as cfg
+    threshold = cfg.NOC_METRICS_STORAGE_BUDGET_GB * 1024 ** 3 * cfg.NOC_METRICS_STORAGE_EVICT_THRESHOLD
+    monkeypatch.setattr(metrics_retention, "metrics_usage", lambda _db: (4.5 * threshold, 6))
 
     metrics_retention.enforce_storage_budget(db)
 
@@ -298,7 +294,7 @@ def test_enforce_storage_budget_never_evicts_1d_rollups(db, user, monkeypatch):
 
     # Always "over budget" no matter what is evicted - only 1d rollups remain
     # to evict, and the function must refuse to touch them.
-    monkeypatch.setattr(metrics_retention, "get_metrics_storage_bytes", lambda _db: 10**12)
+    monkeypatch.setattr(metrics_retention, "metrics_usage", lambda _db: (10**12, 1))
 
     metrics_retention.enforce_storage_budget(db)  # must return, not loop forever
 

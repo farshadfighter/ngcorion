@@ -4,6 +4,13 @@
 
 ### Fixes
 
+- Syslog and NOC metrics storage budgets: the check measured the tables'
+  files, which do not shrink when rows are deleted. Once a table had
+  reached its budget, every run deleted again - a fifth of the syslog
+  messages, up to a million metric rows - until little history was left.
+  Both now measure the space the stored rows take (their count and
+  average size, with their share of indexes) and delete only the excess,
+  oldest first. app/core/table_usage.py.
 - Assets: physical and virtual servers could not be told apart. An asset
   type is now physical or virtual ("Runs as"; migration c7e9a1b3d5f6 marks
   types named VM or Virtual ... virtual). An asset of a virtual type must

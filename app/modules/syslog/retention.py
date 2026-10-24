@@ -14,6 +14,7 @@ from typing import Dict, Optional
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core import table_usage
 from app.modules.syslog import settings as syslog_settings
 
 logger = logging.getLogger(__name__)
@@ -24,8 +25,10 @@ UNKNOWN_SOURCE_DAYS = 30
 CHANGE_EVENT_DAYS = 365
 
 
-def table_bytes(db: Session) -> int:
-    return int(db.execute(text("SELECT pg_total_relation_size('syslog_messages')")).scalar() or 0)
+def usage(db: Session):
+    """(bytes the stored messages take, how many there are) - the live rows, not the table's files,
+    which do not shrink on DELETE (app/core/table_usage.py)."""
+    return table_usage.live_bytes(db, "syslog_messages")
 
 
 def _delete_batch(db: Session, where: str, params: Dict) -> int:
@@ -48,11 +51,12 @@ def prune(db: Session, now: Optional[datetime] = None) -> Dict[str, int]:
         if n < BATCH:
             break
     budget = cfg["storage_budget_gb"] * 1024 ** 3
-    # pg_total_relation_size does not shrink on DELETE until autovacuum reuses the space; deleting
-    # down to 80% of the budget leaves room so this does not run on every check.
-    if table_bytes(db) > budget:
-        total = db.execute(text("SELECT count(*) FROM syslog_messages")).scalar() or 0
-        target = int(total * 0.8 * budget / max(table_bytes(db), 1))
+    # Measured on the live rows: the files keep their size after a DELETE, and measuring them deleted
+    # a fifth of the messages again on every run once the table had reached its budget. Deleting down
+    # to 80% of the budget leaves room so this does not run on every check.
+    used, total = usage(db)
+    if used > budget:
+        target = int(total * 0.8 * budget / used)
         excess = max(total - target, 0)
         while excess > 0 and by_size < BATCH * MAX_BATCHES:
             n = _delete_batch(db, "TRUE", {})

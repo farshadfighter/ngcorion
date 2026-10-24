@@ -230,7 +230,7 @@ def test_retention_by_age_size_and_unknown_addresses(db, admin, monkeypatch):
     assert db.get(SyslogSource, "10.77.99.1") is None and db.get(SyslogSource, "10.77.99.2") is not None
 
     # over the storage budget: the oldest go first
-    monkeypatch.setattr(retention, "table_bytes", lambda _db: 10 * 1024 ** 4)
+    monkeypatch.setattr(retention, "usage", lambda _db: (10 * 1024 ** 4, 4))
     monkeypatch.setattr(retention, "BATCH", 2)
     monkeypatch.setattr(retention, "MAX_BATCHES", 1)
     out = retention.prune(db, now)
@@ -449,3 +449,34 @@ def test_alerts(db, admin):
     S.save_settings(db, {"enabled": False}, admin.id)
     assert alert_events._syslog_silent(db, {"hours": 24}, now, now) == []
     assert alert_events._syslog_not_listening(db, {}, now, now) == []
+
+
+def test_storage_budget_counts_the_messages_not_the_files(db, admin, monkeypatch):
+    """The table's files keep their size after a DELETE. Measured on them, a table that once reached its
+    budget lost a fifth of its messages again on every run; measured on the live rows, nothing goes
+    while they fit."""
+    from sqlalchemy import text
+    from app.core import table_usage
+    a = _asset(db, "10.77.0.9")
+    db.execute(text("INSERT INTO syslog_messages (asset_id, received_at, source_ip, protocol, facility, severity, "
+                    "message) SELECT :a, now(), '10.77.0.9', 'udp', 1, 6, repeat('x', 300) "
+                    "FROM generate_series(1, 6000)"), {"a": a.id})
+    files_full = db.execute(text("SELECT pg_total_relation_size('syslog_messages')")).scalar()
+    live_full, rows_full = table_usage.live_bytes(db, "syslog_messages")
+    db.execute(text("DELETE FROM syslog_messages WHERE asset_id = :a AND id NOT IN "
+                    "(SELECT id FROM syslog_messages WHERE asset_id = :a ORDER BY id DESC LIMIT 600)"), {"a": a.id})
+    files_after = db.execute(text("SELECT pg_total_relation_size('syslog_messages')")).scalar()
+    live_after, rows_after = table_usage.live_bytes(db, "syslog_messages")
+    assert files_after >= files_full                          # the files did not shrink
+    assert rows_after == rows_full - 5400
+    assert live_after < live_full * 0.25                      # the live rows did
+
+    # a budget between the two: the files are over it, the messages are not - nothing is deleted
+    budget_gb = (live_after * 1.5) / 1024 ** 3
+    real = S.get_settings
+    monkeypatch.setattr(retention.syslog_settings, "get_settings",
+                        lambda _db: {**real(_db), "storage_budget_gb": budget_gb})
+    assert files_after > budget_gb * 1024 ** 3
+    out = retention.prune(db, datetime.utcnow())
+    assert out["by_size"] == 0
+    assert db.query(SyslogMessage).filter(SyslogMessage.asset_id == a.id).count() == 600

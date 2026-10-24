@@ -15,12 +15,12 @@ missed tick) never double-counts or errors out:
    (NOC_METRICS_*_RETENTION_* in app/core/config.py) are deleted - raw
    first (it's the bulk of the volume), then 5m, then 1h. 1d rollups are
    kept forever unless NOC_METRICS_1D_RETENTION_DAYS is set.
-3. Storage-budget eviction: a second, independent check. If the metrics
-   tables' actual on-disk size (pg_total_relation_size, which includes
-   indexes and TOAST - the whole footprint, not just row bytes) exceeds
-   NOC_METRICS_STORAGE_EVICT_THRESHOLD of NOC_METRICS_STORAGE_BUDGET_GB,
-   the oldest rows are dropped tier-by-tier (raw, then 5m, then 1h) in
-   fixed-size batches until back under the threshold. This exists because
+3. Storage-budget eviction: a second, independent check. If the stored
+   metrics - the live rows with their share of indexes and TOAST
+   (app/core/table_usage.py; the files themselves do not shrink on DELETE)
+   - take more than NOC_METRICS_STORAGE_EVICT_THRESHOLD of
+   NOC_METRICS_STORAGE_BUDGET_GB, the oldest rows are dropped tier-by-tier
+   (raw, then 5m, then 1h) in fixed-size batches until the excess is gone. This exists because
    the time-based windows above are a *guess* calibrated at some assumed
    asset/interface count - if the real deployment monitors far more devices
    than planned, the time windows alone would eventually fill the disk;
@@ -34,11 +34,12 @@ deployment's raw-table DELETE volume itself becomes a bottleneck.
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Tuple
 
-from sqlalchemy import func, text
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core import table_usage
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.noc_metrics import AssetMetricSample, AssetMetricRollup
@@ -156,17 +157,13 @@ def apply_time_based_retention(db: Session, now: datetime) -> None:
     db.commit()
 
 
-def get_metrics_storage_bytes(db: Session) -> int:
-    """Actual on-disk footprint (table + indexes + TOAST) of both metrics
-    tables, via Postgres's own accounting - the real number that matters for
-    "is the disk about to fill up", not an estimate from row counts."""
-    result = db.execute(
-        text(
-            "SELECT pg_total_relation_size('asset_metric_samples') "
-            "     + pg_total_relation_size('asset_metric_rollups')"
-        )
-    ).scalar()
-    return int(result or 0)
+def metrics_usage(db: Session) -> Tuple[int, int]:
+    """(bytes the live rows of both metrics tables take - indexes and TOAST included -, how many rows).
+    The live rows, not the files: those do not shrink on DELETE, and measured on them a table that once
+    reached the budget lost up to a million rows on every run (app/core/table_usage.py)."""
+    samples, n_samples = table_usage.live_bytes(db, "asset_metric_samples")
+    rollups, n_rollups = table_usage.live_bytes(db, "asset_metric_rollups")
+    return samples + rollups, n_samples + n_rollups
 
 
 def _evict_oldest(db: Session, model, extra_filter=None) -> int:
@@ -185,33 +182,34 @@ def _evict_oldest(db: Session, model, extra_filter=None) -> int:
 
 
 def enforce_storage_budget(db: Session) -> None:
-    """Second line of defense beyond the time-based windows: if actual disk
-    usage has passed the configured threshold, delete the oldest rows
-    tier-by-tier (raw, then 5m, then 1h - never 1d, whose volume is
-    negligible and whose loss would erase long-term history for the least
-    storage benefit) until back under it."""
+    """Second line of defense beyond the time-based windows: if the stored
+    metrics take more than the configured threshold of the budget, delete the
+    oldest rows tier-by-tier (raw, then 5m, then 1h - never 1d, whose volume
+    is negligible and whose loss would erase long-term history for the least
+    storage benefit) until as much as the excess is gone. Measured once, then
+    counted down by an average row size, so a run never re-reads sizes that a
+    DELETE does not change."""
     budget_bytes = settings.NOC_METRICS_STORAGE_BUDGET_GB * (1024 ** 3)
     threshold_bytes = budget_bytes * settings.NOC_METRICS_STORAGE_EVICT_THRESHOLD
 
-    guard = 0  # a batch can only shrink the table so much; cap iterations so a
-    # measurement lag (size doesn't update instantly after a DELETE, and
-    # DELETE without VACUUM doesn't return space to the OS) can't loop forever.
-    while guard < 200:
-        guard += 1
-        used = get_metrics_storage_bytes(db)
-        if used <= threshold_bytes:
-            return
-        if _evict_oldest(db, AssetMetricSample) > 0:
-            continue
-        if _evict_oldest(db, AssetMetricRollup, AssetMetricRollup.granularity == "5m") > 0:
-            continue
-        if _evict_oldest(db, AssetMetricRollup, AssetMetricRollup.granularity == "1h") > 0:
-            continue
-        logger.warning(
-            "[NOC metrics] Storage over budget (%d bytes) but only 1d rollups remain - not evicting those.",
-            used,
-        )
+    used, rows = metrics_usage(db)
+    if used <= threshold_bytes or not rows:
         return
+    per_row = used / rows
+    excess = used - threshold_bytes
+    guard = 0  # a run deletes at most 200 batches; the next one carries on
+    while excess > 0 and guard < 200:
+        guard += 1
+        removed = (_evict_oldest(db, AssetMetricSample)
+                   or _evict_oldest(db, AssetMetricRollup, AssetMetricRollup.granularity == "5m")
+                   or _evict_oldest(db, AssetMetricRollup, AssetMetricRollup.granularity == "1h"))
+        if not removed:
+            logger.warning(
+                "[NOC metrics] Storage over budget (%d bytes) but only 1d rollups remain - not evicting those.",
+                used,
+            )
+            return
+        excess -= removed * per_row
 
 
 def run_once(db: Session, now: datetime | None = None) -> None:
