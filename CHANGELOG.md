@@ -4,6 +4,9 @@
 
 ### Fixes
 
+- Dependencies with published advisories: Pillow 13.0.0 (through
+  WeasyPrint), brotli 1.2.1, certifi 2026.10.23, opentelemetry-api 1.45.1;
+  frontend follow-redirects, undici, vite, zod and vitest 4.1.12.
 - Addresses of a host besides its inventory IP: a FortiGate may be managed
   on one address and answer SNMP or send syslog on another.
   - SNMP: "SNMP address" in the host's SNMP credential (an IP address or a
