@@ -16,6 +16,19 @@ Review against the OWASP Web Security Testing Guide (docs/SECURITY_REMEDIATION_C
 - License activation no longer returns an unexpected error's text.
 - An imported end-of-life catalog keeps only http(s) links.
 
+### Documentation
+
+- The product overview and the training course are printed as PDF with the
+  other four documents (scripts/docs_pdf.py) and attached to the appliance
+  release; their cover says introduction and training.
+- Persian user and admin guides, product overview and training course
+  brought up to date: physical and virtual assets, other addresses and the
+  SNMP address, a shared IP, one list of network zones with their place in
+  the network, risk with hardening impact, the New Backup dialog, the
+  restore refusal, monitoring storage, the request size limit, the email
+  rule of user management, the OSV.dev proxy, and a training lesson on
+  Architecture Validation against Cisco SAFE.
+
 ### Changes
 
 - Two assets may have the same IP address (NAT, a virtual address); the

@@ -32,13 +32,21 @@ ROOT = Path(__file__).resolve().parent.parent
 PRODUCT = "NGCorion"
 FONT_PACKAGE = "@fontsource/vazirmatn@5.3.0"  # the version front/package.json uses
 
-# source, PDF name, document id. The title is the document's first heading.
+# source, PDF name, document id (NGC-INT-*: introduction and training, the rest: the evaluation file).
+# The title is the document's first heading.
 DOCS = [
     ("docs/fa/USER_GUIDE.md", "NGCorion-User-Guide-fa.pdf", "NGC-AGD-OPE-U"),
     ("docs/fa/ADMIN_GUIDE.md", "NGCorion-Admin-Guide-fa.pdf", "NGC-AGD-PRE-OPE"),
     ("docs/fa/ARCHITECTURE.md", "NGCorion-Security-Architecture-fa.pdf", "NGC-ADV-ARC"),
     ("docs/SECURITY_TARGET.md", "NGCorion-Security-Target-fa.pdf", "NGC-ASE-ST"),
+    ("docs/fa/PRODUCT_OVERVIEW.md", "NGCorion-Product-Overview-fa.pdf", "NGC-INT-OVR"),
+    ("docs/fa/TRAINING_GUIDE.md", "NGCorion-Training-Course-fa.pdf", "NGC-INT-TRN"),
 ]
+
+
+def kind_of(doc_id: str) -> str:
+    """The line under the title on the cover: the evaluation documents, or introduction and training."""
+    return "مستندات معرفی و آموزش" if doc_id.startswith("NGC-INT") else "مستندات ارزیابی امنیتی (معیار مشترک / افتا)"
 
 
 def product_version() -> str:
@@ -151,7 +159,7 @@ def render(source: Path, pdf_names: dict[str, str], doc_id: str, version: str, f
   <div class="brand">{PRODUCT}</div>
   <div class="band">
     <h1>{html.escape(title)}</h1>
-    <div class="kind">مستندات ارزیابی امنیتی (معیار مشترک / افتا)</div>
+    <div class="kind">{html.escape(kind_of(doc_id))}</div>
   </div>
   <table>
     <tr><th>محصول</th><td>{PRODUCT}</td></tr>

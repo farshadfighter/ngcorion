@@ -8,13 +8,13 @@ distribution advisories), risk, remediation, reports and alerts.
 
 | Area | What it does |
 |---|---|
-| Assets | Inventory, asset types and icons, discovery (nmap), software inventory, change history, topology |
+| Assets | Inventory (physical and virtual, other addresses, one list of network zones), groups and tags, discovery (nmap), software inventory and end of life, Asset 360, change history |
 | Auditing | CIS/vendor benchmark audits of 17 target families (below), scheduled audits |
 | Hardening | Single fixes and "Harden All" with parameters, preview, backup, verification and rollback |
-| Vulnerabilities | CVE database (NVD, CISA KEV, EPSS; online or signed offline packages) and distribution advisories (OSV) |
-| Risk & remediation | Asset risk scores, remediation items with SLAs, risk acceptance workflow |
-| Operations | NOC (SNMP polling, interface metrics), alerts and notification channels, reports (PDF/Excel, scheduled, signed) |
-| Platform | Users with per-module permissions, audit logs, license, system backup/restore, system settings, Persian and English UI |
+| Vulnerabilities | CVE database (NVD, CISA KEV, EPSS; online or signed offline packages), distribution advisories (OSV), TLS certificates |
+| Risk & remediation | Asset risk scores with hardening impact, remediation items with SLAs, risk acceptance workflow, benchmark policy and compliance mapping |
+| Operations | Device configuration backups with change detection and restore, NOC (SNMP polling and health, syslog, unknown devices, LLDP/CDP topology), Architecture Validation against Cisco SAFE, alerts and notification channels, reports (PDF/Excel, scheduled, signed) |
+| Platform | Users with per-module permissions, two-step sign-in, AD/LDAP, API keys, audit logs, license, system backup/restore, system settings, global search, in-app help, Persian and English UI |
 
 Audited targets: Cisco IOS, FortiGate, Linux (Ubuntu, Debian, RHEL family),
 Windows Server, Apache, MongoDB, MSSQL, Active Directory, Windows DNS Server,
@@ -86,6 +86,9 @@ Persian (for operators and the AFTA / Common Criteria evaluation):
 - [docs/fa/ADMIN_GUIDE.md](docs/fa/ADMIN_GUIDE.md): راهنمای مدیر — نصب، پیکربندی امن و راهبری.
 - [docs/fa/ARCHITECTURE.md](docs/fa/ARCHITECTURE.md): سند معماری امنیتی.
 - [docs/SECURITY_TARGET.md](docs/SECURITY_TARGET.md): هدف امنیتی.
+
+The same six documents as PDF: `python scripts/docs_pdf.py` (dist/docs), and attached to every appliance
+release.
 
 English (for developers):
 

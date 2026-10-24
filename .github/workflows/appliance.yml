@@ -177,7 +177,8 @@ jobs:
             echo "First start and console: \`appliance/README.md\`. Software bill of materials:"
             echo "\`ngcorion-$VERSION-sbom-python.cdx.json\` and \`ngcorion-$VERSION-sbom-frontend.cdx.json\` (CycloneDX)."
             echo
-            echo "Documents (Persian, PDF): user guide, admin guide, security architecture and Security Target"
+            echo "Documents (Persian, PDF): user guide, admin guide, security architecture, Security Target,"
+            echo "product overview and training course"
             echo "(\`NGCorion-*-fa.pdf\`), printed from \`docs/\` at this commit."
             if [ -n "$SPLIT" ]; then
               echo

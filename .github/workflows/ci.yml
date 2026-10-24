@@ -230,7 +230,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
       - name: Chromium for printing
         run: uv run --no-project --with playwright==1.63.0 python -m playwright install --with-deps chromium
-      - name: User and admin guides, architecture and Security Target as PDF
+      - name: User and admin guides, architecture, Security Target, product overview and training course as PDF
         run: >-
           uv run --no-project --with markdown==3.5.2 --with playwright==1.63.0 --with pypdf==5.4.0
           python scripts/docs_pdf.py
