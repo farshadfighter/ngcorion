@@ -13,6 +13,7 @@ this file describes what is not (yet).
 | I2 | Topology nodes draw the device's real interfaces (from the NOC poll) instead of the generic port catalog, so a link found over LLDP/CDP sits exactly on its port | done (f0f10f8) |
 | I3 | Cisco IOS MAC tables of every VLAN: read the VLAN list (CISCO-VTP-MIB) and each VLAN's BRIDGE-MIB table (`community@VLAN` on v2c, context `vlan-<id>` on v3) | done (6ed4f95) |
 | I4 | From testing: the Iran time zone was hard to find (a bare list of 418 IANA names, nothing selected); no sms.ir provider; no policy for what goes out by email and SMS, and the reset code by email only | done (eaec020) |
+| I5 | Recommended action for every CVE finding (Linux, Windows, devices, other software) and an upgrade plan per asset | done (this commit) |
 
 Bugs reported from testing on the customer test server go before everything else here.
 
@@ -25,6 +26,10 @@ layout problems it found are fixed. In-app help for every page (fa and en, in th
 too) was added on request before the bug list. Next: the bugs reported from testing.
 
 ## Known limits (shipped, documented, not yet improved)
+
+- CVE recommended action, Windows: the KB number is not named; the action gives the fixed build and the
+  CVE's page in Microsoft's Security Update Guide (the KB comes from MSRC data, not loaded yet, also for
+  offline installations). Installing updates from NGCorion is not offered: it is advice and commands.
 
 - Unknown devices: per-VLAN MAC tables on Cisco IOS are read for up to 64 VLANs per switch; on SNMP v3
   the switch must give the user the `vlan-<id>` contexts.
@@ -64,6 +69,7 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
+| Recommended action for CVE findings and upgrade plan per asset | (this commit) |
 | Delivery policy for email and SMS, password reset code by SMS, sms.ir, time zone search | eaec020 |
 | Version 2.1.2 | 6811f28 |
 | Training and product documents brought up to date; overview and training course as PDF | c84e744 |

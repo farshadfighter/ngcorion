@@ -131,7 +131,9 @@ def _cves(db: Session, a: Asset) -> Dict:
             "by_severity": {s: sum(1 for f in rows if f["severity"] == s) for s in ("critical", "high", "medium", "low")},
             "top": [{"cve_id": f["cve_id"], "severity": f["severity"], "cvss": f["cvss"], "kev": f["kev"],
                      "priority": f["priority"], "product": f["product"], "installed": f["installed"],
-                     "fixed_in": f["fixed_in"]} for f in rows[:6]]}
+                     "fixed_in": f["fixed_in"]} for f in rows[:6]],
+            # what to do first: each step with the findings it closes (app/modules/cve/recommend.py)
+            "plan": data["plan"].get(a.id, [])[:5], "plan_total": len(data["plan"].get(a.id, []))}
 
 
 def _certificates(db: Session, a: Asset, now: datetime) -> Dict:

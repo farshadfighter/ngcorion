@@ -8,6 +8,7 @@ The feeds themselves are never contacted: NVD, CISA and EPSS answers are
 captured here and fed through fakes.
 """
 import base64
+import copy
 import gzip
 import importlib
 import io
@@ -1011,3 +1012,177 @@ def test_a_failed_job_names_the_database_reason():
     exc = DataError("INSERT ...", {}, Exception("value too long for type character varying(80)\nDETAIL: x"))
     assert jobs._reason(exc) == "DataError (value too long for type character varying(80))"
     assert jobs._reason(ValueError("secret detail")) == "ValueError"
+
+
+# ── recommended action and upgrade plan (app/modules/cve/recommend.py) ────
+
+def _with_refs(item, *urls):
+    item = copy.deepcopy(item)
+    item["cve"]["references"] = [{"url": u, "source": "x", "tags": ["Vendor Advisory"]} for u in urls]
+    return item
+
+
+WINDOWS = _nvd_cve("CVE-2024-38063", matches=[
+    _match("cpe:2.3:o:microsoft:windows_server_2022:*:*:*:*:*:*:*:*", end_excl="10.0.20348.2655"),
+])
+FORTI_NEXT = _nvd_cve("CVE-2024-23113", matches=[
+    _match("cpe:2.3:o:fortinet:fortios:*:*:*:*:*:*:*:*", start_incl="7.2.0", end_excl="7.2.9"),
+    _match("cpe:2.3:o:fortinet:fortios:*:*:*:*:*:*:*:*", start_incl="7.0.0", end_excl="7.0.16"),
+])
+
+
+class TestRecommendedAction:
+    def test_nvd_version_in_the_installed_branch_with_the_vendor_advisory(self, db):
+        _load(db, _with_refs(FORTI, "https://example.com/blog", "https://fortiguard.com/psirt/FG-IR-24-015"),
+              FORTI_NEXT)
+        store.apply_kev(db, feeds.parse_kev(KEV_FEED))
+        fw = _asset(db, os_name="FortiOS", os_version="7.2.5")
+        old_branch = _asset(db, os_name="FortiOS", os_version="7.0.12")
+        r = findings.compute(db, fw.id)
+        by_id = {f["cve_id"]: f["action"] for f in r["findings"]}
+        a = by_id["CVE-2024-21762"]
+        assert a["kind"] == "version" and a["target"] == "7.2.7" and a["check_vendor"]
+        assert a["text"] == "Upgrade Fortinet FortiOS to 7.2.7 or later"
+        assert a["link"] == {"url": "https://fortiguard.com/psirt/FG-IR-24-015", "label": "fortiguard.com"}
+        assert a["kev_action"] == "Apply mitigations per vendor instructions." and a["kev_due"] == "2024-02-16"
+        assert by_id["CVE-2024-23113"]["kev_action"] is None          # not known to be exploited
+        # the 7.0 branch is told its own fix, not 7.2's
+        assert {f["action"]["target"] for f in findings.compute(db, old_branch.id)["findings"]} == {"7.0.14", "7.0.16"}
+
+        # one upgrade closes both: to the highest version either needs
+        [step] = r["plan"][fw.id]
+        assert step["findings"] == 2 and step["target"] == "7.2.9" and step["kev"] and step["priority"] == 1
+        assert step["text"] == "Upgrade Fortinet FortiOS to 7.2.9 or later"
+        assert step["cves"] == ["CVE-2024-21762", "CVE-2024-23113"]
+
+    def test_no_fixed_version_points_to_the_vendor_advisory(self, db):
+        _load(db, _with_refs(IOSXE, "https://example.com/x",
+                             "https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-iosxe-webui-privesc-j22SaA4z"),
+              OLD)
+        router = _asset(db, os_name="Cisco IOS XE Software", os_version="17.9.1", type_name="Router")
+        [f] = findings.compute(db, router.id)["findings"]
+        a = f["action"]
+        assert a["kind"] == "advisory" and a["target"] is None and not a["check_vendor"]
+        assert a["text"] == "No fixed version is known here: follow the vendor's advisory"
+        assert a["link"]["label"] == "sec.cloudapps.cisco.com"
+
+        # only the last vulnerable version known: "later than"
+        web = _asset(db, os_name="Ubuntu 22.04", type_name="Server")
+        db.add(AssetSoftware(asset_id=web.id, vendor="openssl", product="openssl", version="1.0.1e"))
+        db.flush()
+        [f] = findings.compute(db, web.id)["findings"]
+        assert f["action"]["kind"] == "after" and f["action"]["text"] == "Upgrade Openssl to a version later than 1.0.1f"
+
+    def test_windows_cumulative_update_and_the_update_guide(self, db):
+        _load(db, WINDOWS)
+        srv = _asset(db, os_name="Microsoft Windows Server 2022 Standard", os_version="10.0.20348.2340",
+                     type_name="Server")
+        r = findings.compute(db, srv.id)
+        [f] = r["findings"]
+        a = f["action"]
+        assert a["kind"] == "windows" and a["target"] == "10.0.20348.2655"
+        assert a["text"].startswith("Install the latest cumulative update for ") and "10.0.20348.2655 or later" in a["text"]
+        # no Microsoft link among the references: the CVE's page in the Security Update Guide
+        assert a["link"]["url"] == "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-38063"
+        assert r["plan"][srv.id][0]["kind"] == "windows"
+
+    def test_end_of_life_operating_system_is_said(self, db, monkeypatch):
+        from app.modules.cve import recommend
+        _load(db, FORTI)
+        fw = _asset(db, os_name="FortiOS", os_version="7.2.5")
+        monkeypatch.setattr(recommend, "_eol_os", lambda db, ids: {fw.id: {"title": "FortiOS 7.2", "until": "2026-09-28",
+                                                                          "latest": "7.2.11"}})
+        [f] = findings.compute(db, fw.id)["findings"]
+        assert f["action"]["eol"] == {"title": "FortiOS 7.2", "until": "2026-09-28", "latest": "7.2.11"}
+
+    def test_the_findings_api_carries_the_action_and_the_plan(self, db):
+        from app.modules.cve.schemas import FindingsResponse
+        _load(db, FORTI)
+        fw = _asset(db, os_name="FortiOS", os_version="7.2.5")
+        r = findings.compute(db, fw.id)
+        out = FindingsResponse(**r, database_loaded=True).model_dump()
+        assert out["findings"][0]["action"]["kind"] == "version"
+        assert out["plan"][fw.id][0]["target"] == "7.2.7"
+
+
+class TestActionForDistributionPackages:
+    """Distribution findings (app/modules/advisories): the fixed package, its commands, Ubuntu Pro, kernels."""
+
+    @staticmethod
+    def _f(**kw):
+        base = {"source": "advisory", "asset_id": 1, "cve_id": "CVE-2024-6387", "product": "openssh",
+                "product_key": "openssh", "package": "openssh", "binaries": ["openssh-server", "openssh-client"],
+                "fixed_in": "1:9.6p1-3ubuntu13.3", "availability": "standard", "advisories": ["USN-6859-1"],
+                "reboot": False, "kev": False, "release": "ubuntu:24.04"}
+        base.update(kw)
+        return base
+
+    def test_standard_fix(self):
+        from app.modules.cve.recommend import action_for
+        a = action_for(self._f(), family="deb")
+        assert a["kind"] == "package" and a["text"] == "Upgrade openssh to 1:9.6p1-3ubuntu13.3 or later"
+        assert a["commands"] == ["sudo apt-get update",
+                                 "sudo apt-get install --only-upgrade openssh-client openssh-server"]
+        assert a["link"] == {"url": "https://ubuntu.com/security/notices/USN-6859-1", "label": "USN-6859-1"}
+        assert not a["pro"]
+
+    def test_ubuntu_pro_only(self):
+        from app.modules.cve.recommend import action_for
+        a = action_for(self._f(availability="pro", fixed_in="1:8.2p1-4ubuntu0.11+esm1"), family="deb")
+        assert a["pro"] and a["commands"][0] == "sudo pro attach <your-token>"
+
+    def test_kernel(self):
+        from app.modules.cve.recommend import action_for
+        kernel = dict(package="linux", product="linux", product_key="linux", binaries=["linux-image-6.8.0-45-generic"],
+                      fixed_in="6.8.0-45.45")
+        a = action_for(self._f(**kernel), family="deb")
+        assert a["commands"] == ["sudo apt-get update", "sudo apt-get full-upgrade", "sudo reboot"]
+        a = action_for(self._f(**kernel, reboot=True), family="deb")
+        assert a["kind"] == "reboot" and a["commands"] == ["sudo reboot"]
+        assert a["text"] == "Restart the machine: the fixed kernel 6.8.0-45.45 is installed but not running"
+
+    def test_rpm_and_other_advisory_pages(self):
+        from app.modules.cve.recommend import action_for, advisory_page
+        a = action_for(self._f(binaries=["openssh-server"], advisories=["RHSA-2024:4312"], release="rhel:9"),
+                       family="rpm")
+        assert a["commands"] == ["sudo dnf upgrade openssh-server"]
+        assert a["link"]["url"] == "https://access.redhat.com/errata/RHSA-2024:4312"
+        assert advisory_page("DSA-5724-1") == "https://security-tracker.debian.org/tracker/DSA-5724-1"
+        assert advisory_page("RLSA-2024:4312") == "https://osv.dev/vulnerability/RLSA-2024:4312"
+
+    def test_the_plan_takes_the_highest_fixed_version_of_a_package(self):
+        from app.modules.cve.recommend import action_for, plan
+        rows = []
+        for cve, fixed, prio in (("CVE-1", "1:9.6p1-3ubuntu13.3", 3), ("CVE-2", "1:9.6p1-3ubuntu13.5", 2)):
+            f = self._f(cve_id=cve, fixed_in=fixed, priority=prio, severity="high")
+            f["action"] = action_for(f, family="deb")
+            rows.append(f)
+        [step] = plan(rows)[1]
+        assert step["target"] == "1:9.6p1-3ubuntu13.5" and step["findings"] == 2 and step["priority"] == 2
+
+
+class TestActionInAlertEmails:
+    def test_email_lines_and_the_alert_body(self, db):
+        from app.models.notification import Alert, NotificationRule
+        from app.modules.alerts import engine as alert_engine
+        from app.modules.cve.recommend import email_lines
+        _load(db, _with_refs(FORTI, "https://fortiguard.com/psirt/FG-IR-24-015"))
+        store.apply_kev(db, feeds.parse_kev(KEV_FEED))
+        fw = _asset(db, os_name="FortiOS", os_version="7.2.5")
+        lines = email_lines(db, [fw.id], {fw.id: "FW-HQ"})
+        assert lines[:3] == ["What to do on FW-HQ:", "  - Upgrade Fortinet FortiOS to 7.2.7 or later",
+                             "      https://fortiguard.com/psirt/FG-IR-24-015"]
+
+        rule = NotificationRule(event_type="cve.kev_finding", name="Exploited vulnerability", enabled=True,
+                                severity="critical", params={}, asset_scope="all", asset_filter={},
+                                recipients={"emails": ["soc@example.com"]}, channels=["email"], repeat_minutes=0,
+                                notify_resolved=False, group_minutes=0, builtin=False)
+        db.add(rule)
+        db.flush()
+        alert = Alert(rule_id=rule.id, event_type="cve.kev_finding", module="cve", severity="critical",
+                      fingerprint=f"{rule.id}:kev:{fw.id}", title="Exploited vulnerability on an asset",
+                      detail="CVE-2024-21762", asset_id=fw.id, source_label="FW-HQ · 10.0.0.1", status="active")
+        db.add(alert)
+        db.flush()
+        [d] = alert_engine.queue_message(db, rule, "raised", [alert], datetime.utcnow())
+        assert "What to do on FW-HQ:" in d.body and "Upgrade Fortinet FortiOS to 7.2.7 or later" in d.body

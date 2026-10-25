@@ -32,6 +32,22 @@ CVSS says **how bad** a vulnerability is; KEV and the "Exploit likelihood" (EPSS
 3. Before the upgrade, take a configuration [backup](/backup).
 4. After the upgrade, audit the device again; the finding disappears and the item becomes "Fixed and verified" by itself.
 
+## Recommended action
+
+Every finding (in the CVE detail, [Remediation](/remediation), the asset page and the report) has a "Recommended action":
+
+| Case | Action |
+|---|---|
+| Linux package | "Upgrade age to … or later", with the commands (`apt-get`/`dnf`) to copy and the advisory (USN, DSA, RHSA). A fix only in Ubuntu Pro (ESM) says so, and the commands start with `pro attach` |
+| Linux kernel installed but not running | "Restart the machine" |
+| Windows | "Install the latest cumulative update (build … or later)", with the CVE's page in Microsoft's Security Update Guide, which names the KB |
+| Devices and other software | "Upgrade FortiOS to 7.2.9 or later": the fix in **the branch installed**, from NVD's ranges; marked "check it against the vendor's advisory", with the vendor's advisory (FortiGuard, Cisco, VMware/Broadcom, Sophos, …) |
+| No fixed version known (e.g. Cisco) | "Follow the vendor's advisory", with that advisory |
+
+CISA's required action and due date for KEV CVEs, and an operating system or firmware past its end of life (no more fixes), are said next to the action.
+
+**Upgrade plan:** on the asset page ("What to do first") and in the "Upgrade plan" section of the CVE report, each asset's actions with the findings each closes, e.g. "Upgrade FortiOS to 7.2.9 closes 12 findings". CVE alert emails carry the first steps too.
+
 ## Where findings come from
 
 - Products and versions are read from the **software list** (Linux and Windows audits) and the asset's OS.

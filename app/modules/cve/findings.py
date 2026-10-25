@@ -132,6 +132,7 @@ def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
             entries[e.cve_id] = e
 
     findings: List[dict] = []
+    nvd_info = {}       # what the recommended action needs of the NVD match (app/modules/cve/recommend.py)
     for a, ident, m in raw:
         e = entries.get(m.cve_id)
         if e is None:
@@ -148,6 +149,7 @@ def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
             "priority": priority(e), "source": "nvd", "advisories": [], "package": None, "binaries": [],
             "availability": None, "release": None, "reboot": False,
         })
+        nvd_info[(a.id, e.cve_id)] = {"part": m.part, "end_incl": m.end_incl}
     by_key = {(f["asset_id"], f["cve_id"]): f for f in findings}
     for a, f in adv_raw:
         e = entries.get(f["cve_id"])
@@ -176,6 +178,8 @@ def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
             findings.append(row)
             by_key[(a.id, f["cve_id"])] = row
     findings.sort(key=lambda f: (f["priority"], -(f["cvss"] or 0), -(f["epss"] or 0), f["asset_name"] or ""))
+    from app.modules.cve import recommend
+    recommend.annotate(db, findings, entries, nvd_info)
 
     summary = {"total": len(findings), "fix_now": sum(1 for f in findings if f["priority"] == 1),
                "affected_assets": len({f["asset_id"] for f in findings}),
@@ -197,4 +201,4 @@ def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
         "products": [{"vendor": i.vendor, "product": i.product, "version": i.version, "label": i.label,
                       "source": i.source, "software_id": i.software_id} for i in per_asset[a.id]],
     } for a in assets]
-    return {"summary": summary, "findings": findings, "assets": asset_rows}
+    return {"summary": summary, "findings": findings, "assets": asset_rows, "plan": recommend.plan(findings)}

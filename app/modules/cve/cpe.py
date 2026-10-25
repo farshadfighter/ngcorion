@@ -96,6 +96,8 @@ def label_for(vendor: str, product: str) -> str:
     known = _LABELS.get((vendor, product))
     if known:
         return known
+    if vendor == product:           # "openssl:openssl" reads "Openssl", not "Openssl openssl"
+        return product.replace('_', ' ').title()
     return f"{vendor.replace('_', ' ').title()} {product.replace('_', ' ')}"
 
 

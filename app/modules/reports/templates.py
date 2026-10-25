@@ -455,6 +455,41 @@ def _cve_overview(ctx: Ctx) -> List[dict]:
     return blocks
 
 
+def _action_text(tr, a: Optional[dict]) -> str:
+    """The recommended action of a finding or plan step (app/modules/cve/recommend.py), translated."""
+    if not a:
+        return "—"
+    product, version = a.get("product") or "", a.get("target") or ""
+    kind = a.get("kind")
+    if kind in ("package", "version"):
+        return tr("Upgrade {product} to {version} or later", product=product, version=version)
+    if kind == "after":
+        return tr("Upgrade {product} to a version later than {version}", product=product, version=version)
+    if kind == "windows":
+        return (tr("Install the latest cumulative update for {product} (build {version} or later)",
+                   product=product, version=version) if version
+                else tr("Install the latest cumulative update for {product}", product=product))
+    if kind == "reboot":
+        return tr("Restart the machine: the fixed kernel {version} is installed but not running", version=version)
+    return tr("No fixed version is known here: follow the vendor's advisory")
+
+
+def _plan_table(ctx: Ctx, findings: List[dict]) -> dict:
+    """What to do first on each asset: one row per action, with the findings it closes."""
+    from app.modules.cve.recommend import plan
+    tr = ctx.tr
+    steps = [s for rows in plan(findings).values() for s in rows]
+    steps.sort(key=lambda s: (s["priority"], not s["kev"], -s["findings"], s["asset_name"] or ""))
+    rows = [[cell(s["asset_name"] or "—", cls="mono"), cell(_action_text(tr, s)),
+             _num(ctx, s["findings"]), _num(ctx, s["critical"]), cell("KEV" if s["kev"] else "—"),
+             # the advisory's name in the PDF (USN-6859-1, fortiguard.com), its address in Excel
+             cell((s.get("link") or {}).get("label") or "—", value=(s.get("link") or {}).get("url") or "—",
+                  cls="mono")] for s in steps]
+    cols = [col(tr("Asset"), mono=True), col(tr("Recommended action")), col(tr("Findings closed"), num=True),
+            col(tr("Critical"), num=True), col("KEV"), col(tr("Advisory"), mono=True)]
+    return table(tr("Upgrade plan"), cols, rows, tr("No vulnerability found."), pdf_limit=150)
+
+
 def _cve_table(ctx: Ctx, findings: List[dict], limit: Optional[int], title: Optional[str] = None,
                sheet: Optional[str] = None) -> dict:
     tr = ctx.tr
@@ -462,12 +497,12 @@ def _cve_table(ctx: Ctx, findings: List[dict], limit: Optional[int], title: Opti
     for f in findings[:limit] if limit else findings:
         rows.append([cell(f["cve_id"], cls="mono nowrap"), cell(f["asset_name"], cls="mono"),
                      cell(" ".join(x for x in (f.get("product"), f.get("installed")) if x), cls="mono"),
-                     cell(f.get("fixed_in") or "—", cls="mono"),
+                     cell(_action_text(tr, f.get("action")) if f.get("action") else f.get("fixed_in") or "—"),
                      _sev_cell(ctx, f.get("severity"), bool(f.get("kev"))),
                      _num(ctx, f.get("cvss"), 1),
                      _pct(ctx, (f["epss"] * 100) if f.get("epss") is not None else None)])
     cols = [col("CVE", mono=True), col(tr("Asset"), mono=True), col(tr("Product and version"), mono=True),
-            col(tr("Fixed in"), mono=True), col(tr("Severity")), col("CVSS", num=True), col("EPSS", num=True)]
+            col(tr("Recommended action")), col(tr("Severity")), col("CVSS", num=True), col("EPSS", num=True)]
     return table(sheet or title or tr("Vulnerabilities"), cols, rows, tr("No vulnerability found."),
                  pdf_limit=150, title=title)
 
@@ -659,6 +694,8 @@ def _cve(ctx: Ctx) -> Dict[str, List[dict]]:
         out["overview"] = _cve_overview(ctx)
     if ctx.on("fix_first"):
         out["fix_first"] = [_cve_table(ctx, [f for f in findings if f["priority"] <= 2], None, sheet=tr("Fix first"))]
+    if ctx.on("upgrade_plan"):
+        out["upgrade_plan"] = [_plan_table(ctx, findings)]
     if ctx.on("by_asset"):
         per = defaultdict(lambda: defaultdict(int))
         for f in findings:
@@ -847,6 +884,7 @@ TEMPLATES: Dict[str, Template] = {t.id: t for t in (
              "vulnerability", "cve", sections=[
                  Section("overview", "Overview", "cve"),
                  Section("fix_first", "Fix first", "cve", "Known exploited, CVSS 9+ or EPSS 50%+"),
+                 Section("upgrade_plan", "Upgrade plan", "cve", "On each asset, the actions that close its findings"),
                  Section("by_asset", "By asset", "cve"),
                  Section("all_findings", "All findings", "cve"),
              ], options=[Option("min_severity", "Severity", "choice", "all", SEVERITY_CHOICES),

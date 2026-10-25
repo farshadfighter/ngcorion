@@ -304,6 +304,21 @@ def _recipients(db: Session, rule: NotificationRule, alerts: List[Alert]) -> Tup
     return sorted(emails), sorted(phones)
 
 
+def _cve_advice(db: Session, alerts: List[Alert]) -> str:
+    """For CVE alerts, what to do on each asset (app/modules/cve/recommend.py); "" otherwise."""
+    cve = [a for a in alerts if a.module == "cve" and a.asset_id]
+    if not cve:
+        return ""
+    try:
+        from app.modules.cve.recommend import email_lines
+        names = {a.asset_id: (a.source_label or "").split(" · ")[0] for a in cve}
+        lines = email_lines(db, names, names)
+    except Exception:       # advice must never stop the alert itself
+        logger.exception("[alerts] could not add the recommended actions")
+        return ""
+    return ("\n" + "\n".join(lines).rstrip() + "\n") if lines else ""
+
+
 def queue_message(db: Session, rule: NotificationRule, kind: str, alerts: List[Alert], now: datetime,
                   tz=None, channels: Optional[List[str]] = None) -> List[NotificationDelivery]:
     """Delivery rows for one message about `alerts` on the rule's channels, within the delivery policy
@@ -313,6 +328,8 @@ def queue_message(db: Session, rule: NotificationRule, kind: str, alerts: List[A
     if not channels or not alerts:
         return []
     subject, body, sms = compose(kind, rule.name, alerts, tz)
+    if kind in ("raised", "reminder") and CHANNEL_EMAIL in channels:
+        body += _cve_advice(db, alerts)
     worst = min((a.severity for a in alerts), key=lambda s: SEVERITY_RANK.get(s, 3))
     emails, phones = _recipients(db, rule, alerts)
     ids = [a.id for a in alerts if a.id]

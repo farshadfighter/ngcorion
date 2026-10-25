@@ -5,6 +5,55 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
+class ActionLink(BaseModel):
+    """A page to read: the vendor's or the distribution's advisory."""
+    url: str
+    label: str
+
+
+class EolNote(BaseModel):
+    """The operating system or firmware past its end of life."""
+    title: str
+    until: Optional[str] = None
+    latest: Optional[str] = None
+
+
+class RecommendedAction(BaseModel):
+    """What to do about a finding (app/modules/cve/recommend.py)."""
+    # package | reboot | windows | version | after | advisory
+    kind: str
+    text: str
+    product: Optional[str] = None
+    target: Optional[str] = None
+    pro: bool = False                        # the fix is in Ubuntu Pro (ESM) only
+    commands: List[str] = []
+    link: Optional[ActionLink] = None
+    check_vendor: bool = False               # a version from NVD's ranges: check the vendor's advisory
+    kev_action: Optional[str] = None         # CISA's required action, for a CVE known to be exploited
+    kev_due: Optional[date] = None
+    eol: Optional[EolNote] = None
+
+
+class PlanStep(BaseModel):
+    """One step of an asset's upgrade plan and the findings it closes."""
+    asset_id: int
+    asset_name: Optional[str] = None
+    kind: str
+    text: Optional[str] = None
+    product: Optional[str] = None
+    target: Optional[str] = None
+    pro: bool = False
+    commands: List[str] = []
+    link: Optional[ActionLink] = None
+    check_vendor: bool = False
+    eol: Optional[EolNote] = None
+    findings: int
+    critical: int = 0
+    kev: bool = False
+    priority: int
+    cves: List[str]
+
+
 class CveFinding(BaseModel):
     """One CVE affecting one product of one asset, with its scores, priority and fix version."""
     asset_id: int
@@ -36,6 +85,7 @@ class CveFinding(BaseModel):
     availability: Optional[str] = None       # standard | pro (Ubuntu Pro only)
     release: Optional[str] = None
     reboot: bool = False                     # the fix is installed, the running kernel is older
+    action: Optional[RecommendedAction] = None
 
 
 class AssetProduct(BaseModel):
@@ -80,6 +130,7 @@ class FindingsResponse(BaseModel):
     summary: FindingsSummary
     findings: List[CveFinding]
     assets: List[AssetFindings]
+    plan: Dict[int, List[PlanStep]] = {}     # per asset: what to do, and what each step closes
     database_loaded: bool
     advisories_loaded: bool = False
 

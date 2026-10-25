@@ -39,7 +39,7 @@ When a fix is not possible yet: the item → "Request risk acceptance" → scope
 
 ## Example
 
-CVE-2024-21762 on `fw-edge` (7-day deadline): assign it to the network owner → "Start work" with the note "upgrade window Thursday 22:00" → after the upgrade "Mark fixed" → the next audit makes it "Fixed and verified".
+CVE-2024-21762 on `fw-edge` (7-day deadline): the item's "Recommended action" says which FortiOS version to upgrade to and links the FortiGuard advisory (for Linux packages it has the commands too). Assign it to the network owner → "Start work" with the note "upgrade window Thursday 22:00" → after the upgrade "Mark fixed" → the next audit makes it "Fixed and verified".
 
 ## Take care
 

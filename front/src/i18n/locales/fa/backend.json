@@ -1049,5 +1049,8 @@
   "You cannot change the mobile number of a user who holds permissions you do not hold yourself": "نمی‌توانید شمارهٔ همراه کاربری را تغییر دهید که دسترسی‌هایی دارد که خودتان ندارید",
   "Password reset code generated, sent by email": "کد بازنشانی رمز عبور صادر و با ایمیل فرستاده شد",
   "Password reset code generated, sent by SMS": "کد بازنشانی رمز عبور صادر و با پیامک فرستاده شد",
-  "Password reset code generated, sent by email and SMS": "کد بازنشانی رمز عبور صادر و با ایمیل و پیامک فرستاده شد"
+  "Password reset code generated, sent by email and SMS": "کد بازنشانی رمز عبور صادر و با ایمیل و پیامک فرستاده شد",
+  "Upgrade plan": "برنامهٔ ارتقا",
+  "On each asset, the actions that close its findings": "برای هر دارایی، اقدام‌هایی که یافته‌هایش را می‌بندند",
+  "CVE not found in the local database": "این CVE در پایگاه دادهٔ محلی نیست"
 }

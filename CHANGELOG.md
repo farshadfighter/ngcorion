@@ -4,6 +4,27 @@
 
 ### Changes
 
+- Recommended action for every CVE finding (app/modules/cve/recommend.py):
+  a Linux package to upgrade to its fixed version, with the apt-get/dnf
+  commands and the advisory (Ubuntu Pro said, and `pro attach`, when the
+  fix is only there), a restart when the fixed kernel is installed but not
+  running; Windows: the latest cumulative update up to the fixed build,
+  with the CVE in Microsoft's Security Update Guide; other products: the
+  fixed version in the branch installed (from NVD, to check against the
+  vendor), or the vendor's advisory, found among the references by the
+  vendor's domain, when no fixed version is known. CISA's required action
+  for KEV, and an operating system past its end of life, are said with it.
+  Shown in the CVE detail, the remediation item, Asset 360 ("What to do
+  first"), the CVE report (new "Upgrade plan" section, a "Recommended
+  action" column) and CVE alert emails.
+- Per asset upgrade plan: one action per product with the findings it
+  closes (to the highest version they need), most urgent first; in the
+  findings API as `plan`.
+- A CVE known only from a distribution advisory opens its detail with the
+  finding and its action instead of "CVE not found".
+- A product whose CPE vendor and name are the same reads "Openssl", not
+  "Openssl openssl".
+
 - Delivery policy (System > Notifications > Delivery policy), above every
   notification rule: email and SMS each on or off, the least severity sent
   on each (e.g. SMS for Critical only), quiet hours for the rules that set

@@ -148,7 +148,7 @@ def _cve_found(db: Session) -> Optional[List[Found]]:
             detail={"product": f.get("product"), "installed": f.get("installed"), "fixed_in": f.get("fixed_in"),
                     "cvss": f.get("cvss"), "epss": f.get("epss"), "priority": f.get("priority"),
                     "source": f.get("source"), "advisories": f.get("advisories") or [],
-                    "availability": f.get("availability")},
+                    "availability": f.get("availability"), "action": f.get("action")},
         ))
     return out
 

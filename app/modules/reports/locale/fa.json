@@ -717,5 +717,16 @@
   "User device in the data center or DMZ": "دستگاه کاربری در مرکز داده یا DMZ",
   "Users reach the data center without a firewall": "کاربران بدون فایروال به مرکز داده می‌رسند",
   "Visibility": "دیدپذیری",
-  "What the topology shows": "آنچه توپولوژی نشان می‌دهد"
+  "What the topology shows": "آنچه توپولوژی نشان می‌دهد",
+  "Upgrade {product} to {version} or later": "{product} را به نسخهٔ {version} یا بالاتر ارتقا دهید",
+  "Upgrade {product} to a version later than {version}": "{product} را به نسخه‌ای بالاتر از {version} ارتقا دهید",
+  "Install the latest cumulative update for {product} (build {version} or later)": "آخرین به‌روزرسانی تجمعی {product} را نصب کنید (build {version} یا بالاتر)",
+  "Install the latest cumulative update for {product}": "آخرین به‌روزرسانی تجمعی {product} را نصب کنید",
+  "Restart the machine: the fixed kernel {version} is installed but not running": "دستگاه را راه‌اندازی مجدد کنید: هستهٔ اصلاح‌شدهٔ {version} نصب شده ولی در حال اجرا نیست",
+  "No fixed version is known here: follow the vendor's advisory": "نسخهٔ اصلاح‌شده در دست نیست: طبق اطلاعیهٔ سازنده اقدام کنید",
+  "Recommended action": "اقدام پیشنهادی",
+  "Findings closed": "یافته‌های بسته‌شده",
+  "Advisory": "اطلاعیه",
+  "Upgrade plan": "برنامهٔ ارتقا",
+  "On each asset, the actions that close its findings": "برای هر دارایی، اقدام‌هایی که یافته‌هایش را می‌بندند"
 }

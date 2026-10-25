@@ -1,0 +1,25 @@
+/* The recommended action of a CVE finding (components/CVE/RecommendedAction.jsx). */
+.rca { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid #bfdbfe; border-radius: 12px; background: #f5f9ff; }
+.rca-urgent { border-color: #fecaca; background: #fff7f7; }
+.rca-title { margin: 0; font-size: 13px; font-weight: 800; color: #1e3a5f; }
+.rca-text { margin: 0; font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.6; overflow-wrap: anywhere; }
+.rca-closes { margin: 0; font-size: 12.5px; color: #1d4ed8; font-weight: 600; }
+.rca-note { margin: 0; font-size: 12.5px; color: #1f2937; line-height: 1.6; }
+.rca-note-kev { color: #7f1d1d; }
+.rca-note-warn { color: #9a3412; }
+.rca-muted { color: #4b5563; }
+.rca-ltr { unicode-bidi: isolate; }
+.rca-cmd { position: relative; direction: ltr; }
+.rca-cmd pre { margin: 0; padding: 10px 12px; padding-inline-end: 64px; border-radius: 8px; background: #0f172a; color: #e2e8f0; font-size: 12.5px; line-height: 1.6; text-align: left; white-space: pre-wrap; word-break: break-all; }
+.rca-copy { position: absolute; top: 6px; inset-inline-end: 6px; padding: 3px 10px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #e2e8f0; font: inherit; font-size: 12px; cursor: pointer; }
+.rca-copy:hover { background: #334155; }
+.rca-link { font-size: 12.5px; color: #1d4ed8; text-decoration: none; font-weight: 600; align-self: flex-start; }
+.rca-link:hover { text-decoration: underline; }
+
+/* Remediation drawer */
+.rem-action { margin-top: 10px; }
+
+/* An asset's upgrade plan (Asset 360) */
+.a360-plan { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.a360-plan-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; }
+.a360-plan-text { font-weight: 600; color: #0f172a; overflow-wrap: anywhere; }

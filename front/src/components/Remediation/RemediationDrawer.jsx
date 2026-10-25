@@ -8,6 +8,7 @@ import {
     ACCEPTANCE_STATUS, SEVERITY, SOURCE, STATUS, dueClass, dueText, errorText, eventText, itemTitle, shortDate, sourceLink, titled,
 } from "./remediationFormat.js";
 import { DateInput } from "../shared/DateInput.jsx";
+import { RecommendedAction } from "../CVE/RecommendedAction.jsx";
 
 const toDateInput = (iso) => (iso ? iso.slice(0, 10) : "");
 
@@ -88,6 +89,7 @@ export function RemediationDrawer({ itemId, canWrite, onClose, onChanged }) {
                                     <div className="bkm-kv"><span>{t("Installed")}</span><b className="bkm-mono">{[d.product, d.installed].filter(Boolean).join(" ") || "—"}</b></div>
                                     <div className="bkm-kv"><span>{t("Fixed in")}</span>{d.fixed_in ? <b className="bkm-mono">{d.fixed_in}</b> : <b>{t("see the vendor advisory")}</b>}</div>
                                     {d.cvss != null && <div className="bkm-kv"><span>CVSS</span><b>{n(d.cvss)}</b></div>}
+                                    {d.action && <div className="rem-action"><RecommendedAction action={d.action} /></div>}
                                 </>}
                                 {item.source === "audit" && <>
                                     <div className="bkm-kv"><span>{t("Check")}</span><b className="bkm-mono">{d.check_number}{d.vdom ? ` · ${d.vdom}` : ""}</b></div>

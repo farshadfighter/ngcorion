@@ -3,6 +3,8 @@ import api from "../../config/api.js";
 import { SEVERITY, epssColor, epssLabel, formatDate } from "./cveFormat.js";
 import { Icon } from "./CveIcons.jsx";
 import { t } from "../../i18n";
+import { RecommendedAction } from "./RecommendedAction.jsx";
+import { tb } from "../../i18n/backendText";
 
 function range(p) {
     const parts = [];
@@ -18,12 +20,17 @@ function range(p) {
 export function CveDetail({ cveId, finding, onClose }) {
     const [entry, setEntry] = useState(null);
     const [error, setError] = useState(null);
+    const [missing, setMissing] = useState(false);
 
     useEffect(() => {
         let alive = true;
         api.get(`/api/cve/entries/${encodeURIComponent(cveId)}`)
             .then(({ data }) => alive && setEntry(data))
-            .catch((err) => alive && setError(err.response?.data?.detail || t("Could not load the CVE")));
+            .catch((err) => {
+                if (!alive) return;
+                setMissing(err.response?.status === 404);
+                setError(err.response?.data?.detail || t("Could not load the CVE"));
+            });
         const onKey = (e) => e.key === "Escape" && onClose();
         window.addEventListener("keydown", onKey);
         return () => { alive = false; window.removeEventListener("keydown", onKey); };
@@ -43,8 +50,23 @@ export function CveDetail({ cveId, finding, onClose }) {
                     <button type="button" className="cvx-icon-btn" aria-label={t("Close")} onClick={onClose}><Icon name="x" size={18} /></button>
                 </header>
                 <div className="cvx-drawer-body">
-                    {error && <div className="cvx-note cvx-note-error">{error}</div>}
+                    {/* A CVE known only from a distribution's advisory has no NVD entry: the finding and what to
+                        do about it are still shown. */}
+                    {error && !(missing && finding) && <div className="cvx-note cvx-note-error">{tb(error)}</div>}
                     {!entry && !error && <div className="cvx-muted">{t("Loading…")}</div>}
+                    {missing && finding && (
+                        <>
+                            <div className="cvx-note">{t("This CVE is not in the local NVD database; what is shown comes from the distribution's advisory.")}</div>
+                            {finding.description && <p className="cvx-desc">{finding.description}</p>}
+                            <div className="cvx-summary-box">
+                                <div className="cvx-kv"><span>{t("Asset")}</span><b>{finding.asset_name}</b></div>
+                                <div className="cvx-kv"><span>{t("Product")}</span><b>{finding.product}</b></div>
+                                <div className="cvx-kv"><span>{t("Installed")}</span><b className="cvx-mono">{finding.installed || "?"}</b></div>
+                                <div className="cvx-kv"><span>{t("Fixed in")}</span><b className="cvx-mono cvx-good">{finding.fixed_in || t("see the advisory")}</b></div>
+                            </div>
+                            {finding.action && <RecommendedAction action={finding.action} />}
+                        </>
+                    )}
                     {entry && (
                         <>
                             <div className="cvx-detail-badges">
@@ -78,6 +100,8 @@ export function CveDetail({ cveId, finding, onClose }) {
                                     <div className="cvx-kv"><span>{t("Fixed in")}</span><b className="cvx-mono cvx-good">{finding.fixed_in || t("see the advisory")}</b></div>
                                 </div>
                             )}
+                            {/* CISA's required action is in the box above */}
+                            {finding?.action && <RecommendedAction action={{ ...finding.action, kev_action: null }} />}
 
                             {entry.cvss_vector && (
                                 <>

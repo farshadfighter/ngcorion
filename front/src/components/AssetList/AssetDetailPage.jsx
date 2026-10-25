@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import api from "../../config/api.js";
-import { n, t } from "../../i18n";
+import { n, sep, t } from "../../i18n";
 import { HealthBar } from "../NOC/Health.jsx";
 import { celsius, duration } from "../NOC/healthFormat.js";
 import { tb } from "../../i18n/backendText.js";
@@ -19,6 +19,8 @@ import { TECHS, errorText } from "../AssetGroups/groupFormat.js";
 import { AssetIcon } from "../shared/AssetIcon.jsx";
 import { EOL_STATUS, untilText } from "../Software/eolFormat.js";
 import { LEVEL as TLS_LEVEL, SCAN_STATUS as TLS_SCAN, problemText } from "../CVE/tlsFormat.js";
+import { actionText } from "../CVE/actionText.js";
+import "../../assets/RecommendedAction.css";
 import { itemTitle } from "../Remediation/remediationFormat.js";
 import "../../assets/Lifecycle.css";
 import "../../assets/Certificates.css";
@@ -261,6 +263,25 @@ export function AssetDetailPage() {
                                         ))}
                                     </tbody>
                                 </table>
+                            )}
+                            {d.cve.plan?.length > 0 && (
+                                <div className="a360-plan">
+                                    <b className="bkm-small">{t("What to do first")}</b>
+                                    {d.cve.plan.map((s, i) => (
+                                        <div key={i} className="a360-plan-row">
+                                            <span className="a360-plan-text">{actionText(s)}</span>
+                                            <span className="bkm-small bkm-muted">
+                                                {t("closes {{closes}} findings", { closes: s.findings })}
+                                                {s.critical > 0 && <>{sep()}{t("{{value}} critical", { value: s.critical })}</>}
+                                            </span>
+                                            {s.kev && <span className="bkm-pill bkm-pill-bad a360-kev">KEV</span>}
+                                            {s.link?.url && <a className="bkm-link bkm-small" href={s.link.url} target="_blank" rel="noreferrer noopener"><span dir="ltr">{s.link.label}</span> ↗</a>}
+                                        </div>
+                                    ))}
+                                    {d.cve.plan_total > d.cve.plan.length && (
+                                        <span className="bkm-small bkm-muted">{t("…and {{value}} more", { value: d.cve.plan_total - d.cve.plan.length })}</span>
+                                    )}
+                                </div>
                             )}
                             {d.certificates?.services.length > 0 && (
                                 <div className="a360-tls">
