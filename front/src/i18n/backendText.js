@@ -1281,7 +1281,7 @@ msg("Only administrators and managers can decide on a policy rule");
 msg("You cannot decide on your own request");
 msg("Only an administrator can decide on a whole level or on excluding a high or critical check");
 msg("The expiry must be in the future");
-msg("No audit of this benchmark has reported this check");
+msg("This benchmark has no such check");
 msg("A rule for this check and scope is already pending or in force");
 msg("No such rule");
 msg("You cannot end this rule");

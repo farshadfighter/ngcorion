@@ -14,6 +14,7 @@ this file describes what is not (yet).
 | I3 | Cisco IOS MAC tables of every VLAN: read the VLAN list (CISCO-VTP-MIB) and each VLAN's BRIDGE-MIB table (`community@VLAN` on v2c, context `vlan-<id>` on v3) | done (6ed4f95) |
 | I4 | From testing: the Iran time zone was hard to find (a bare list of 418 IANA names, nothing selected); no sms.ir provider; no policy for what goes out by email and SMS, and the reset code by email only | done (eaec020) |
 | I5 | Recommended action for every CVE finding (Linux, Windows, devices, other software) and an upgrade plan per asset | done (d3d5f54) |
+| I6 | From testing: the benchmark policy offered only Linux (the benchmarks audits had run); all 17 families, from the rule catalogs | done (this commit) |
 
 Bugs reported from testing on the customer test server go before everything else here.
 
@@ -69,6 +70,7 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
+| Benchmark policy for all 17 families, before their first audit | (this commit) |
 | Recommended action for CVE findings and upgrade plan per asset | d3d5f54 |
 | Delivery policy for email and SMS, password reset code by SMS, sms.ir, time zone search | eaec020 |
 | Version 2.1.2 | 6811f28 |

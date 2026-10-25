@@ -213,5 +213,8 @@
   "Your role must use two-step sign-in. Set it up to continue; it takes about a minute.": "نقش شما باید از ورود دومرحله‌ای استفاده کند. برای ادامه آن را راه‌اندازی کنید؛ حدود یک دقیقه طول می‌کشد.",
   "Enter your account's email and we'll send a password reset code to your email or mobile phone.": "ایمیل حساب خود را وارد کنید تا کد بازنشانی رمز عبور به ایمیل یا تلفن همراهتان فرستاده شود.",
   "Enter the 6-digit code you received.": "کد ۶ رقمی دریافتی را وارد کنید.",
-  "Enter the code we sent you by email or SMS, then choose a new password.": "کدی را که با ایمیل یا پیامک برایتان فرستادیم وارد کنید، سپس رمز عبور تازه را انتخاب کنید."
+  "Enter the code we sent you by email or SMS, then choose a new password.": "کدی را که با ایمیل یا پیامک برایتان فرستادیم وارد کنید، سپس رمز عبور تازه را انتخاب کنید.",
+  "not audited yet": "هنوز ممیزی نشده",
+  "{{shown}} of {{total}} checks; search to narrow the list.": "{{shown}} از {{total}} بررسی؛ برای محدود کردن فهرست جستجو کنید.",
+  "Every benchmark, and for each asset's latest audit the average score under the policy and without it, and how many results the policy covers. Rules can be set before a benchmark's first audit.": "همهٔ بنچمارک‌ها؛ و برای آخرین ممیزی هر دارایی، میانگین امتیاز با سیاست و بدون آن و تعداد نتیجه‌هایی که سیاست شاملشان می‌شود. برای بنچمارکی که هنوز ممیزی نشده هم می‌توان قانون گذاشت."
 }

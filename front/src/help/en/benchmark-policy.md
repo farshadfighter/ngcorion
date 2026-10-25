@@ -5,7 +5,7 @@ Here the organisation decides which controls of the audit benchmarks (CIS, STIG 
 ## Add a rule
 
 1. Click "New rule".
-2. Pick the **benchmark** (e.g. Linux).
+2. Pick the **benchmark**: all 17 families (Linux, Windows Server, Cisco IOS, FortiGate, Sophos, SQL Server, MySQL, MongoDB, Apache, NGINX, IIS, Docker, Kubernetes, VMware ESXi, Active Directory, Windows DNS and DHCP) are listed with every check of their benchmark, even before any asset of that kind has been audited (marked "not audited yet").
 3. **Applies to:** "One check" (each shows whether it failed in the latest audits) or "A whole level" (e.g. L2).
 4. **Assets:** "Every asset" or one asset group.
 5. **Decision:** "Optional" or "Excluded" (next section).

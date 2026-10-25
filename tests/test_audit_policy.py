@@ -293,3 +293,49 @@ def test_routes_are_guarded():
     for route in R.router.routes:
         deps = [d.call for d in route.dependant.dependencies]
         assert any(getattr(c, "permission", None) for c in deps), route.path
+
+
+# ── every family, audited or not (app/modules/audit_policy/catalog.py) ─────────
+
+def test_every_family_has_its_catalog():
+    from app.models.audit import DeviceType
+    from app.modules.audit_policy import catalog
+    for dt in DeviceType:
+        rows = catalog.checks(dt.value)
+        assert rows, dt.value
+        numbers = [c["check_number"] for c in rows]
+        assert len(numbers) == len(set(numbers)), dt.value
+        assert all(c["level"] in (None, "L1", "L2", "INFO") for c in rows), dt.value
+        assert all(c["severity"] in (None, "critical", "high", "medium", "low", "info") for c in rows), dt.value
+    # the numbers the audits write
+    assert catalog.find("fortinet", "FG-BL-043") and catalog.find("windows", "WIN-2025-1.1.1")
+    assert catalog.find("cisco", "CIS-1.1.1") and catalog.find("cisco", "IOS-L1-0010")
+    assert catalog.find("docker", "DKR-1.1.1") and catalog.find("linux", "LNX-L1-1.1.1.1")
+
+
+def test_a_family_never_audited_gets_its_rules(db):
+    requester, approver = _user(db, UserRole.MANAGER), _user(db)
+    bench = R.list_benchmarks(current_user=requester, db=db)["benchmarks"]
+    from app.models.audit import DeviceType
+    assert {b["benchmark"] for b in bench} == {d.value for d in DeviceType}
+    assert all(b["checks"] > 0 for b in bench)
+
+    checks = R.list_checks(benchmark="docker", q="DKR-1.1.1", current_user=requester, db=db)
+    assert checks["checks"][0]["check_number"] == "DKR-1.1.1" and checks["checks"][0]["failed_now"] == 0
+    assert "L1" in R.list_checks(benchmark="docker", q=None, current_user=requester, db=db)["levels"]
+
+    # the title and severity come from the catalog; approved, a later audit is scored under it
+    rule = _ask(db, requester, benchmark="docker", check_number="DKR-1.1.1", decision="optional")
+    assert rule.check_title and rule.severity == "medium"
+    _decide(db, approver, rule.id)
+    s = _audit(db, _asset(db), requester, device_type="docker",
+               results=[("DKR-1.1.1", "medium", "L1", F_), ("DKR-1.1.2", "medium", "L1", F_)])
+    from app.modules.audit_policy import service
+    service.run_pending(db, limit=None)
+    assert _results(db, s)["DKR-1.1.1"] == "optional" and _results(db, s)["DKR-1.1.2"] is None
+
+    # what fails counts only this family's audits
+    assert R.list_checks(benchmark="docker", q="DKR-1.1.2", current_user=requester, db=db)["checks"][0]["failed_now"] == 1
+    with pytest.raises(HTTPException) as unknown:
+        _ask(db, requester, benchmark="sophos", check_number="DKR-1.1.1")
+    assert unknown.value.status_code == 400

@@ -575,7 +575,6 @@
   "no answer in time (check the address, the port and the firewall)": "در زمان مقرر پاسخی نیامد (نشانی، پورت و فایروال را بررسی کنید)",
   "No answer to SNMP for {{polls}} polls in a row (about {{minutes}} min)": "{{polls}} بار پیاپی به SNMP پاسخ نداده (حدود {{minutes}} دقیقه)",
   "No answer to SNMP for {{polls}} polls in a row (about {{minutes}} min) - {{error}}": "{{polls}} بار پیاپی به SNMP پاسخ نداده (حدود {{minutes}} دقیقه) - {{error}}",
-  "No audit of this benchmark has reported this check": "هیچ ممیزی‌ای از این بنچمارک این کنترل را گزارش نکرده است",
   "No backup for": "بدون پشتیبان به مدت",
   "No backup for {{days}} days": "{{days}} روز بدون پشتیبان",
   "no directory server is configured": "هیچ سرور دایرکتوری تعریف نشده است",
@@ -1052,5 +1051,6 @@
   "Password reset code generated, sent by email and SMS": "کد بازنشانی رمز عبور صادر و با ایمیل و پیامک فرستاده شد",
   "Upgrade plan": "برنامهٔ ارتقا",
   "On each asset, the actions that close its findings": "برای هر دارایی، اقدام‌هایی که یافته‌هایش را می‌بندند",
-  "CVE not found in the local database": "این CVE در پایگاه دادهٔ محلی نیست"
+  "CVE not found in the local database": "این CVE در پایگاه دادهٔ محلی نیست",
+  "This benchmark has no such check": "این بنچمارک چنین بررسی‌ای ندارد"
 }

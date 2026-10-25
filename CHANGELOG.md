@@ -4,6 +4,14 @@
 
 ### Changes
 
+- Benchmark policy for all 17 families: the benchmark list and the
+  checks to choose from come from each audit module's own rule catalog
+  (app/modules/audit_policy/catalog.py), so rules can be set for a
+  family before any of its assets is audited (before, only benchmarks
+  and checks some audit had reported, in practice Linux). The benchmarks
+  view lists every family with its number of checks; "fails on N assets
+  now" counts that family's audits only.
+
 - Recommended action for every CVE finding (app/modules/cve/recommend.py):
   a Linux package to upgrade to its fixed version, with the apt-get/dnf
   commands and the advisory (Ubuntu Pro said, and `pro attach`, when the

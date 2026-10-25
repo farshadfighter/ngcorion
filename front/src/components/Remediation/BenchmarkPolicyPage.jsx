@@ -5,8 +5,8 @@
  * score), for every asset or one asset group, with a reason and an optional expiry. A rule applies once
  * someone other than the requester approves it; audit scores, remediation and reports then follow it.
  *
- * Views: in force, waiting for a decision, ended; the benchmarks with their score under the policy and
- * without it. New rule drawer: benchmark, one check (searchable, with how many latest audits fail it) or
+ * Views: in force, waiting for a decision, ended; every benchmark (the 17 families, audited or not) with
+ * its score under the policy and without it. New rule drawer: benchmark, one check (searchable, with how many latest audits fail it) or
  * a level, decision, scope, reason, expiry.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -66,6 +66,7 @@ function NewRuleDrawer({ benchmarks, nameOf, onClose, onDone }) {
     });
     const [checks, setChecks] = useState(null);
     const [levels, setLevels] = useState([]);
+    const [total, setTotal] = useState(0);
     const [query, setQuery] = useState("");
     const [groups, setGroups] = useState([]);
     const [error, setError] = useState(null);
@@ -79,7 +80,7 @@ function NewRuleDrawer({ benchmarks, nameOf, onClose, onDone }) {
         if (!form.benchmark) return;
         const timer = setTimeout(() => {
             api.get("/api/audit-policy/checks", { params: { benchmark: form.benchmark, q: query || undefined } })
-                .then(({ data }) => { setChecks(data.checks); setLevels(data.levels); })
+                .then(({ data }) => { setChecks(data.checks); setLevels(data.levels); setTotal(data.total); })
                 .catch((e) => setError(errorText(e, t("Could not load the checks"))));
         }, 250);
         return () => clearTimeout(timer);
@@ -114,7 +115,11 @@ function NewRuleDrawer({ benchmarks, nameOf, onClose, onDone }) {
                     <label className="alr-lbl">{t("Benchmark")}
                         <select className="bkm-select" value={form.benchmark}
                                 onChange={(e) => setForm((f) => ({ ...f, benchmark: e.target.value, check_number: "", level: "" }))}>
-                            {benchmarks.map((b) => <option key={b.benchmark} value={b.benchmark}>{nameOf(b.benchmark)}</option>)}
+                            {benchmarks.map((b) => (
+                                <option key={b.benchmark} value={b.benchmark}>
+                                    {nameOf(b.benchmark)}{b.assets === 0 ? ` (${t("not audited yet")})` : ""}
+                                </option>
+                            ))}
                         </select>
                     </label>
                     <div className="bp-seg" role="radiogroup" aria-label={t("Applies to")}>
@@ -127,6 +132,9 @@ function NewRuleDrawer({ benchmarks, nameOf, onClose, onDone }) {
                         <div className="bp-checks">
                             <input className="bkm-select" value={query} dir="auto" placeholder={t("Search number or title…")}
                                    onChange={(e) => setQuery(e.target.value)} aria-label={t("Search")} />
+                            {checks !== null && total > checks.length && (
+                                <span className="bkm-small bkm-muted">{t("{{shown}} of {{total}} checks; search to narrow the list.", { shown: checks.length, total })}</span>
+                            )}
                             <div className="bp-check-list" role="radiogroup" aria-label={t("Check")}>
                                 {checks === null ? <div className="bkm-muted bkm-small">{t("Loading…")}</div>
                                     : checks.length === 0 ? <div className="bkm-muted bkm-small">{t("No check found")}</div>
@@ -309,19 +317,20 @@ function Benchmarks({ data, nameOf }) {
             <div className="bkm-card-head">
                 <div>
                     <h2>{t("Benchmarks")}</h2>
-                    <p>{t("Each asset's latest audit: the average score under the policy and without it, and how many results the policy covers.")}</p>
+                    <p>{t("Every benchmark, and for each asset's latest audit the average score under the policy and without it, and how many results the policy covers. Rules can be set before a benchmark's first audit.")}</p>
                 </div>
             </div>
             {data.benchmarks.length === 0 ? <div className="bkm-empty"><b>{t("No audit yet")}</b></div> : (
                 <div className="bkm-table-wrap">
                     <table className="bkm-table">
-                        <thead><tr><th>{t("Benchmark")}</th><th>{t("Assets audited")}</th><th>{t("Score under the policy")}</th>
+                        <thead><tr><th>{t("Benchmark")}</th><th>{t("Checks")}</th><th>{t("Assets audited")}</th><th>{t("Score under the policy")}</th>
                             <th>{t("Without the policy")}</th><th>{t("Optional results")}</th><th>{t("Excluded results")}</th></tr></thead>
                         <tbody>
                             {data.benchmarks.map((b) => (
                                 <tr key={b.benchmark}>
                                     <td><b>{nameOf(b.benchmark)}</b></td>
-                                    <td>{n(b.assets)}</td>
+                                    <td>{n(b.checks)}</td>
+                                    <td>{b.assets ? n(b.assets) : <span className="bkm-muted">{t("not audited yet")}</span>}</td>
                                     <td><b>{pct(b.score)}</b></td>
                                     <td className="bkm-muted">{pct(b.raw_score)}</td>
                                     <td>{n(b.optional)}</td>

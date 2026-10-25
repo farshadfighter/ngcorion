@@ -1,8 +1,10 @@
 """
 The organisation's benchmark policy (app/models/audit_policy.py): rules that make a check (or a whole
 level) optional or excluded for every asset or an asset group, requested by one person and approved by
-another; the checks to choose from; and what the policy changes in the latest audits.
+another; the checks to choose from (every family's catalog, audited or not); and what the policy changes
+in the latest audits.
 """
+import re
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -17,11 +19,12 @@ from app.models import User, UserRole
 from app.models.audit import AuditResult, AuditSession, CheckStatus, DeviceType
 from app.models.audit_policy import (DECISIONS, STATUS_APPROVED, STATUS_PENDING, STATUS_REJECTED, STATUS_REVOKED,
                                      AuditPolicyRule)
-from app.modules.audit_policy import service
+from app.modules.audit_policy import catalog, service
 
 router = APIRouter(prefix="/api/audit-policy", tags=["Audit policy"])
 
 _BENCHMARKS = {d.value for d in DeviceType}
+CHECKS_SHOWN = 1000         # the drawer's list; a search narrows it
 
 
 class RuleIn(BaseModel):
@@ -177,34 +180,47 @@ def list_rules(status: str = Query("all", pattern="^(all|in_force|pending|ended)
 def list_checks(benchmark: str = Query(..., max_length=40), q: Optional[str] = Query(None, max_length=100),
                 current_user: User = Depends(require_permission("auditing", "read")),
                 db: Session = Depends(get_db)):
-    """The checks of a benchmark that audits have reported (number, title, severity, level), with how
-    many of the latest audits failed each, to choose a rule from; and the benchmark's levels."""
+    """The checks of a benchmark to choose a rule from: its module's whole catalog (app/modules/
+    audit_policy/catalog.py), so any of the 17 families can have rules before its first audit, and any
+    check an audit has reported that the catalog lacks; each with how many of the latest audits of this
+    benchmark fail it. And the benchmark's levels."""
     if benchmark not in _BENCHMARKS:
         raise HTTPException(status_code=400, detail="Unknown benchmark")
     dt = DeviceType(benchmark)
-    base = (db.query(AuditResult.check_number, func.max(AuditResult.check_title), func.max(AuditResult.severity),
-                     func.max(AuditResult.level))
-            .join(AuditSession, AuditSession.id == AuditResult.session_id)
-            .filter(AuditSession.device_type == dt, AuditResult.check_number.isnot(None)))
+    by_number = {c["check_number"]: c for c in catalog.checks(benchmark)}
+    audited = (db.query(AuditResult.check_number, func.max(AuditResult.check_title), func.max(AuditResult.severity),
+                        func.max(AuditResult.level))
+               .join(AuditSession, AuditSession.id == AuditResult.session_id)
+               .filter(AuditSession.device_type == dt, AuditResult.check_number.isnot(None))
+               .group_by(AuditResult.check_number).all())
+    for c, t, s, lv in audited:
+        by_number.setdefault(c, {"check_number": c, "title": t, "severity": (s or "").lower() or None,
+                                 "level": (lv or "").upper() or None})
+    rows = sorted(by_number.values(), key=lambda c: _natural(c["check_number"]))
+    levels = sorted({c["level"] for c in rows if c["level"] and c["level"] != "INFO"})
     if q:
-        like = f"%{q.strip().lower()}%"
-        base = base.filter(func.lower(AuditResult.check_number).like(like) | func.lower(AuditResult.check_title).like(like))
-    rows = base.group_by(AuditResult.check_number).order_by(AuditResult.check_number).limit(500).all()
-    latest = _latest_session_ids(db)
+        needle = q.strip().lower()
+        rows = [c for c in rows if needle in c["check_number"].lower() or needle in (c["title"] or "").lower()]
+    latest = [i for (i,) in db.query(AuditSession.id).filter(AuditSession.id.in_(_latest_session_ids(db)),
+                                                               AuditSession.device_type == dt)]
     failed = dict(db.query(AuditResult.check_number, func.count()).filter(
         AuditResult.session_id.in_(latest), AuditResult.status == CheckStatus.FAIL).group_by(AuditResult.check_number)) \
         if latest else {}
-    levels = sorted({(lvl or "").upper() for (_, _, _, lvl) in rows if lvl and lvl.upper() != "INFO"})
-    return {"benchmark": benchmark, "levels": levels,
-            "checks": [{"check_number": c, "title": t, "severity": s, "level": lv, "failed_now": failed.get(c, 0)}
-                       for c, t, s, lv in rows]}
+    return {"benchmark": benchmark, "levels": levels, "total": len(rows),
+            "checks": [{**c, "failed_now": failed.get(c["check_number"], 0)} for c in rows[:CHECKS_SHOWN]]}
+
+
+def _natural(number: str):
+    """1.2.10 after 1.2.9: digits compare as numbers."""
+    return [(0, int(p)) if p.isdigit() else (1, p) for p in re.split(r"(\d+)", number)]
 
 
 @router.get("/benchmarks")
 def list_benchmarks(current_user: User = Depends(require_permission("auditing", "read")),
                     db: Session = Depends(get_db)):
-    """The benchmarks audits have run, with each one's latest audits: how many, the average score under
-    the policy and without it, and how many results the policy covers."""
+    """Every benchmark (the 17 families), with how many checks its catalog has and, for those audits have
+    run, each one's latest audits: how many, the average score under the policy and without it, and how
+    many results the policy covers."""
     ids = _latest_session_ids(db)
     out = []
     if ids:
@@ -217,9 +233,18 @@ def list_benchmarks(current_user: User = Depends(require_permission("auditing", 
                         "score": round(score, 1) if score is not None else None,
                         "raw_score": round(raw, 1) if raw is not None else None,
                         "optional": int(opt or 0), "excluded": int(exc or 0)})
+    audited = {b["benchmark"] for b in out}
+    for dt in DeviceType:
+        if dt.value not in audited:
+            out.append({"benchmark": dt.value, "assets": 0, "score": None, "raw_score": None,
+                        "optional": 0, "excluded": 0})
+    for b in out:
+        b["checks"] = len(catalog.checks(b["benchmark"]))
     pending = db.query(AuditPolicyRule).filter(AuditPolicyRule.status == STATUS_PENDING).count()
     in_force = len(service.in_force(db))
-    return {"benchmarks": sorted(out, key=lambda b: b["benchmark"]), "pending": pending, "in_force": in_force}
+    # audited ones first, then by name
+    return {"benchmarks": sorted(out, key=lambda b: (b["assets"] == 0, b["benchmark"])), "pending": pending,
+            "in_force": in_force}
 
 
 @router.post("/rules", response_model=RuleOut, status_code=201)
@@ -242,9 +267,14 @@ def request_rule(body: RuleIn, request: Request, current_user: User = Depends(re
                .filter(AuditSession.device_type == DeviceType(body.benchmark),
                        AuditResult.check_number == body.check_number)
                .order_by(AuditResult.id.desc()).first())
-        if hit is None:
-            raise HTTPException(status_code=400, detail="No audit of this benchmark has reported this check")
-        title, severity = hit
+        if hit is not None:
+            title, severity = hit
+        else:
+            # not audited yet: the module's catalog knows it
+            known = catalog.find(body.benchmark, body.check_number)
+            if known is None:
+                raise HTTPException(status_code=400, detail="This benchmark has no such check")
+            title, severity = known["title"], known["severity"]
     same = db.query(AuditPolicyRule).filter(
         AuditPolicyRule.benchmark == body.benchmark, AuditPolicyRule.status.in_([STATUS_PENDING, STATUS_APPROVED]),
         AuditPolicyRule.check_number == body.check_number if body.check_number else AuditPolicyRule.level == body.level.upper(),
