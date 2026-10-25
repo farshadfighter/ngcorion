@@ -438,13 +438,18 @@ export const EditUserModal = ({ user, onClose }) => {
             updateData.current_password = formData.current_password;
         }
 
-        const permissionsArray = Object.keys(permissions).map((module) => ({
-            module,
-            can_read: permissions[module].read,
-            can_write: permissions[module].write,
-            can_delete: permissions[module].delete,
-        }));
-        updateData.permissions = permissionsArray;
+        // Nobody changes their own role or permissions (the server refuses it): one's own edit sends
+        // neither, so a change of email, phone or password goes through.
+        if (isSelfEdit) {
+            delete updateData.role;
+        } else {
+            updateData.permissions = Object.keys(permissions).map((module) => ({
+                module,
+                can_read: permissions[module].read,
+                can_write: permissions[module].write,
+                can_delete: permissions[module].delete,
+            }));
+        }
 
         const result = await dispatch(updateUser({ userId: user.id, userData: updateData }));
 
@@ -538,7 +543,8 @@ export const EditUserModal = ({ user, onClose }) => {
                                     name="role"
                                     value={formData.role}
                                     onChange={handleChange}
-                                    disabled={fromDirectory}
+                                    disabled={fromDirectory || isSelfEdit}
+                                    title={isSelfEdit ? t("You cannot change your own role or permissions.") : undefined}
                                 >
                                     <option value="user">{t("User")}</option>
                                     <option value="manager">{t("Manager")}</option>
@@ -737,6 +743,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                                     type="checkbox"
                                                     style={styles.permCheckbox}
                                                     checked={permissions[module.name]?.[perm] || false}
+                                                    disabled={isSelfEdit}
                                                     onChange={() => handlePermissionChange(module.name, perm)}
                                                 />
                                             </td>

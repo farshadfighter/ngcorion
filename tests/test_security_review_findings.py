@@ -210,3 +210,34 @@ def test_a_certificate_file_over_1_mb_is_refused():
     with pytest.raises(HTTPException) as exc:
         asyncio.run(_read_small(Upload(CERT_FILE_MAX + 1)))
     assert exc.value.status_code == 413
+
+
+# ── one's own email: the edit form sends the unchanged role and permissions back ──
+
+def test_one_can_change_ones_own_email_but_not_role_or_permissions(db):
+    import importlib
+    from app.schemas.user import PermissionCreate
+    users_router = importlib.import_module("app.modules.users.router")
+    _user(db, 1, "root", UserRole.ADMIN, [])
+    _user(db, 2, "helpdesk", UserRole.MANAGER, [(ModuleEnum.USER_MANAGEMENT, True, True)])
+    admin, manager = db.get(User, 1), db.get(User, 2)
+    full = [PermissionCreate(module=m.value, can_read=True, can_write=True, can_delete=True) for m in ModuleEnum]
+
+    # an administrator: role and the (full-access) permission list come back with the new email
+    out = users_router.update_user(1, UserUpdate(email="root@new.example.com", role="admin", permissions=full),
+                                   db=db, current_user=admin)
+    assert out.email == "root@new.example.com" and db.get(User, 1).role == UserRole.ADMIN
+
+    # a manager: its own role and the very permissions it holds, unchanged
+    same = [PermissionCreate(module="user_management", can_read=True, can_write=True, can_delete=False)]
+    out = users_router.update_user(2, UserUpdate(email="hd@new.example.com", role="manager", permissions=same),
+                                   db=db, current_user=manager)
+    assert out.email == "hd@new.example.com"
+
+    # but not a change of either
+    for change in (UserUpdate(role="admin"),
+                   UserUpdate(permissions=same + [PermissionCreate(module="hardening", can_read=True)])):
+        with pytest.raises(HTTPException) as exc:
+            users_router.update_user(2, change, db=db, current_user=manager)
+        assert exc.value.status_code == 403 and "own role or permissions" in exc.value.detail
+        db.rollback()

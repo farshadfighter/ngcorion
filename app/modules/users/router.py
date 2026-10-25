@@ -165,6 +165,21 @@ def create_user(
     return new_user
 
 
+def _same_permissions(db: Session, user: User, permissions) -> bool:
+    """Whether a permission list equals what the user holds; an administrator's permissions are always
+    full access (the stored ones are not used), so any list leaves them as they are."""
+    from app.models.user_permission import UserPermission
+    if user.role == UserRole.ADMIN:
+        return True
+    held = {(getattr(p.module, "value", p.module) or "").lower(): (bool(p.can_read), bool(p.can_write), bool(p.can_delete))
+            for p in db.query(UserPermission).filter(UserPermission.user_id == user.id)}
+    held = {k: v for k, v in held.items() if any(v)}
+    sent = {(getattr(p.module, "value", p.module) or "").lower(): (bool(p.can_read), bool(p.can_write), bool(p.can_delete))
+            for p in permissions}
+    sent = {k: v for k, v in sent.items() if any(v)}
+    return held == sent
+
+
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: int,
@@ -185,8 +200,13 @@ def update_user(
     """
     check_user_management_permission(current_user, "write", db)
     
-    # SECURITY: Block self role/permission changes
+    # SECURITY: Block self role/permission changes. A form that sends one's own role and permissions
+    # back unchanged (with a new email or phone) is not a change: those fields are dropped.
     if user_id == current_user.id:
+        if user_data.role is not None and user_data.role == getattr(current_user.role, "value", current_user.role):
+            user_data.role = None
+        if user_data.permissions is not None and _same_permissions(db, current_user, user_data.permissions):
+            user_data.permissions = None
         if user_data.role is not None or user_data.permissions is not None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

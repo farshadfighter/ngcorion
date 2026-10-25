@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Fixes
+
+- A user editing their own account (an administrator included) could not
+  save a new email or phone: the form sent the unchanged role and
+  permissions with it, and the server refuses any change of one's own role
+  or permissions. The form no longer sends them for one's own account
+  (they are shown read-only), and the server treats an unchanged role or
+  permission list as no change.
+
 ### Changes
 
 - Benchmark policy for all 17 families: the benchmark list and the
