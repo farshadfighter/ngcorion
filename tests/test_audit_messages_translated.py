@@ -26,6 +26,7 @@ DYNAMIC = {
     ("app/modules/cve/router.py", "'; '.join(changes)"),  # settings changes listed by hand, tbDetail() splits
     ("app/modules/cve/router.py", "release"),  # a release name
     ("app/modules/license/router.py", "exc.detail"),  # the license server's or the verifier's own reason
+    ("app/modules/alerts/router.py", "'; '.join(changed)"),  # delivery policy settings changed, as values
     ("app/modules/remediation/router.py", "acc.ref"),  # a reference such as RA-2026-0007
     ("app/modules/reports/router.py", "code"),  # a report code
     ("app/modules/reports/router.py", "s.name"),  # a schedule name

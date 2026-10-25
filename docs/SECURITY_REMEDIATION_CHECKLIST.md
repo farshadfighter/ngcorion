@@ -848,6 +848,8 @@ one depends on. Probes against a running instance on loopback.
   administrator is not limited.
 - **Test**: tests/test_security_review_findings.py::test_an_account_holding_more_cannot_have_its_email_changed
 - **Status**: [x] — Fixed 2026-10-24.
+- **Follow-up (2026-10-25)**: the delivery policy can send the reset code by SMS, to the account's
+  mobile number, so the number is guarded the same way (test_an_account_holding_more_cannot_have_its_mobile_number_changed).
 
 ### 4.2 — Asset data with a sign-in only
 

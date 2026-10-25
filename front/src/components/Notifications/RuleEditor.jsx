@@ -367,9 +367,10 @@ export function RuleEditor({ rule, events, options, channels, onClose, onSaved, 
                                                 <span>{tr("to")}</span>
                                                 <input type="time" className="bkm-select" aria-label={tr("Quiet hours end")} value={form.quiet_end}
                                                        onChange={(e) => set({ quiet_end: e.target.value })} />
-                                                <span className="alr-hint">{tr("Critical alerts are still sent.")}</span>
+                                                <span className="alr-hint">{tr("Critical alerts are still sent, unless the delivery policy says otherwise.")}</span>
                                             </span>
                                         )}
+                                        {!quietOn && <span className="alr-hint">{tr("Without its own, the rule follows the quiet hours of the delivery policy.")}</span>}
                                     </div>
                                 </div>
                             </section>

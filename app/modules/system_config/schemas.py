@@ -265,7 +265,7 @@ class SmsConfig(_ConfigBase):
     @classmethod
     def _check_provider(cls, value: str) -> str:
         # Stored verbatim and compared case-insensitively against "kavenegar"/
-        # "ghasedak" both when routing the test-SMS request (service._sms_request)
+        # "ghasedak"/"smsir" both when routing the test-SMS request (service._sms_request)
         # and when the frontend decides whether to show the known-provider preset
         # or fall back to "Other". Without trimming here, a value saved with
         # stray whitespace (e.g. via a direct API call) sends correctly but the
@@ -290,6 +290,15 @@ class SmsConfig(_ConfigBase):
             return None
         value = value.strip()
         return value or None
+
+
+    @model_validator(mode="after")
+    def _smsir_needs_line(self) -> "SmsConfig":
+        # sms.ir sends from one of the account's line numbers and has no default line.
+        if self.provider.lower() in ("smsir", "sms.ir"):
+            if not self.sender_number or not self.sender_number.isdigit():
+                raise ValueError("sms.ir needs the line number (digits) as the sender number")
+        return self
 
 
 class SmsTestRequest(BaseModel):

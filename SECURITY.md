@@ -15,7 +15,7 @@ controls are mapped to the AFTA / Common Criteria requirements in
 | Area | Control |
 |---|---|
 | Accounts | Personal accounts, roles (admin, manager, user, guest) and per-module read/write/delete permissions, checked on every API call; API keys for other systems with their own read/write scopes, expiry and address list. A user can neither grant a permission nor change the email of an account holding one they do not hold themselves. |
-| Passwords | Strength rules on every new password; bcrypt hashes; a password set by an admin (new account, reset) must be changed at the next sign-in; reset codes by e-mail are single-use, short-lived and rate-limited. |
+| Passwords | Strength rules on every new password; bcrypt hashes; a password set by an admin (new account, reset) must be changed at the next sign-in; reset codes (by e-mail or SMS, as the delivery policy says) are single-use, short-lived and rate-limited, and never written to a log. |
 | Sign-in | 5 failures from one address or 10 for one account within 15 minutes block further attempts for 15 minutes; every attempt is recorded (`login_logs`). |
 | Sessions | JWT with a random id: logout revokes it at the server; a password change ends every other session; a session unused for `SESSION_IDLE_TIMEOUT_MINUTES` (30) is ended, and the UI signs out after the same time without input; a token lasts `ACCESS_TOKEN_EXPIRE_MINUTES` (120) at most. |
 | Notice | A notice on the login page before sign-in (`LOGIN_BANNER`, or the built-in one). |

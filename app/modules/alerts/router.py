@@ -4,7 +4,7 @@ Alerts API.
   /api/alerts          the Alerts page, the header bell and the sidebar badge.
                        Every signed-in user sees the alerts of the modules they
                        can read (NOC alerts need NOC read, and so on).
-  /api/notifications   rules, channels, webhooks and the delivery log, under
+  /api/notifications   rules, channels, webhooks, the delivery policy and the delivery log, under
                        System > Notifications (System Configuration permission).
 """
 import re
@@ -27,7 +27,7 @@ from app.models.notification import (ALERT_ACKNOWLEDGED, ALERT_ACTIVE, ALERT_OPE
 from app.models.system_config import SECTION_SMS, SECTION_SMTP, SECTION_SYSLOG
 from app.models.user import UserRole
 from app.modules.alerts import channels as ch
-from app.modules.alerts import engine
+from app.modules.alerts import engine, policy
 from app.modules.alerts.events import EVENTS, MODULE_LABELS, MODULE_ORDER
 from app.schemas.user import validate_phone
 
@@ -740,6 +740,51 @@ def test_webhook(hook_id: int, current_user: User = Depends(require_permission("
                module="notifications", target_id=hook.id, detail=f"Tested webhook '{hook.name}': {result['message']}",
                result="success" if result["success"] else "failed")
     return result
+
+
+# ===========================================================================
+# Notifications: delivery policy
+# ===========================================================================
+
+def _policy_out(db: Session) -> dict:
+    now = datetime.utcnow()
+    smtp = ch.load_section(db, SECTION_SMTP)
+    sms = ch.load_section(db, SECTION_SMS)
+    return {
+        "config": policy.load_policy(db),
+        "defaults": policy.DEFAULTS,
+        "status": {
+            "email_configured": bool(smtp.get("host")),
+            "sms_configured": bool(sms.get("provider")),
+            "users_with_phone": db.query(User).filter(User.is_active.is_(True), User.auth_source == "local",
+                                                      User.phone.isnot(None), User.phone != "").count(),
+            "sms_today": policy.sms_sent_today(db, now, ch.local_timezone(db)),
+        },
+    }
+
+
+@admin_router.get("/policy")
+def get_policy(_user: User = Depends(require_permission("SYSTEM_CONFIG", "read")), db: Session = Depends(get_db)):
+    """The delivery policy (what may go out by email and SMS, how the password reset code is sent), with
+    whether each channel's server is set and how many SMS went out today."""
+    return _policy_out(db)
+
+
+@admin_router.put("/policy")
+def put_policy(data: policy.DeliveryPolicy,
+               current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
+               db: Session = Depends(get_db)):
+    """Save the delivery policy. It applies from the next message on."""
+    before = policy.load_policy(db)
+    policy.save_policy(db, data, current_user)
+    after = data.model_dump()
+    # a record of the settings changed ("sms.min_severity: info -> critical"), shown as it is
+    changed = [f"{part}.{k}: {before.get(part, {}).get(k)} -> {v}"
+               for part, values in after.items() for k, v in values.items()
+               if before.get(part, {}).get(k) != v] or ["-"]
+    log_action(db, user_id=current_user.id, username=current_user.username, action="notification.policy.update",
+               module="notifications", detail="; ".join(changed))
+    return _policy_out(db)
 
 
 # ===========================================================================

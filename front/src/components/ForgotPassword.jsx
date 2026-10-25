@@ -46,7 +46,7 @@ export const ForgotPassword = () => {
                 <h1 className="login-heading">{t("Forgot password")}</h1>
 
                 <p className="login-subtext">
-                    {t("Enter your email and we'll send you a code to reset your password.")}
+                    {t("Enter your account's email and we'll send a password reset code to your email or mobile phone.")}
                 </p>
 
                 <div className="input-wrapper">

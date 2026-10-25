@@ -23,7 +23,7 @@ from app.core.auth_rate_limiter import (
     check_login_rate_limit,
     check_password_reset_rate_limit,
 )
-from app.core.email import password_reset_mail_config, send_password_reset_otp
+from app.core.email import password_reset_sends
 from app.schemas.auth import (
     UserLogin,
     MfaChallenge,
@@ -474,7 +474,9 @@ def forgot_password(
         return generic
 
     otp, user = result
-    background_tasks.add_task(send_password_reset_otp, password_reset_mail_config(db), user.email, otp)
+    sends, how = password_reset_sends(db, user, otp)
+    for send, args in sends:
+        background_tasks.add_task(send, *args)
     log_action(
         db=db,
         user_id=user.id,
@@ -484,7 +486,9 @@ def forgot_password(
         target_id=user.id,
         ip_address=client_ip,
         result="success",
-        detail="Password reset code generated",
+        detail=("Password reset code generated, sent by email" if how == "email" else
+                "Password reset code generated, sent by SMS" if how == "sms" else
+                "Password reset code generated, sent by email and SMS"),
     )
 
     return generic

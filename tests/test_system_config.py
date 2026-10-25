@@ -435,6 +435,45 @@ def test_sms_request_ghasedak_builds_documented_url_and_header():
     assert kwargs["data"] == {"receptor": "09121234567", "message": "hello", "linenumber": "10008663"}
 
 
+def test_sms_request_smsir_posts_bulk_with_line_number_and_key_header():
+    url, kwargs = service._sms_request(
+        _sms_config(provider="smsir", server_address="https://api.sms.ir/",
+                    api_key="APIKEY123", sender_number="30007732000000"),
+        "09121234567", "سلام",
+    )
+    assert url == "https://api.sms.ir/v1/send/bulk"
+    assert kwargs["headers"]["X-API-KEY"] == "APIKEY123"
+    assert kwargs["json"] == {"lineNumber": 30007732000000, "messageText": "سلام", "mobiles": ["09121234567"]}
+
+
+def test_smsir_needs_a_line_number():
+    with pytest.raises(ValidationError, match="line number"):
+        SmsConfig(**_sms_config(provider="smsir", server_address="https://api.sms.ir", sender_number=None))
+    with pytest.raises(ValidationError, match="line number"):
+        SmsConfig(**_sms_config(provider="sms.ir", server_address="https://api.sms.ir", sender_number="NGC"))
+    assert SmsConfig(**_sms_config(provider="smsir", server_address="https://api.sms.ir",
+                                   sender_number=" 3000123 ")).sender_number == "3000123"
+
+
+def test_smsir_refusal_in_the_body_is_a_failure():
+    class Reply:
+        def __init__(self, status_code, body):
+            self.status_code, self._body, self.text = status_code, body, str(body)
+
+        def json(self):
+            if isinstance(self._body, Exception):
+                raise self._body
+            return self._body
+
+    smsir = {"provider": "smsir"}
+    assert service.sms_response_error(smsir, Reply(200, {"status": 1, "message": "OK", "data": {}})) is None
+    assert "no credit" in service.sms_response_error(smsir, Reply(200, {"status": 11, "message": "no credit"}))
+    assert service.sms_response_error(smsir, Reply(200, ValueError("html"))) is not None
+    assert service.sms_response_error(smsir, Reply(401, {"status": 0})) == "Provider returned HTTP 401"
+    # other providers: the HTTP status is enough
+    assert service.sms_response_error({"provider": "kavenegar"}, Reply(200, ValueError("x"))) is None
+
+
 def test_sms_request_generic_provider_posts_json_to_server_address():
     url, kwargs = service._sms_request(
         _sms_config(provider="acme-sms", server_address="https://sms.acme.test/send",

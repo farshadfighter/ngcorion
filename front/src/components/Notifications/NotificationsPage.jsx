@@ -6,6 +6,7 @@ import { formatWhen } from "../../utils/dates.js";
 import { CHANNEL_LABEL, SEVERITY } from "../Alerts/alertFormat.js";
 import { RuleEditor } from "./RuleEditor.jsx";
 import { ChannelsTab } from "./ChannelsTab.jsx";
+import { PolicyTab } from "./PolicyTab.jsx";
 import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
 import { t } from "../../i18n";
@@ -14,7 +15,7 @@ import { tb, tbList } from "../../i18n/backendText";
 
 const DELIVERY_STATUS = { sent: t("Sent"), failed: t("Failed"), skipped: t("Skipped") };
 
-const TABS = [["rules", t("Rules")], ["channels", t("Channels")], ["log", t("Delivery log")]];
+const TABS = [["rules", t("Rules")], ["channels", t("Channels")], ["policy", t("Delivery policy")], ["log", t("Delivery log")]];
 
 function Switch({ on, onChange, label, disabled }) {
     return (
@@ -197,7 +198,7 @@ function DeliveryLog() {
     );
 }
 
-/** System › Notifications: rules, channels and the delivery log. */
+/** System › Notifications: rules, channels, the delivery policy and the delivery log. */
 export function NotificationsPage() {
     const [params, setParams] = useSearchParams();
     const tab = TABS.some(([k]) => k === params.get("tab")) ? params.get("tab") : "rules";
@@ -232,6 +233,7 @@ export function NotificationsPage() {
             </div>
             {tab === "rules" && <RulesTab canWrite={canWrite} channels={channels} />}
             {tab === "channels" && <ChannelsTab channels={channels} error={channelsError} canWrite={canWrite} onChanged={reloadChannels} />}
+            {tab === "policy" && <PolicyTab canWrite={canWrite} />}
             {tab === "log" && <DeliveryLog />}
         </div>
     );

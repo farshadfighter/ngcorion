@@ -6,10 +6,10 @@ NGCorion's own settings, one card each. Every secret here (SMTP password, SMS AP
 
 | Card | Use |
 |---|---|
-| Time Configurations | Time zone and NTP server; a correct clock matters for two-step sign-in, schedules and the audit trail |
+| Time Configurations | Time zone and NTP server; a correct clock matters for two-step sign-in, schedules and the audit trail. Search the zone by its name, a city or the offset ("Tehran", +03:30); Asia/Tehran is the default |
 | SNMP Configurations | NGCorion's own SNMP agent, so the organisation's NMS can monitor it |
 | Syslog Configurations | Sending the server's OS logs and CEF alerts to a SIEM |
-| SMS Configurations | The SMS gateway for alerts |
+| SMS Configurations | The SMS gateway (Kavenegar, Ghasedak, sms.ir or any HTTP gateway) for alerts and password reset codes. sms.ir needs the account's line number. What goes out by SMS is set in the [Delivery policy](/settings/notifications) |
 | SMTP Configurations | Mail server for alerts, scheduled reports and password recovery codes; with "Send test" |
 | Certificate Configurations | The web interface's TLS certificate (PEM or PFX); TLS 1.2 and 1.3 only |
 | Language | Default interface language for new users |

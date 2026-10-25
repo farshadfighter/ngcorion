@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- Delivery policy (System > Notifications > Delivery policy), above every
+  notification rule: email and SMS each on or off, the least severity sent
+  on each (e.g. SMS for Critical only), quiet hours for the rules that set
+  none, whether Critical alerts go out in quiet hours, and a daily SMS
+  limit. A message the policy holds back is in the delivery log as Skipped
+  with the reason; test messages are not held back. The defaults change
+  nothing. GET/PUT /api/notifications/policy; changes are in the audit
+  trail.
+- The password reset code goes by email, SMS or both, as the delivery
+  policy says. By SMS it goes to the account's mobile number, in the
+  account's language; an account without a number, or no SMS provider,
+  gets it by email. The reset pages no longer say the code is emailed.
+  Like the email, another account's mobile number can be changed only by
+  someone holding every permission that account holds (security review
+  finding ATHZ-03, extended to the number).
+- SMS provider sms.ir (POST /v1/send/bulk with the account's line number);
+  its answer is checked, so a message it refuses (no credit, a line that
+  is not the account's) is a failed delivery, not a sent one.
+- Time zone picker: each zone with its name in the interface language and
+  its current UTC offset, a search box (Persian or English names, city,
+  offset such as +03:30), and Asia/Tehran selected when nothing is saved.
+
 ## 2.1.2 — 2026-10-24
 
 ### Security

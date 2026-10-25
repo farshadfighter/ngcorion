@@ -36,6 +36,7 @@ from app.models.notification import (ALERT_ACKNOWLEDGED, ALERT_ACTIVE, ALERT_OPE
                                      NotificationDelivery, NotificationRule, NotificationWebhook)
 from app.models.system_config import SECTION_SMS, SECTION_SMTP, SECTION_SYSLOG
 from app.modules.alerts import channels as ch
+from app.modules.alerts import policy
 from app.modules.alerts.events import EVENTS, EventType, Problem
 
 logger = logging.getLogger(__name__)
@@ -303,19 +304,11 @@ def _recipients(db: Session, rule: NotificationRule, alerts: List[Alert]) -> Tup
     return sorted(emails), sorted(phones)
 
 
-def _in_quiet_hours(rule: NotificationRule, now: datetime, tz) -> bool:
-    if not rule.quiet_start or not rule.quiet_end:
-        return False
-    from datetime import timezone
-    local = now.replace(tzinfo=timezone.utc).astimezone(tz) if tz else now
-    hm = local.strftime("%H:%M")
-    start, end = rule.quiet_start, rule.quiet_end
-    return start <= hm < end if start <= end else (hm >= start or hm < end)
-
-
 def queue_message(db: Session, rule: NotificationRule, kind: str, alerts: List[Alert], now: datetime,
                   tz=None, channels: Optional[List[str]] = None) -> List[NotificationDelivery]:
-    """Delivery rows for one message about `alerts` on the rule's channels."""
+    """Delivery rows for one message about `alerts` on the rule's channels, within the delivery policy
+    (app/modules/alerts/policy.py): what the policy holds back is logged as skipped, with the reason.
+    """
     channels = rule.channels if channels is None else channels
     if not channels or not alerts:
         return []
@@ -326,6 +319,8 @@ def queue_message(db: Session, rule: NotificationRule, kind: str, alerts: List[A
     assets = {a.id: a for a in db.query(Asset).filter(Asset.id.in_([x.asset_id for x in alerts if x.asset_id]))}
     payloads = [alert_payload(a, assets.get(a.asset_id)) for a in alerts]
     rows: List[NotificationDelivery] = []
+    test = kind == "test"
+    pol = policy.load_policy(db)
 
     def add(channel, recipient, subj, text_body, payload=None, webhook_id=None, status="pending", error=None):
         """Queue one delivery row of the current message."""
@@ -338,16 +333,25 @@ def queue_message(db: Session, rule: NotificationRule, kind: str, alerts: List[A
 
     for channel in channels:
         if channel == CHANNEL_EMAIL:
+            held = None if test else policy.channel_block(pol, CHANNEL_EMAIL, worst)
             for to in emails:
-                add(CHANNEL_EMAIL, to, subject, body)
+                add(CHANNEL_EMAIL, to, subject, body, status="skipped" if held else "pending", error=held)
         elif channel == CHANNEL_SMS:
-            quiet = kind != "test" and worst != "critical" and _in_quiet_hours(rule, now, tz)
+            held = None if test else policy.channel_block(pol, CHANNEL_SMS, worst)
+            start, end = policy.quiet_hours(pol, rule.quiet_start, rule.quiet_end)
+            through = worst == "critical" and pol["sms"]["critical_in_quiet_hours"]
+            if not held and not test and not through and policy.in_window(start, end, now, tz):
+                held = f"Quiet hours {start}-{end}"
+            limit = pol["sms"]["daily_limit"]
+            sent_today = policy.sms_sent_today(db, now, tz) if limit and not held and not test else 0
             for phone in phones:
-                if quiet:
-                    add(CHANNEL_SMS, phone, subject, sms, status="skipped",
-                        error=f"Quiet hours {rule.quiet_start}-{rule.quiet_end}")
-                else:
-                    add(CHANNEL_SMS, phone, subject, sms)
+                reason = held
+                if not reason and limit and not test:
+                    if sent_today >= limit:
+                        reason = f"Daily SMS limit reached ({limit})"
+                    else:
+                        sent_today += 1
+                add(CHANNEL_SMS, phone, subject, sms, status="skipped" if reason else "pending", error=reason)
         elif channel == CHANNEL_SYSLOG:
             for p in payloads:                      # SIEMs expect one event per alert
                 add(CHANNEL_SYSLOG, None, subject, body, payload={**p, "kind": kind})

@@ -43,7 +43,7 @@ export const ResetPassword = () => {
             return;
         }
         if (!/^\d{6}$/.test(otp)) {
-            setError(t("Enter the 6-digit code from your email."));
+            setError(t("Enter the 6-digit code you received."));
             return;
         }
         const pwdError = validatePassword(password);
@@ -102,7 +102,7 @@ export const ResetPassword = () => {
                 ) : (
                     <>
                         <p className="login-subtext">
-                            {t("Enter the code we emailed you, then choose a new password.")}
+                            {t("Enter the code we sent you by email or SMS, then choose a new password.")}
                         </p>
 
                         <div className="input-wrapper">

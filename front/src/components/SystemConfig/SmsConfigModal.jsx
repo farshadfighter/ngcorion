@@ -23,6 +23,8 @@ const SECTION = "sms";
 const KNOWN_PROVIDERS = [
     { value: "kavenegar", label: t("Kavenegar"), base: "https://api.kavenegar.com" },
     { value: "ghasedak", label: t("Ghasedak"), base: "https://api.ghasedak.me" },
+    // sms.ir sends from one of the account's line numbers, so the sender is required there.
+    { value: "smsir", label: t("sms.ir"), base: "https://api.sms.ir", needsLine: true },
 ];
 
 const OTHER = "__other__";
@@ -54,6 +56,7 @@ const SmsForm = ({ stored, onClose }) => {
     const [localError, setLocalError] = useState(null);
 
     const isOther = providerChoice === OTHER;
+    const needsLine = !!KNOWN_PROVIDERS.find((p) => p.value === providerChoice)?.needsLine;
     const testResult = testResults[SECTION];
     const hasStoredConfig = !!config;
 
@@ -79,6 +82,9 @@ const SmsForm = ({ stored, onClose }) => {
         if (!resolvedProvider) return t("Enter the provider name.");
         if (!serverAddress.trim()) return t("Enter the provider server address.");
         if (!apiKey) return t("Enter the API key.");
+        if (needsLine && !/^\d+$/.test(senderNumber.trim())) {
+            return t("Enter the line number (digits) of your sms.ir account.");
+        }
         return null;
     };
 
@@ -158,13 +164,14 @@ const SmsForm = ({ stored, onClose }) => {
                 ) : (
                     <label className="sc-field">
                         <span>
-                            {t("Sender Number")}{" "} <em>{t("(optional)")}</em>
+                            {needsLine ? t("Line Number") : <>{t("Sender Number")}{" "} <em>{t("(optional)")}</em></>}
                         </span>
                         <input
                             type="text"
+                            inputMode="numeric"
                             value={senderNumber}
                             onChange={(e) => setSenderNumber(e.target.value)}
-                            placeholder="10008663"
+                            placeholder={needsLine ? "30007732000000" : "10008663"}
                             maxLength={50}
                         />
                     </label>

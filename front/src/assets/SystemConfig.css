@@ -187,6 +187,10 @@
     box-shadow: 0 0 0 3px rgba(45, 90, 158, 0.15);
 }
 
+.sc-field .sc-zone-search {
+    margin-bottom: 8px;
+}
+
 .sc-field input:disabled {
     background: #F4F6FA;
     color: #9AA5B5;

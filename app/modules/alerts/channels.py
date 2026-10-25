@@ -110,7 +110,7 @@ def send_sms(config: Dict[str, Any], phone: str, text_body: str) -> None:
     redirects are not followed.
     """
     from app.modules.system_config.schemas import reject_ssrf_target
-    from app.modules.system_config.service import _sms_request
+    from app.modules.system_config.service import _sms_request, sms_response_error
     if not config or not config.get("provider"):
         raise DeliveryError("SMS is not configured - set it in System Configuration")
     url, kwargs = _sms_request(config, phone, text_body)
@@ -122,8 +122,9 @@ def send_sms(config: Dict[str, Any], phone: str, text_body: str) -> None:
         response = requests.post(url, timeout=TIMEOUT, allow_redirects=False, **kwargs)
     except requests.RequestException as exc:
         raise DeliveryError(f"SMS provider request failed: {exc.__class__.__name__}") from exc
-    if not 200 <= response.status_code < 300:
-        raise DeliveryError(f"SMS provider returned HTTP {response.status_code}")
+    problem = sms_response_error(config, response)
+    if problem:
+        raise DeliveryError(problem)
 
 
 # ---------------------------------------------------------------------------

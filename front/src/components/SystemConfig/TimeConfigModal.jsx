@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { fetchSection, saveSection } from "../../store/systemConfigSlice";
 import { ConfigModal } from "./ConfigModal";
-import { TIMEZONES } from "./timezones";
-import { t, uiLocale } from "../../i18n";
+import { DEFAULT_TIMEZONE, filterZones, zoneOptions } from "./timezones";
+import { currentLanguage, t, uiLocale } from "../../i18n";
 import { DateTimeInput } from "../shared/DateInput.jsx";
 
 const SECTION = "time";
@@ -35,9 +35,18 @@ const TimeForm = ({ stored, onClose }) => {
     const [mode, setMode] = useState(
         config && config.use_ntp === false ? "manual" : "timezone"
     );
+    // Nothing saved and nothing the server reports: Tehran, where this product is deployed.
     const [timezone, setTimezone] = useState(
-        config?.timezone || stored?.server_time?.system_timezone || ""
+        config?.timezone || stored?.server_time?.system_timezone || DEFAULT_TIMEZONE
     );
+    const [zoneQuery, setZoneQuery] = useState("");
+    const zones = useMemo(() => zoneOptions(currentLanguage()), []);
+    const shownZones = useMemo(() => {
+        const found = filterZones(zones, zoneQuery);
+        // The chosen zone stays in the list, so a search never changes what is selected.
+        const chosen = zones.find((z) => z.value === timezone);
+        return chosen && !found.includes(chosen) ? [chosen, ...found] : found;
+    }, [zones, zoneQuery, timezone]);
     const [useNtp, setUseNtp] = useState(config?.use_ntp ?? true);
     const [ntpServer, setNtpServer] = useState(config?.ntp_server || "");
     const [manualTime, setManualTime] = useState(
@@ -125,20 +134,37 @@ const TimeForm = ({ stored, onClose }) => {
                 </button>
             </div>
 
-            <label className="sc-field">
+            <div className="sc-field">
                 <span>{t("time zone")}</span>
+                <input
+                    type="search"
+                    className="sc-zone-search"
+                    value={zoneQuery}
+                    onChange={(e) => {
+                        setZoneQuery(e.target.value);
+                        // Typing narrows the list; pick the first match so Enter-less use works.
+                        const first = filterZones(zones, e.target.value)[0];
+                        if (first && e.target.value.trim()) setTimezone(first.value);
+                    }}
+                    placeholder={t("Search: Tehran, Iran, +03:30 …")}
+                    aria-label={t("Search time zones")}
+                    maxLength={60}
+                />
                 <select
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
+                    aria-label={t("time zone")}
                 >
-                    <option value="">{t("select")}</option>
-                    {TIMEZONES.map((tz) => (
-                        <option key={tz} value={tz}>
-                            {tz}
+                    {shownZones.map((z) => (
+                        <option key={z.value} value={z.value}>
+                            {z.label}
                         </option>
                     ))}
                 </select>
-            </label>
+                {zoneQuery.trim() && !filterZones(zones, zoneQuery).length && (
+                    <small className="sc-hint">{t("No time zone matches this search.")}</small>
+                )}
+            </div>
 
             {mode === "timezone" ? (
                 <div className="sc-inline-field">

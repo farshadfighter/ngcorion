@@ -3,7 +3,7 @@ Findings of the 2.1.2 security review (OWASP WSTG), each with the check that kee
 
 - ATHZ-03: a non-administrator with user management could change the email of another account of
   the same role, then reset its password with the code emailed there - taking over permissions they
-  do not hold.
+  do not hold. Since the code can also go by SMS (delivery policy), the mobile number likewise.
 - ATHZ-02: asset dependencies, security status and the asset views needed only a sign-in, not the
   Asset List permission.
 - BUSL-07 / denial of service: no limit on a request body; a JSON body is read whole into memory
@@ -74,11 +74,33 @@ def test_an_account_holding_more_cannot_have_its_email_changed(db):
     assert db.get(User, 2).email == "netops@example.com"
 
     # the rest of the account can still be edited, and an account holding nothing more takes a new email
-    service.update_user(2, UserUpdate(phone="+98 21 0000"), current_user_id=1)
+    service.update_user(2, UserUpdate(language="fa"), current_user_id=1)
     assert service.update_user(3, UserUpdate(email="viewer2@example.com"), current_user_id=1).email == \
         "viewer2@example.com"
     # one's own email, as before
     assert service.update_user(1, UserUpdate(email="hd@example.com"), current_user_id=1).email == "hd@example.com"
+
+
+def test_an_account_holding_more_cannot_have_its_mobile_number_changed(db):
+    """The reset code can go by SMS (delivery policy), so the mobile number is guarded like the email."""
+    _user(db, 1, "helpdesk", UserRole.MANAGER, [(ModuleEnum.USER_MANAGEMENT, True, True)])
+    _user(db, 2, "netops", UserRole.MANAGER, [(ModuleEnum.HARDENING, True, True)])
+    _user(db, 3, "viewer", UserRole.USER, [])
+    service = UserService(db)
+
+    with pytest.raises(HTTPException) as exc:
+        service.update_user(2, UserUpdate(phone="09129999999"), current_user_id=1)
+    assert exc.value.status_code == 403 and "mobile number" in exc.value.detail
+    db.rollback()
+    assert db.get(User, 2).phone is None
+    with pytest.raises(HTTPException):
+        service.update_user(2, UserUpdate(phone="09129999999", email="netops@example.com"), current_user_id=1)
+    db.rollback()
+
+    # the same number again is no change; an account holding nothing more, and one's own, as before
+    service.update_user(2, UserUpdate(phone=""), current_user_id=1)
+    assert service.update_user(3, UserUpdate(phone="09121111111"), current_user_id=1).phone == "09121111111"
+    assert service.update_user(1, UserUpdate(phone="09122222222"), current_user_id=1).phone == "09122222222"
 
 
 # ── ATHZ-02: asset data needs the Asset List permission ───────────────────

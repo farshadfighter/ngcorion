@@ -168,14 +168,18 @@ class UserService:
         if current_user_id != user_id:
             self._assert_role_within_reach(current_user, user.role, "modify")
         self._assert_can_grant(current_user, user_data.permissions)
-        # The password reset code is emailed: whoever sets another account's email can take the account
+        # The password reset code goes to the account's email, or its mobile number when the delivery
+        # policy sends it by SMS: whoever sets another account's email or number can take the account
         # over, so only an account holding nothing the one changing it lacks.
-        if current_user_id != user_id and user_data.email is not None and user_data.email != user.email:
+        new_email = user_data.email is not None and user_data.email != user.email
+        new_phone = user_data.phone is not None and (user_data.phone or None) != user.phone
+        if current_user_id != user_id and (new_email or new_phone):
             try:
                 self._assert_can_grant(current_user, self.get_user_permissions(user_id))
             except HTTPException:
+                what = "email" if new_email else "mobile number"
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                    detail="You cannot change the email of a user who holds permissions you "
+                                    detail=f"You cannot change the {what} of a user who holds permissions you "
                                            "do not hold yourself") from None
         # A directory account's name and password are the directory's, and its role and permissions
         # follow its directory groups (app/modules/directory): only the rest can be edited here.

@@ -7,6 +7,7 @@ rule validation, webhooks).
 Everything runs inside a rolled-back transaction. The engine evaluates every
 enabled rule of an event type, so assertions look only at this test's rules.
 """
+import copy
 import hashlib
 import hmac
 import importlib
@@ -30,7 +31,7 @@ from app.models.notification import Alert, NotificationDelivery, NotificationRul
 from app.models.topology import TopologyLink
 from app.models.user_permission import ModuleEnum
 from app.modules.alerts import channels as ch
-from app.modules.alerts import engine
+from app.modules.alerts import engine, policy
 from app.modules.alerts.events import EVENTS, normalize_interface
 
 api = importlib.import_module("app.modules.alerts.router")
@@ -49,6 +50,23 @@ def db():
         session.close()
         trans.rollback()
         connection.close()
+
+
+_real_load_policy = policy.load_policy
+
+
+@pytest.fixture(autouse=True)
+def _default_policy():
+    """The delivery policy's defaults, whatever the database has saved; a test sets its own."""
+    with patch.object(policy, "load_policy", side_effect=lambda db: copy.deepcopy(policy.DEFAULTS)):
+        yield
+
+
+def _policy(**parts):
+    p = copy.deepcopy(policy.DEFAULTS)
+    for part, values in parts.items():
+        p[part].update(values)
+    return patch.object(policy, "load_policy", side_effect=lambda db: copy.deepcopy(p))
 
 
 @pytest.fixture(autouse=True)
@@ -462,14 +480,177 @@ def test_sms_quiet_hours(db, severity, expected):
 
 
 def test_quiet_hours_window():
-    rule = SimpleNamespace(quiet_start="22:00", quiet_end="07:00")
-    assert engine._in_quiet_hours(rule, datetime(2026, 1, 1, 23, 0), None)
-    assert engine._in_quiet_hours(rule, datetime(2026, 1, 1, 6, 59), None)
-    assert not engine._in_quiet_hours(rule, datetime(2026, 1, 1, 7, 0), None)
-    day = SimpleNamespace(quiet_start="12:00", quiet_end="13:00")
-    assert engine._in_quiet_hours(day, datetime(2026, 1, 1, 12, 30), None)
-    assert not engine._in_quiet_hours(SimpleNamespace(quiet_start=None, quiet_end=None),
-                                      datetime(2026, 1, 1, 23, 0), None)
+    assert policy.in_window("22:00", "07:00", datetime(2026, 1, 1, 23, 0), None)
+    assert policy.in_window("22:00", "07:00", datetime(2026, 1, 1, 6, 59), None)
+    assert not policy.in_window("22:00", "07:00", datetime(2026, 1, 1, 7, 0), None)
+    assert policy.in_window("12:00", "13:00", datetime(2026, 1, 1, 12, 30), None)
+    assert not policy.in_window(None, None, datetime(2026, 1, 1, 23, 0), None)
+    # server time: 20:00 UTC is 23:30 in Tehran
+    from zoneinfo import ZoneInfo
+    assert policy.in_window("22:00", "07:00", datetime(2026, 1, 1, 20, 0), ZoneInfo("Asia/Tehran"))
+
+
+# ---------------------------------------------------------------------------
+# Delivery policy (app/modules/alerts/policy.py)
+# ---------------------------------------------------------------------------
+
+def _statuses(db, rule):
+    return {(d.channel, d.recipient): (d.status, d.error) for d in _deliveries(db, rule)}
+
+
+def test_policy_turns_a_channel_off_and_sets_the_least_severity(db):
+    rule = _rule(db, "noc.device_unreachable", recipients={"emails": ["a@example.com"], "phones": ["09121234567"]},
+                 channels=["email", "sms", "syslog"])
+    _raise(db, rule, severity="warning")
+    with _policy(email={"enabled": False}, sms={"min_severity": "critical"}):
+        engine.dispatch(db, NOW)
+    got = _statuses(db, rule)
+    assert got[("email", "a@example.com")] == ("skipped", "Email is turned off in the delivery policy")
+    assert got[("sms", "09121234567")] == ("skipped", "SMS is for Critical and above in the delivery policy")
+    assert got[("syslog", None)][0] == "pending"                   # not governed by the policy
+
+    critical = _rule(db, "noc.device_unreachable", recipients={"phones": ["09121234567"]}, channels=["sms"])
+    _raise(db, critical, severity="critical")
+    with _policy(sms={"min_severity": "critical"}):
+        engine.dispatch(db, NOW)
+    assert _statuses(db, critical)[("sms", "09121234567")] == ("pending", None)
+
+
+def test_policy_quiet_hours_for_rules_without_their_own(db):
+    rule = _rule(db, "noc.device_unreachable", severity="critical", recipients={"phones": ["09121234567"]},
+                 channels=["sms"], quiet_start=None, quiet_end=None)
+    _raise(db, rule, severity="warning")
+    night = datetime(2026, 10, 1, 23, 30)
+    with patch.object(ch, "local_timezone", return_value=None), \
+            _policy(sms={"quiet_start": "22:00", "quiet_end": "07:00"}):
+        engine.dispatch(db, night)
+    assert _statuses(db, rule)[("sms", "09121234567")] == ("skipped", "Quiet hours 22:00-07:00")
+
+    # Critical goes through quiet hours unless the policy says otherwise
+    loud = _rule(db, "noc.device_unreachable", recipients={"phones": ["09120000001"]}, channels=["sms"])
+    hushed = _rule(db, "noc.device_unreachable", recipients={"phones": ["09120000002"]}, channels=["sms"])
+    _raise(db, loud, severity="critical")
+    with patch.object(ch, "local_timezone", return_value=None), \
+            _policy(sms={"quiet_start": "22:00", "quiet_end": "07:00"}):
+        engine.dispatch(db, night)
+    _raise(db, hushed, severity="critical")
+    with patch.object(ch, "local_timezone", return_value=None), \
+            _policy(sms={"quiet_start": "22:00", "quiet_end": "07:00", "critical_in_quiet_hours": False}):
+        engine.dispatch(db, night)
+    assert _statuses(db, loud)[("sms", "09120000001")][0] == "pending"
+    assert _statuses(db, hushed)[("sms", "09120000002")][0] == "skipped"
+
+
+def test_policy_daily_sms_limit(db):
+    db.query(NotificationDelivery).filter(NotificationDelivery.channel == "sms").delete()
+    phones = ["09120000011", "09120000012", "09120000013"]
+    rule = _rule(db, "noc.device_unreachable", recipients={"phones": phones}, channels=["sms"])
+    _raise(db, rule, severity="critical")
+    with patch.object(ch, "local_timezone", return_value=None), _policy(sms={"daily_limit": 2}):
+        engine.dispatch(db, NOW)
+        got = _statuses(db, rule)
+        assert sorted(s for s, _ in got.values()) == ["pending", "pending", "skipped"]
+        assert ("skipped", "Daily SMS limit reached (2)") in got.values()
+
+        # later the same day: nothing more; a test message is neither held back nor counted
+        again = _rule(db, "noc.device_unreachable", recipients={"phones": ["09120000014"]}, channels=["sms"])
+        _raise(db, again, severity="critical")
+        engine.dispatch(db, NOW + timedelta(hours=3))
+        assert _statuses(db, again)[("sms", "09120000014")][0] == "skipped"
+        tests = engine.queue_message(db, again, "test", _alerts(db, again), NOW, None)
+        assert [d.status for d in tests] == ["pending"]
+        assert policy.sms_sent_today(db, NOW + timedelta(hours=3), None) == 2
+
+        # the next day the count starts over
+        tomorrow = _rule(db, "noc.device_unreachable", recipients={"phones": ["09120000015"]}, channels=["sms"])
+        _raise(db, tomorrow, severity="critical")
+        engine.dispatch(db, NOW + timedelta(days=1))
+        assert _statuses(db, tomorrow)[("sms", "09120000015")][0] == "pending"
+
+
+def test_policy_daily_limit_counts_the_messages_of_the_same_cycle():
+    """The app's sessions do not autoflush (app/core/database.py); two rules firing in one cycle must
+    still share the limit."""
+    connection = db_engine.connect()
+    trans = connection.begin()
+    db = Session(bind=connection, autoflush=False, join_transaction_mode="create_savepoint")
+    try:
+        db.query(NotificationDelivery).filter(NotificationDelivery.channel == "sms").delete()
+        first = _rule(db, "noc.device_unreachable", recipients={"phones": ["09120000021", "09120000022"]},
+                      channels=["sms"])
+        second = _rule(db, "noc.device_unreachable", recipients={"phones": ["09120000023"]}, channels=["sms"])
+        _raise(db, first, severity="critical")
+        _raise(db, second, severity="critical")
+        with patch.object(ch, "local_timezone", return_value=None), _policy(sms={"daily_limit": 2}):
+            engine.dispatch(db, NOW)
+        statuses = [s for s, _ in {**_statuses(db, first), **_statuses(db, second)}.values()]
+        assert sorted(statuses) == ["pending", "pending", "skipped"]
+    finally:
+        db.close()
+        trans.rollback()
+        connection.close()
+
+
+def test_policy_day_starts_at_midnight_server_time():
+    from zoneinfo import ZoneInfo
+    tehran = ZoneInfo("Asia/Tehran")
+    # 22:00 UTC on 1 Jan is 01:30 on 2 Jan in Tehran: the day began at 20:30 UTC
+    assert policy.day_start_utc(datetime(2026, 1, 1, 22, 0), tehran) == datetime(2026, 1, 1, 20, 30)
+    assert policy.day_start_utc(datetime(2026, 1, 1, 22, 0), None) == datetime(2026, 1, 1, 0, 0)
+
+
+def test_policy_validation():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError, match="both the start and the end"):
+        policy.DeliveryPolicy(sms={"quiet_start": "22:00"})
+    with pytest.raises(ValidationError, match="HH:MM"):
+        policy.DeliveryPolicy(sms={"quiet_start": "25:00", "quiet_end": "07:00"})
+    with pytest.raises(ValidationError):
+        policy.DeliveryPolicy(email={"min_severity": "urgent"})
+    with pytest.raises(ValidationError):
+        policy.DeliveryPolicy(password_reset={"channel": "pigeon"})
+    with pytest.raises(ValidationError):
+        policy.DeliveryPolicy(sms={"daily_limit": -1})
+    assert policy.DeliveryPolicy().model_dump() == policy.DEFAULTS
+    assert policy.DEFAULTS["password_reset"]["channel"] == "email"
+
+
+def test_policy_api_saves_and_logs(db):
+    admin = _user(db, UserRole.ADMIN)
+    with patch.object(policy, "load_policy", side_effect=_real_load_policy):
+        out = api.put_policy(policy.DeliveryPolicy(sms={"min_severity": "critical", "daily_limit": 50},
+                                                   password_reset={"channel": "both"}), admin, db)
+        assert out["config"]["sms"]["min_severity"] == "critical"
+        assert out["config"]["password_reset"]["channel"] == "both"
+        assert api.get_policy(admin, db)["config"]["sms"]["daily_limit"] == 50
+        assert set(out["status"]) == {"email_configured", "sms_configured", "users_with_phone", "sms_today"}
+    from app.models import AuditLog
+    log = db.query(AuditLog).filter(AuditLog.action == "notification.policy.update").order_by(AuditLog.id.desc()).first()
+    assert "sms.min_severity: info -> critical" in log.detail.split("; ")
+
+
+def test_policy_needs_system_configuration_permission():
+    from fastapi.routing import APIRoute
+
+    class NoRows:                                   # a database where the user holds no permission
+        def query(self, *a):
+            return self
+
+        def filter(self, *a):
+            return self
+
+        def first(self):
+            return None
+
+    user = SimpleNamespace(id=7, role=UserRole.USER)
+    routes = {(r.path, m): r for r in api.admin_router.routes if isinstance(r, APIRoute) for m in r.methods}
+    for key in (("/api/notifications/policy", "GET"), ("/api/notifications/policy", "PUT")):
+        checks = [d.call for d in routes[key].dependant.dependencies
+                  if getattr(d.call, "__qualname__", "").startswith("require_permission")]
+        assert checks, key
+        with pytest.raises(HTTPException) as exc:
+            checks[0](current_user=user, db=NoRows())
+        assert exc.value.status_code == 403 and "SYSTEM_CONFIG" in exc.value.detail
 
 
 # ---------------------------------------------------------------------------

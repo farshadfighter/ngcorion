@@ -42,6 +42,10 @@ const TEMPLATES = [
     msg("{{total}} device"),
     msg("{{total}} devices"),
     msg("Running on the last validated license. {{message}}"),
+    // notifications held back by the delivery policy (app/modules/alerts/policy.py), sms.ir answers
+    msg("Daily SMS limit reached ({{limit}})"),
+    msg("Quiet hours {{start}}-{{end}}"),
+    msg("sms.ir refused the message: {{message}}"),
     msg("{{task}} is not running in any worker"),
     msg("{{free}} GB free of {{total}} GB ({{path}})"),
     msg("{{ids}} and {{more}} more ({{product}})"),
@@ -711,6 +715,17 @@ msg("Unknown report");
 msg("This report is not available yet");
 msg("The schedule could not run");
 msg("Email is not configured - set SMTP in System Configuration");
+msg("Email is turned off in the delivery policy");
+msg("SMS is turned off in the delivery policy");
+msg("Email is for Warning and above in the delivery policy");
+msg("Email is for Critical and above in the delivery policy");
+msg("SMS is for Warning and above in the delivery policy");
+msg("SMS is for Critical and above in the delivery policy");
+msg("sms.ir answered with something other than JSON");
+msg("sms.ir needs the line number (digits) as the sender number");
+msg("quiet hours must be HH:MM (00:00-23:59)");
+msg("set both the start and the end of the quiet hours, or neither");
+msg("the quiet hours must not start and end at the same time");
 msg("Choose the audit this report describes");
 msg("A schedule describes the latest audit of each asset, not one fixed audit");
 msg("The audit this report describes was not found or did not complete");
@@ -1330,3 +1345,7 @@ msg("Enter an IP address or a host name");
 // security review 2.1.2 (app/middleware/body_limit.py, app/modules/users/service.py, system_config)
 msg("File too large (max 1 MB)");
 msg("You cannot change the email of a user who holds permissions you do not hold yourself");
+msg("You cannot change the mobile number of a user who holds permissions you do not hold yourself");
+msg("Password reset code generated, sent by email");
+msg("Password reset code generated, sent by SMS");
+msg("Password reset code generated, sent by email and SMS");

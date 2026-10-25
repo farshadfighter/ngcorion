@@ -63,11 +63,8 @@
   "Enter current password": "رمز عبور فعلی را وارد کنید",
   "Enter new password": "رمز عبور جدید را وارد کنید",
   "Enter one of the recovery codes you saved when you set up two-step sign-in. Each code works once.": "یکی از کدهای بازیابی را که هنگام راه‌اندازی ورود دومرحله‌ای ذخیره کردید وارد کنید. هر کد فقط یک بار کار می‌کند.",
-  "Enter the 6-digit code from your email.": "کد ۶ رقمی ارسال‌شده به ایمیل خود را وارد کنید.",
   "Enter the 6-digit code the app shows.": "کد ۶ رقمی‌ای را که برنامه نشان می‌دهد وارد کنید.",
-  "Enter the code we emailed you, then choose a new password.": "کدی را که برایتان ایمیل کردیم وارد کنید و سپس رمز عبور جدید را انتخاب کنید.",
   "Enter your email": "ایمیل خود را وارد کنید",
-  "Enter your email and we'll send you a code to reset your password.": "ایمیل خود را وارد کنید تا کد بازنشانی رمز عبور را برایتان بفرستیم.",
   "Enter your password": "رمز عبور خود را وارد کنید",
   "Enter your username": "نام کاربری خود را وارد کنید",
   "Every asset, searchable - open one to see its SNMP details and set up monitoring.": "همهٔ دارایی‌ها، قابل جستجو - یکی را باز کنید تا جزئیات SNMP آن را ببینید و پایش را راه‌اندازی کنید.",
@@ -213,5 +210,8 @@
   "Your password was set by an administrator. Choose your own password to continue.": "رمز عبور شما را مدیر سیستم تعیین کرده است. برای ادامه، رمز عبور خودتان را انتخاب کنید.",
   "Your role must use it. Set it up by {{date}}.": "برای نقش شما الزامی است. تا {{date}} آن را راه‌اندازی کنید.",
   "Your role must use two-step sign-in, so it cannot be turned off.": "نقش شما باید از ورود دومرحله‌ای استفاده کند، بنابراین غیرفعال نمی‌شود.",
-  "Your role must use two-step sign-in. Set it up to continue; it takes about a minute.": "نقش شما باید از ورود دومرحله‌ای استفاده کند. برای ادامه آن را راه‌اندازی کنید؛ حدود یک دقیقه طول می‌کشد."
+  "Your role must use two-step sign-in. Set it up to continue; it takes about a minute.": "نقش شما باید از ورود دومرحله‌ای استفاده کند. برای ادامه آن را راه‌اندازی کنید؛ حدود یک دقیقه طول می‌کشد.",
+  "Enter your account's email and we'll send a password reset code to your email or mobile phone.": "ایمیل حساب خود را وارد کنید تا کد بازنشانی رمز عبور به ایمیل یا تلفن همراهتان فرستاده شود.",
+  "Enter the 6-digit code you received.": "کد ۶ رقمی دریافتی را وارد کنید.",
+  "Enter the code we sent you by email or SMS, then choose a new password.": "کدی را که با ایمیل یا پیامک برایتان فرستادیم وارد کنید، سپس رمز عبور تازه را انتخاب کنید."
 }

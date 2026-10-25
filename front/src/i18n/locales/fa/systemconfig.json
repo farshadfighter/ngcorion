@@ -226,5 +226,11 @@
   "Without encryption, the password of everyone who signs in, and the service account's, crosses the network readable by anyone who can see the traffic, and the server is not verified. Use it only on an isolated management network, and move to StartTLS (same port 389) or LDAPS as soon as the directory has a certificate. Active Directory with LDAP signing required refuses it.": "بدون رمزنگاری، رمز هر کسی که وارد می‌شود و رمز حساب سرویس، روی شبکه برای هر کسی که ترافیک را ببیند خواناست و هویت سرور هم بررسی نمی‌شود. فقط در شبکهٔ مدیریتی جدا از آن استفاده کنید و به‌محض اینکه دایرکتوری گواهی داشت به StartTLS (همان پورت ۳۸۹) یا LDAPS بروید. Active Directory با الزام LDAP signing آن را نمی‌پذیرد.",
   "Would sign in as {{role}} (from {{groups}})": "با نقش {{role}} وارد می‌شود (از {{groups}})",
   "Write": "نوشتن",
-  "you@example.com": "you@example.com"
+  "you@example.com": "you@example.com",
+  "Search: Tehran, Iran, +03:30 …": "جستجو: تهران، ایران، ‎+03:30 …",
+  "Search time zones": "جستجوی منطقهٔ زمانی",
+  "No time zone matches this search.": "هیچ منطقهٔ زمانی با این جستجو پیدا نشد.",
+  "sms.ir": "sms.ir",
+  "Line Number": "شمارهٔ خط",
+  "Enter the line number (digits) of your sms.ir account.": "شمارهٔ خط حساب sms.ir را (فقط رقم) وارد کنید."
 }

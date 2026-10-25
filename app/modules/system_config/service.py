@@ -513,12 +513,35 @@ def mask_sms(config: Dict[str, Any]) -> Dict[str, Any]:
     return masked
 
 
+SMSIR_NAMES = ("smsir", "sms.ir")
+
+
+def sms_response_error(config: Dict[str, Any], response) -> Optional[str]:
+    """Why the provider refused the message, or None when it took it.
+
+    A 2xx status is enough for most providers; sms.ir also answers {"status": 1, ...} on success and
+    another status with a message when it refused the message (no credit, a line that is not yours).
+    """
+    if not 200 <= response.status_code < 300:
+        return f"Provider returned HTTP {response.status_code}"
+    provider = (config.get("provider") or "").strip().lower()
+    if provider in SMSIR_NAMES:
+        try:
+            body = response.json()
+        except ValueError:
+            return "sms.ir answered with something other than JSON"
+        if not isinstance(body, dict) or body.get("status") != 1:
+            message = body.get("message") if isinstance(body, dict) else None
+            return f"sms.ir refused the message: {str(message or body)[:200]}"
+    return None
+
+
 def _sms_request(
     config: Dict[str, Any], phone: str, message: str
 ) -> Tuple[str, Dict[str, Any]]:
     """Build (url, requests kwargs) for the configured provider.
 
-    `server_address` is always the provider's base URL. Two common providers get
+    `server_address` is always the provider's base URL. Three common providers get
     their documented path/parameter names; anything else falls back to a generic
     JSON POST straight to `server_address`.
     """
@@ -532,6 +555,15 @@ def _sms_request(
         if sender:
             payload["sender"] = sender
         return f"{base}/v1/{api_key}/sms/send.json", {"data": payload}
+
+    if provider in SMSIR_NAMES:
+        # POST /v1/send/bulk, key in X-API-KEY; the sender is the account's line number (required).
+        line = int(sender) if sender and sender.isdigit() else sender
+        return (
+            f"{base}/v1/send/bulk",
+            {"json": {"lineNumber": line, "messageText": message, "mobiles": [phone]},
+             "headers": {"X-API-KEY": api_key, "Accept": "application/json"}},
+        )
 
     if provider == "ghasedak":
         payload = {"receptor": phone, "message": message}
@@ -582,15 +614,13 @@ def send_test_sms(config: Dict[str, Any], phone: str) -> Dict[str, Any]:
         return {"success": False, "message": f"SMS provider request failed: {exc}"}
 
     body = (response.text or "").strip()[:300]
-    if 200 <= response.status_code < 300:
+    problem = sms_response_error(config, response)
+    if problem is None:
         return {
             "success": True,
             "message": f"Test SMS sent to {phone} (provider replied {response.status_code}). {body}".strip(),
         }
-    return {
-        "success": False,
-        "message": f"Provider returned HTTP {response.status_code}: {body or 'no body'}",
-    }
+    return {"success": False, "message": f"{problem}: {body or 'no body'}"}
 
 
 # ======================================================================

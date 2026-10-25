@@ -138,3 +138,24 @@ a.bkm-btn, a.bkm-btn:hover { text-decoration: none; color: #1f2937; }
 @media (max-width: 760px) {
     .alr-chan-grid, .alr-grid-2 { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Delivery policy tab */
+.alr-pol-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.alr-pol { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.alr-pol-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.alr-pol-head h2 { margin: 0; font-size: 15px; color: #1e3a5f; }
+.alr-pol-head .bkm-pill a { color: inherit; text-decoration: none; }
+.alr-pol-field { display: flex; flex-direction: column; gap: 6px; }
+.alr-pol-label { font-size: 13px; font-weight: 700; color: #1f2937; }
+.alr-pol-toggle { display: flex; align-items: center; gap: 10px; font-weight: 600; color: #1f2937; cursor: pointer; }
+.alr-pol-check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #1f2937; }
+.alr-pol-times { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: #4b5563; }
+.alr-pol-times input { width: 120px; }
+.alr-pol-num { width: 140px; }
+.alr-pol-radios { display: flex; flex-direction: column; gap: 8px; }
+.alr-pol-radio { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer; }
+.alr-pol-radio.is-on { border-color: #2d5a9e; background: #f1f6fd; }
+.alr-pol-radio input { margin-top: 3px; }
+.alr-pol-radio > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.alr-pol-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+@media (max-width: 1100px) { .alr-pol-grid { grid-template-columns: minmax(0, 1fr); } }
