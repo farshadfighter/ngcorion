@@ -196,7 +196,8 @@
 }
 
 .topology-field input,
-.topology-field select {
+.topology-field select,
+.topology-field textarea {
     padding: 8px 10px;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
@@ -279,6 +280,8 @@
     margin-inline-end: 6px; }
 .topology-legend i.is-missing { border-top: 2.5px dashed #dc2626; }
 .topology-legend i.is-planned { border-top: 2px dashed #1e3a5f; }
+.topology-legend i.is-external { border-top: 2px solid #0f766e; }
+.topology-field textarea { font: inherit; font-size: 13px; resize: vertical; }
 .topology-field-note { margin: 0; font-size: 12.5px; color: #4b5563; line-height: 1.6; }
 .topology-field-note.is-warn { color: #b91c1c; }
 .bkm-page.nb-page { padding: 0; }
@@ -289,6 +292,11 @@
 .nb-stack.nb-end { align-items: flex-end; }
 .nb-page .ud-addr .bkm-muted { max-width: 190px; }
 @media (max-width: 720px) {
+    .topology-container { padding: 16px; }
     .topology-toolbar { flex-wrap: wrap; gap: 10px; }
+    .topology-toolbar-info { flex-wrap: wrap; }
+    .topology-toolbar-actions { flex-wrap: wrap; }
+    .topology-body { flex-direction: column; }
+    .topology-panel { width: 100%; }
 }
 .topology-missing-count { color: #b91c1c; font-weight: 600; }

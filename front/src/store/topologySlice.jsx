@@ -1,5 +1,5 @@
 /**
- * Redux slice: topology graph, links, node positions and checks.
+ * Redux slice: topology graph, links, node positions, external networks (clouds) and checks.
  */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
@@ -15,7 +15,7 @@ export const fetchTopology = createAsyncThunk(
     async (_arg, { rejectWithValue }) => {
         try {
             const res = await api.get("/api/topology/");
-            return res.data; // { nodes: [...], links: [...] }
+            return res.data; // { nodes, links, clouds, cloud_links }
         } catch (err) {
             return rejectWithValue(apiErrorDetail(err, t("Failed to load topology")));
         }
@@ -73,6 +73,79 @@ export const saveNodePosition = createAsyncThunk(
     }
 );
 
+// External networks (clouds) and the devices' connections to them: drawn on the map, not assets.
+export const createCloud = createAsyncThunk(
+    "topology/createCloud",
+    async (payload, { rejectWithValue }) => {
+        try {
+            const res = await api.post("/api/topology/clouds", payload);
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(apiErrorDetail(err, t("Failed to add the external network")));
+        }
+    }
+);
+
+export const updateCloud = createAsyncThunk(
+    "topology/updateCloud",
+    async ({ cloudId, changes }, { rejectWithValue }) => {
+        try {
+            const res = await api.patch(`/api/topology/clouds/${cloudId}`, changes);
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(apiErrorDetail(err, t("Failed to save the external network")));
+        }
+    }
+);
+
+export const deleteCloud = createAsyncThunk(
+    "topology/deleteCloud",
+    async (cloudId, { rejectWithValue }) => {
+        try {
+            await api.delete(`/api/topology/clouds/${cloudId}`);
+            return cloudId;
+        } catch (err) {
+            return rejectWithValue(apiErrorDetail(err, t("Failed to delete the external network")));
+        }
+    }
+);
+
+export const createCloudLink = createAsyncThunk(
+    "topology/createCloudLink",
+    async (payload, { rejectWithValue }) => {
+        try {
+            const res = await api.post("/api/topology/cloud-links", payload);
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(apiErrorDetail(err, t("Failed to create link")));
+        }
+    }
+);
+
+export const updateCloudLink = createAsyncThunk(
+    "topology/updateCloudLink",
+    async ({ linkId, changes }, { rejectWithValue }) => {
+        try {
+            const res = await api.patch(`/api/topology/cloud-links/${linkId}`, changes);
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(apiErrorDetail(err, t("Failed to update link")));
+        }
+    }
+);
+
+export const deleteCloudLink = createAsyncThunk(
+    "topology/deleteCloudLink",
+    async (linkId, { rejectWithValue }) => {
+        try {
+            await api.delete(`/api/topology/cloud-links/${linkId}`);
+            return linkId;
+        } catch (err) {
+            return rejectWithValue(apiErrorDetail(err, t("Failed to delete link")));
+        }
+    }
+);
+
 export const validateTopology = createAsyncThunk(
     "topology/validate",
     async (_arg, { rejectWithValue }) => {
@@ -94,6 +167,8 @@ const topologySlice = createSlice({
     initialState: {
         nodes: [],
         links: [],
+        clouds: [],
+        cloudLinks: [],
         isLoading: false,
         isMutating: false,
         error: null,
@@ -113,6 +188,8 @@ const topologySlice = createSlice({
                 state.isLoading = false;
                 state.nodes = action.payload.nodes;
                 state.links = action.payload.links;
+                state.clouds = action.payload.clouds || [];
+                state.cloudLinks = action.payload.cloud_links || [];
             })
             .addCase(fetchTopology.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
 
@@ -144,6 +221,46 @@ const topologySlice = createSlice({
                     node.pos_y = action.payload.posY;
                 }
             })
+
+            .addCase(createCloud.fulfilled, (state, action) => {
+                state.clouds.push(action.payload);
+                state.successMessage = t("External network added");
+            })
+            .addCase(createCloud.rejected, (state, action) => { state.error = action.payload; })
+            .addCase(updateCloud.pending, (state, action) => {
+                // a drag: keep the new place at once, so a re-render does not jump the cloud back
+                const { cloudId, changes } = action.meta.arg;
+                const cloud = state.clouds.find((c) => c.id === cloudId);
+                if (cloud && "pos_x" in changes) Object.assign(cloud, changes);
+            })
+            .addCase(updateCloud.fulfilled, (state, action) => {
+                const idx = state.clouds.findIndex((c) => c.id === action.payload.id);
+                if (idx !== -1) state.clouds[idx] = action.payload;
+                if (!("pos_x" in action.meta.arg.changes)) state.successMessage = t("External network saved");
+            })
+            .addCase(updateCloud.rejected, (state, action) => { state.error = action.payload; })
+            .addCase(deleteCloud.fulfilled, (state, action) => {
+                state.clouds = state.clouds.filter((c) => c.id !== action.payload);
+                state.cloudLinks = state.cloudLinks.filter((l) => l.cloud_id !== action.payload);
+                state.successMessage = t("External network deleted");
+            })
+            .addCase(deleteCloud.rejected, (state, action) => { state.error = action.payload; })
+            .addCase(createCloudLink.fulfilled, (state, action) => {
+                state.cloudLinks.push(action.payload);
+                state.successMessage = t("Link created successfully!");
+            })
+            .addCase(createCloudLink.rejected, (state, action) => { state.error = action.payload; })
+            .addCase(updateCloudLink.fulfilled, (state, action) => {
+                const idx = state.cloudLinks.findIndex((l) => l.id === action.payload.id);
+                if (idx !== -1) state.cloudLinks[idx] = action.payload;
+                state.successMessage = t("Link updated successfully!");
+            })
+            .addCase(updateCloudLink.rejected, (state, action) => { state.error = action.payload; })
+            .addCase(deleteCloudLink.fulfilled, (state, action) => {
+                state.cloudLinks = state.cloudLinks.filter((l) => l.id !== action.payload);
+                state.successMessage = t("Link deleted successfully!");
+            })
+            .addCase(deleteCloudLink.rejected, (state, action) => { state.error = action.payload; })
 
             .addCase(validateTopology.pending, (state) => { state.validation.isLoading = true; state.validation.error = null; })
             .addCase(validateTopology.fulfilled, (state, action) => {

@@ -121,7 +121,7 @@ from app.models.cve import (
 )
 
 # Import topology models (depend on Asset and User)
-from app.models.topology import TopologyLink, TopologyNodePosition
+from app.models.topology import TopologyCloud, TopologyCloudLink, TopologyLink, TopologyNodePosition
 
 # Import NOC / SNMP monitoring models (depend on Asset and User)
 from app.models.noc import (AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface, DeviceReboot,
@@ -247,6 +247,8 @@ __all__ = [
     "CveSetting",
     "CveTrustedKey",
     # Topology models
+    "TopologyCloud",
+    "TopologyCloudLink",
     "TopologyLink",
     "TopologyNodePosition",
     "TopologyLog",

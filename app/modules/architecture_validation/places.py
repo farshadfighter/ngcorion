@@ -2,7 +2,9 @@
 Places in the network (Cisco SAFE) of the network zones.
 
 Cisco SAFE describes a network by its places in the network (PINs) - Branch, Campus, Data Center, Edge,
-WAN and Cloud - and the security each needs, Segmentation, Threat Defense and Management among them.
+WAN and Cloud - and the security each needs, Segmentation, Threat Defense and Management among them. The
+storage network (SAN, iSCSI, NFS) is the part of SAFE's Data Center only servers reach, kept as its own
+place so the checks can see it.
 Architecture Validation checks the topology against that model, so each network zone (app/models/
 asset_zone.py) says which place it is: chosen on the zone (Asset Requirements, Network Zones), or read
 from its name ("DMZ" is the Edge, "Internal Server Zone" the Data Center). Three places SAFE treats as
@@ -13,7 +15,8 @@ networks are isolated by design.
 import re
 from typing import Optional
 
-PLACES = ("internet", "edge", "data_center", "campus", "branch", "wan", "cloud", "guest", "management", "lab")
+PLACES = ("internet", "edge", "data_center", "storage", "campus", "branch", "wan", "cloud", "guest", "management",
+          "lab")
 
 # First match wins: "Internal Server Zone" is a data center before it is internal.
 _NAME_RULES = [
@@ -22,6 +25,7 @@ _NAME_RULES = [
     (re.compile(r"manag|mgmt|\boob\b|out.of.band", re.I), "management"),
     (re.compile(r"guest|visitor", re.I), "guest"),
     (re.compile(r"\blab\b|isolated|sandbox|\btest", re.I), "lab"),
+    (re.compile(r"storage|\bsan\b|\bnas\b|iscsi|fibre ?channel|\bfc\b", re.I), "storage"),
     (re.compile(r"data ?cent|datacenter|\bdc\b|server", re.I), "data_center"),
     (re.compile(r"branch|remote ?office", re.I), "branch"),
     (re.compile(r"\bwan\b|mpls", re.I), "wan"),

@@ -12,6 +12,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+import importlib
+
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import event
@@ -353,3 +355,94 @@ def test_route_save_position_404s_for_missing_asset(db, user):
     with pytest.raises(HTTPException) as exc_info:
         route(asset_id=2_000_000_000, request=TopologyNodePositionUpdate(pos_x=1, pos_y=1), current_user=user, db=db)
     assert exc_info.value.status_code == 404
+
+
+# ======================================================================
+# External networks (clouds): drawn on the canvas, not assets
+# ======================================================================
+
+def test_cloud_create_link_graph_and_delete(db, asset_pair, user):
+    from app.models.topology import TopologyCloud, TopologyCloudLink
+    from app.models.topology_log import TopologyLog
+    R = importlib.import_module("app.modules.topology.router")      # the package's `router` is the APIRouter
+    from app.modules.topology.schemas import TopologyCloudIn, TopologyCloudLinkIn
+
+    a, _ = asset_pair
+    assets_before = db.query(Asset).count()
+    cloud = R.create_cloud(TopologyCloudIn(kind="mpls", label=" MPLS - TCI ", provider="TCI"), current_user=user,
+                           db=db)
+    assert (cloud.kind, cloud.label, cloud.provider) == ("mpls", "MPLS - TCI", "TCI")
+    assert db.query(Asset).count() == assets_before                  # not inventory, not licensed
+    link = R.create_cloud_link(TopologyCloudLinkIn(cloud_id=cloud.id, asset_id=a.id, interface="Gi0/0/0",
+                                                   circuit_id="TCI-1234", speed_mbps=100),
+                               current_user=user, db=db)
+    assert link.status == "active"
+
+    graph = R.get_topology(current_user=user, db=db)
+    assert [(c.id, c.kind) for c in graph.clouds if c.id == cloud.id] == [(cloud.id, "mpls")]
+    assert [(l.cloud_id, l.asset_id, l.interface) for l in graph.cloud_links if l.id == link.id] == \
+        [(cloud.id, a.id, "Gi0/0/0")]
+
+    R.update_cloud_link(link.id, TopologyCloudLinkIn(status="down"), current_user=user, db=db)
+    assert db.get(TopologyCloudLink, link.id).status == "down"
+    R.update_cloud(cloud.id, TopologyCloudIn(pos_x=10, pos_y=20), current_user=user, db=db)
+    R.update_cloud(cloud.id, TopologyCloudIn(label="MPLS"), current_user=user, db=db)
+    actions = [r.action for r in db.query(TopologyLog).filter(TopologyLog.action.like("cloud%"))
+               .order_by(TopologyLog.id)]
+    assert actions[-4:] == ["cloud.create", "cloud_link.create", "cloud_link.update", "cloud.update"]  # a drag: none
+
+    R.delete_cloud(cloud.id, current_user=user, db=db)
+    assert db.get(TopologyCloud, cloud.id) is None
+    assert db.query(TopologyCloudLink).filter(TopologyCloudLink.cloud_id == cloud.id).count() == 0
+
+
+def test_cloud_routes_refuse_bad_input(db, asset_pair, user):
+    from pydantic import ValidationError
+    R = importlib.import_module("app.modules.topology.router")      # the package's `router` is the APIRouter
+    from app.modules.topology.schemas import TopologyCloudIn, TopologyCloudLinkIn
+
+    a, _ = asset_pair
+    with pytest.raises(HTTPException) as exc:
+        R.create_cloud(TopologyCloudIn(kind="internet", label="  "), current_user=user, db=db)
+    assert exc.value.status_code == 422
+    with pytest.raises(ValidationError):
+        TopologyCloudIn(kind="moon", label="x")
+    with pytest.raises(ValidationError):
+        TopologyCloudIn(kind="wan", label="a\nb")
+    with pytest.raises(HTTPException) as exc:
+        R.create_cloud_link(TopologyCloudLinkIn(cloud_id=2_000_000_000, asset_id=a.id), current_user=user, db=db)
+    assert exc.value.status_code == 404
+    cloud = R.create_cloud(TopologyCloudIn(kind="internet", label="Internet"), current_user=user, db=db)
+    with pytest.raises(HTTPException) as exc:
+        R.create_cloud_link(TopologyCloudLinkIn(cloud_id=cloud.id, asset_id=2_000_000_000), current_user=user, db=db)
+    assert exc.value.status_code == 404
+    for call in (lambda: R.update_cloud(2_000_000_000, TopologyCloudIn(label="x"), current_user=user, db=db),
+                 lambda: R.delete_cloud_link(2_000_000_000, current_user=user, db=db)):
+        with pytest.raises(HTTPException) as exc:
+            call()
+        assert exc.value.status_code == 404
+
+
+def test_cloud_routes_need_topology_write_and_delete(db, user):
+    from fastapi.routing import APIRoute
+    from app.models.user_permission import UserPermission
+    R = importlib.import_module("app.modules.topology.router")      # the package's `router` is the APIRouter
+
+    db.add(UserPermission(user_id=user.id, module="topology", can_read=True, can_write=True, can_delete=False))
+    db.flush()
+    routes = {(r.path, m): r for r in R.router.routes if isinstance(r, APIRoute) for m in r.methods}
+    prefix = R.router.prefix
+    for (path, method), allowed in (((f"{prefix}/clouds", "POST"), True), ((f"{prefix}/clouds/{{cloud_id}}", "PATCH"), True),
+                                    ((f"{prefix}/clouds/{{cloud_id}}", "DELETE"), False),
+                                    ((f"{prefix}/cloud-links", "POST"), True),
+                                    ((f"{prefix}/cloud-links/{{link_id}}", "DELETE"), False)):
+        route = routes.get((path, method)) or routes[(path.removeprefix(prefix), method)]
+        checks = [d.call for d in route.dependant.dependencies
+                  if getattr(d.call, "__qualname__", "").startswith("require_permission")]
+        assert checks, path
+        if allowed:
+            assert checks[0](current_user=user, db=db) is user
+        else:
+            with pytest.raises(HTTPException) as exc:
+                checks[0](current_user=user, db=db)
+            assert exc.value.status_code == 403

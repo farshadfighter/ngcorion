@@ -23,7 +23,7 @@
   severity: high
   category: segmentation
   place: edge
-  condition: "path_from_edge is not None"
+  condition: "path_from_edge is not None and not is_storage"
   evidence: path_from_edge
   evidence_label: Unfiltered path
   recommendation: "Separate the DMZ from the inside with a firewall; a compromised public server must not reach internal hosts directly."
@@ -33,7 +33,7 @@
   severity: high
   category: segmentation
   place: campus
-  condition: "path_from_guest is not None"
+  condition: "path_from_guest is not None and not is_storage"
   evidence: path_from_guest
   evidence_label: Unfiltered path
   recommendation: "Give guests Internet access only: send guest traffic through a firewall (or a separate VRF to the edge) that blocks every inside network."
@@ -43,7 +43,7 @@
   severity: medium
   category: segmentation
   place: data_center
-  condition: "path_from_users is not None"
+  condition: "path_from_users is not None and not is_storage"
   evidence: path_from_users
   evidence_label: Unfiltered path
   recommendation: "Put a data center firewall between the user networks and the servers; SAFE's Data Center allows users only the services they need."
@@ -63,7 +63,7 @@
   severity: medium
   category: segmentation
   place: lab
-  condition: "path_from_lab is not None"
+  condition: "path_from_lab is not None and not is_storage"
   evidence: path_from_lab
   evidence_label: Unfiltered path
   recommendation: "Isolate the lab, or connect it only through a firewall that allows what tests need."
@@ -83,7 +83,7 @@
   severity: medium
   category: segmentation
   place: data_center
-  condition: "device_class == \"server\" and place in (\"campus\", \"branch\", \"guest\")"
+  condition: "device_class == \"server\" and place in (\"campus\", \"branch\", \"guest\") and not is_storage"
   recommendation: "Move the server into the data center (or a branch server network) so a data center firewall stands between it and users."
 
 - code: AV-112
@@ -114,6 +114,38 @@
   evidence_label: The only link
   recommendation: "Add a second Internet connection, ideally from another provider and to another edge device."
 
+# ── WAN and cloud: external networks drawn on the topology (Topology, External networks) ──
+
+- code: AV-160
+  title: A public cloud reaches the inside without a firewall
+  severity: high
+  category: segmentation
+  place: cloud
+  condition: "path_from_cloud is not None and not is_storage"
+  evidence: path_from_cloud
+  evidence_label: Unfiltered path
+  recommendation: "Connect the public cloud (a VPN or a direct connection) through a firewall that allows only the flows the cloud workloads need; SAFE treats the cloud as another place of its own trust."
+
+- code: AV-161
+  title: WAN or MPLS ends on a switch or a host
+  severity: medium
+  category: segmentation
+  place: wan
+  condition: "wan_on_wrong_device is not None"
+  evidence: wan_on_wrong_device
+  evidence_label: Connected to
+  recommendation: "End the WAN circuit on a router, a firewall or a VPN gateway that routes and filters it; a switch or a host on the provider's network bypasses the WAN edge."
+
+- code: AV-162
+  title: Only one WAN connection
+  severity: medium
+  category: availability
+  place: wan
+  condition: "only_wan_link is not None"
+  evidence: only_wan_link
+  evidence_label: The only link
+  recommendation: "Add a second WAN connection (another provider, an SD-WAN or LTE backup) to another router, so one failed circuit or router does not cut the sites off."
+
 # ── Availability: redundant paths at every layer ──
 
 - code: AV-130
@@ -140,7 +172,7 @@
   severity: medium
   category: availability
   place: data_center
-  condition: "device_class == \"server\" and place in (\"data_center\", \"edge\") and links == 1 and not is_critical"
+  condition: "device_class == \"server\" and place in (\"data_center\", \"edge\") and links == 1 and not is_critical and not is_storage"
   recommendation: "Connect the server to two switches (NIC teaming or a port channel across a switch pair)."
 
 - code: AV-133
@@ -148,7 +180,7 @@
   severity: high
   category: availability
   place: data_center
-  condition: "is_critical and in_topology and links <= 1"
+  condition: "is_critical and in_topology and links <= 1 and not is_storage"
   recommendation: "Give this critical asset a second connection to another device."
 
 - code: AV-134
@@ -166,6 +198,36 @@
   evidence: links_down
   evidence_label: Down
   recommendation: "Bring the link back up, or remove it from the topology if it was taken out on purpose; the redundancy it gave is gone while it is down."
+
+# ── Storage: SAFE's Data Center keeps the storage network (SAN, iSCSI, NFS) for servers ──
+# A storage array, or a host in a zone whose place is the storage network. These replace the general
+# server checks above for storage, so one problem is one finding.
+
+- code: AV-150
+  title: Storage reachable from users, guests or the DMZ without a firewall
+  severity: high
+  category: segmentation
+  place: storage
+  condition: "is_storage and path_to_storage is not None"
+  evidence: path_to_storage
+  evidence_label: Unfiltered path
+  recommendation: "Put storage in its own network (a storage VLAN or SAN fabric) that only servers and hypervisors reach; users, guests, the DMZ and the lab must not reach it, or only through the data center firewall."
+
+- code: AV-151
+  title: Storage in a user, guest or DMZ network
+  severity: high
+  category: segmentation
+  place: storage
+  condition: "is_storage and place in (\"campus\", \"branch\", \"guest\", \"edge\", \"internet\", \"lab\")"
+  recommendation: "Move the storage into the data center's storage network; data on a user or DMZ network is one compromised client away from being read or encrypted."
+
+- code: AV-152
+  title: Storage with a single path
+  severity: high
+  category: availability
+  place: storage
+  condition: "is_storage and in_topology and network_uplinks < 2"
+  recommendation: "Connect the storage to two switches (two SAN fabrics, A and B, or two iSCSI switches) with multipathing, so one failed switch, cable or port does not take the data away from every server."
 
 # ── Visibility: what the checks cannot see ──
 

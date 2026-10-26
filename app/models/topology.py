@@ -2,12 +2,14 @@
 Topology Link Model
 
 Physical/logical cabling between two assets. Nodes are Asset rows directly
-(asset_inventory) - there is no separate topology-node table. Node canvas
+(asset_inventory), and the external networks a site joins (TopologyCloud: the
+Internet, MPLS, a WAN, a public cloud ...) - those are not assets, so they are
+not inventory and do not count against the license. Node canvas
 position is optional per-asset layout data (TopologyNodePosition, below),
 kept separate from Asset itself since it's presentation state, not inventory
 data.
 """
-from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -75,4 +77,46 @@ class TopologyNodePosition(Base):
     pos_y = Column(Float, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    asset = relationship("Asset")
+
+
+CLOUD_KINDS = ("internet", "mpls", "wan", "sdwan", "lte", "public_cloud", "partner")
+
+
+class TopologyCloud(Base):
+    """An external network on the Topology canvas: the Internet, an MPLS or WAN service, SD-WAN, an
+    LTE/4G backup, a public cloud or a partner's network. Linked to the devices that connect to it
+    (TopologyCloudLink); Architecture Validation reads it as a place in the network (Cisco SAFE)."""
+
+    __tablename__ = "topology_clouds"
+
+    id = Column(Integer, primary_key=True, index=True)
+    kind = Column(String(20), nullable=False)               # CLOUD_KINDS
+    label = Column(String(120), nullable=False)
+    provider = Column(String(120), nullable=True)           # "Shatel", "AWS eu-central-1"
+    notes = Column(Text, nullable=True)
+    pos_x = Column(Float, nullable=True)
+    pos_y = Column(Float, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TopologyCloudLink(Base):
+    """A connection of a device to an external network: its interface, the circuit and its speed."""
+
+    __tablename__ = "topology_cloud_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cloud_id = Column(Integer, ForeignKey("topology_clouds.id", ondelete="CASCADE"), nullable=False, index=True)
+    asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="CASCADE"), nullable=False, index=True)
+    interface = Column(String(100), nullable=True)
+    circuit_id = Column(String(100), nullable=True)
+    speed_mbps = Column(Integer, nullable=True)
+    status = Column(String(20), nullable=False, default="active")   # active | planned | down
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    cloud = relationship("TopologyCloud")
     asset = relationship("Asset")

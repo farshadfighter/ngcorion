@@ -28,8 +28,12 @@ ICON_KEYS: Tuple[str, ...] = (
     "directory", "dns", "dhcp",
     "workstation", "laptop", "ip_phone", "printer", "iot",
     "camera", "nvr", "ups", "plc",
-    "internet", "other",
+    # external networks (Topology clouds, Design): the Internet and the other networks a site joins
+    "internet", "mpls", "wan", "sdwan", "lte", "public_cloud", "partner",
+    "other",
 )
+
+EXTERNAL_KINDS: Tuple[str, ...] = ("internet", "mpls", "wan", "sdwan", "lte", "public_cloud", "partner")
 
 # Network-ish icons show the vendor as their badge; hosts show the OS.
 _VENDOR_BADGE_ICONS = {"router", "switch", "wireless", "load_balancer", "firewall", "waf", "ips", "vpn",
@@ -39,9 +43,10 @@ _VENDOR_BADGE_ICONS = {"router", "switch", "wireless", "load_balancer", "firewal
 # "Windows Database Server" a database. The generic "server" is last.
 _NAME_RULES: Sequence[Tuple[re.Pattern, str]] = [
     # Kinds of security gateway before the generic firewall: a "Web Application Firewall" is a WAF,
-    # a "VPN gateway" is not a router.
+    # a "VPN gateway" is not a router; a provider's MPLS VPN is the WAN, not a VPN gateway.
     (re.compile(r"\bwaf\b|web ?application ?firewall|fortiweb|imperva|modsecurity", re.I), "waf"),
     (re.compile(r"\bips\b|\bids\b|intrusion|snort|suricata", re.I), "ips"),
+    (re.compile(r"mpls ?vpn|\bl[23] ?vpn\b|\bvpls\b", re.I), "mpls"),
     (re.compile(r"\bvpn\b|anyconnect|openvpn|wireguard", re.I), "vpn"),
     (re.compile(r"firewall|fortigate|palo ?alto|\basa\b|\butm\b|check ?point|sophos", re.I), "firewall"),
     (re.compile(r"load ?balanc|\bf5\b|big-?ip|haproxy|\badc\b", re.I), "load_balancer"),
@@ -68,7 +73,14 @@ _NAME_RULES: Sequence[Tuple[re.Pattern, str]] = [
     (re.compile(r"\bups\b|uninterruptible", re.I), "ups"),
     (re.compile(r"\bplc\b|scada|\bhmi\b|\brtu\b|industrial|operational technology", re.I), "plc"),
     (re.compile(r"\biot\b|sensor", re.I), "iot"),
-    (re.compile(r"internet|\bisp\b|\bwan\b|cloud", re.I), "internet"),
+    # external networks: the specific ones before the Internet; a plain "cloud" stays the Internet
+    (re.compile(r"\bmpls\b", re.I), "mpls"),
+    (re.compile(r"sd-?wan", re.I), "sdwan"),
+    (re.compile(r"\blte\b|\b[45]g\b|cellular|mobile ?data", re.I), "lte"),
+    (re.compile(r"\baws\b|azure|\bgcp\b|google cloud|public ?cloud|\biaas\b", re.I), "public_cloud"),
+    (re.compile(r"partner|extranet|third.party network", re.I), "partner"),
+    (re.compile(r"\bwan\b|leased ?line|metro ?ethernet|point.to.point", re.I), "wan"),
+    (re.compile(r"internet|\bisp\b|cloud", re.I), "internet"),
     (re.compile(r"server|bare ?metal", re.I), "server"),
 ]
 

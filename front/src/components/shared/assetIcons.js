@@ -127,6 +127,30 @@ export const ASSET_ICONS = {
         label: t("Internet"), family: "external",
         d: "M7 18.5a4.5 4.5 0 0 1-.4-9 6 6 0 0 1 11.3 1.3A3.9 3.9 0 0 1 17.5 18.5z",
     },
+    mpls: {
+        label: t("MPLS"), family: "external",
+        d: "M7 18.5a4.5 4.5 0 0 1-.4-9 6 6 0 0 1 11.3 1.3A3.9 3.9 0 0 1 17.5 18.5zM8.5 14.5h6.5M13 12.5l2 2-2 2",
+    },
+    wan: {
+        label: t("WAN / leased line"), family: "external",
+        d: "M2.5 8.5h5v7h-5zM16.5 8.5h5v7h-5zM7.5 12h9M10 10.5l-1.5 1.5 1.5 1.5M14 10.5l1.5 1.5-1.5 1.5",
+    },
+    sdwan: {
+        label: t("SD-WAN"), family: "external",
+        d: "M2.5 9h4v6h-4zM17.5 9h4v6h-4zM6.5 12h2M15.5 12h2M10.2 14.5a1.9 1.9 0 0 1 .1-3.8 2.6 2.6 0 0 1 4.9.6 1.6 1.6 0 0 1-.4 3.2z",
+    },
+    lte: {
+        label: t("LTE / 4G backup"), family: "external",
+        d: "M12 21V11M9 21l3-10 3 10M8.6 7.6a4.8 4.8 0 0 1 6.8 0M6.2 5.2a8.2 8.2 0 0 1 11.6 0M12 9.6h.01",
+    },
+    public_cloud: {
+        label: t("Public cloud"), family: "external",
+        d: "M7 18.5a4.5 4.5 0 0 1-.4-9 6 6 0 0 1 11.3 1.3A3.9 3.9 0 0 1 17.5 18.5zM9.5 13h5M9.5 15.5h5M10.5 13v2.5M13.5 13v2.5",
+    },
+    partner: {
+        label: t("Partner network"), family: "external",
+        d: "M4.5 12a3.8 3.8 0 1 0 7.6 0a3.8 3.8 0 1 0-7.6 0M11.9 12a3.8 3.8 0 1 0 7.6 0a3.8 3.8 0 1 0-7.6 0",
+    },
     other: {
         label: t("Other"), family: "other",
         d: "M5 5h14v14H5zM9.6 9.8a2.4 2.4 0 1 1 3.3 2.2c-.6.3-.9.8-.9 1.4v.4M12 16.3h.01",
@@ -151,6 +175,7 @@ const ALIASES = { cloud: "internet", loadbalancer: "load_balancer", "load-balanc
 const NAME_RULES = [
     [/\bwaf\b|web ?application ?firewall|fortiweb|imperva|modsecurity/i, "waf"],
     [/\bips\b|\bids\b|intrusion|snort|suricata/i, "ips"],
+    [/mpls ?vpn|\bl[23] ?vpn\b|\bvpls\b/i, "mpls"],
     [/\bvpn\b|anyconnect|openvpn|wireguard/i, "vpn"],
     [/firewall|fortigate|palo ?alto|\basa\b|\butm\b|check ?point|sophos/i, "firewall"],
     [/load ?balanc|\bf5\b|big-?ip|haproxy|\badc\b/i, "load_balancer"],
@@ -177,7 +202,13 @@ const NAME_RULES = [
     [/\bups\b|uninterruptible/i, "ups"],
     [/\bplc\b|scada|\bhmi\b|\brtu\b|industrial|operational technology/i, "plc"],
     [/\biot\b|sensor/i, "iot"],
-    [/internet|\bisp\b|\bwan\b|cloud/i, "internet"],
+    [/\bmpls\b/i, "mpls"],
+    [/sd-?wan/i, "sdwan"],
+    [/\blte\b|\b[45]g\b|cellular|mobile ?data/i, "lte"],
+    [/\baws\b|azure|\bgcp\b|google cloud|public ?cloud|\biaas\b/i, "public_cloud"],
+    [/partner|extranet|third.party network/i, "partner"],
+    [/\bwan\b|leased ?line|metro ?ethernet|point.to.point/i, "wan"],
+    [/internet|\bisp\b|cloud/i, "internet"],
     [/server|bare ?metal/i, "server"],
 ];
 

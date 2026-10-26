@@ -728,5 +728,17 @@
   "Findings closed": "یافته‌های بسته‌شده",
   "Advisory": "اطلاعیه",
   "Upgrade plan": "برنامهٔ ارتقا",
-  "On each asset, the actions that close its findings": "برای هر دارایی، اقدام‌هایی که یافته‌هایش را می‌بندند"
+  "On each asset, the actions that close its findings": "برای هر دارایی، اقدام‌هایی که یافته‌هایش را می‌بندند",
+  "A public cloud reaches the inside without a firewall": "ابر عمومی بدون فایروال به داخل شبکه می‌رسد",
+  "Add a second WAN connection (another provider, an SD-WAN or LTE backup) to another router, so one failed circuit or router does not cut the sites off.": "اتصال WAN دوم (از سرویس‌دهندهٔ دیگر، یا پشتیبان SD-WAN یا LTE) را به روتر دیگری اضافه کنید تا از کار افتادن یک مدار یا روتر، سایت‌ها را جدا نکند.",
+  "Connect the public cloud (a VPN or a direct connection) through a firewall that allows only the flows the cloud workloads need; SAFE treats the cloud as another place of its own trust.": "ابر عمومی را (از راه VPN یا اتصال مستقیم) از پشت فایروالی وصل کنید که فقط جریان‌های لازم برای سرویس‌های ابری را اجازه دهد؛ SAFE ابر را جایگاهی جدا با سطح اعتماد خودش می‌داند.",
+  "Connect the storage to two switches (two SAN fabrics, A and B, or two iSCSI switches) with multipathing, so one failed switch, cable or port does not take the data away from every server.": "storage را با multipathing به دو سوئیچ وصل کنید (دو fabric شبکهٔ SAN به نام A و B، یا دو سوئیچ iSCSI) تا از کار افتادن یک سوئیچ، کابل یا پورت، داده را از دسترس همهٔ سرورها خارج نکند.",
+  "End the WAN circuit on a router, a firewall or a VPN gateway that routes and filters it; a switch or a host on the provider's network bypasses the WAN edge.": "مدار WAN را روی روتر، فایروال یا درگاه VPN تمام کنید که آن را مسیریابی و فیلتر کند؛ سوئیچ یا میزبانی که مستقیم روی شبکهٔ سرویس‌دهنده است، لبهٔ WAN را دور می‌زند.",
+  "Move the storage into the data center's storage network; data on a user or DMZ network is one compromised client away from being read or encrypted.": "storage را به شبکهٔ storage دیتاسنتر منتقل کنید؛ داده‌ای که در شبکهٔ کاربران یا DMZ است، با نفوذ به فقط یک کلاینت خوانده یا رمزگذاری (باج‌افزار) می‌شود.",
+  "Only one WAN connection": "تنها یک اتصال WAN",
+  "Put storage in its own network (a storage VLAN or SAN fabric) that only servers and hypervisors reach; users, guests, the DMZ and the lab must not reach it, or only through the data center firewall.": "storage را در شبکهٔ جداگانهٔ خودش (VLAN مخصوص storage یا fabric شبکهٔ SAN) بگذارید که فقط سرورها و hypervisorها به آن برسند؛ کاربران، مهمان‌ها، DMZ و آزمایشگاه نباید به آن برسند، یا فقط از راه فایروال دیتاسنتر.",
+  "Storage in a user, guest or DMZ network": "storage در شبکهٔ کاربران، مهمان یا DMZ",
+  "Storage reachable from users, guests or the DMZ without a firewall": "storage بدون فایروال از شبکهٔ کاربران، مهمان یا DMZ در دسترس است",
+  "Storage with a single path": "storage با تنها یک مسیر",
+  "WAN or MPLS ends on a switch or a host": "WAN یا MPLS روی سوئیچ یا میزبان تمام می‌شود"
 }

@@ -10,10 +10,11 @@ DesignComponent/DesignRelationship rows on a design version exactly as if
 they had been drawn on the canvas by hand - nothing here is a special case
 the rest of the Design module needs to know about.
 
-Only one template today (the enterprise campus - the reference design that
-applies to the widest range of organizations), parameterized by scale
-(access-layer switch count). The registry is structured to add more
-(e.g. a SAFE branch or small-office variant) without changing the apply path.
+Two templates, each parameterized by scale: the enterprise campus (the
+reference design that applies to the widest range of organizations, scaled by
+access-layer switch count) and the data center with its storage network (SAN),
+scaled by hypervisor count. The registry is structured to add more (e.g. a SAFE
+branch or small-office variant) without changing the apply path.
 """
 from dataclasses import dataclass
 from typing import Any
@@ -40,6 +41,29 @@ TEMPLATES: list[TemplateInfo] = [
         ),
         framework="Cisco SAFE",
     ),
+    TemplateInfo(
+        id="safe_data_center_san",
+        name="Data Center with SAN (Cisco SAFE)",
+        description=(
+            "A firewalled data center: a redundant firewall and switch pair, "
+            "hypervisors dual-homed to both, and a separate storage network with "
+            "two SAN fabrics (A and B) that only the hypervisors reach, plus an "
+            "isolated management network with a jump host."
+        ),
+        framework="Cisco SAFE",
+    ),
+    TemplateInfo(
+        id="safe_branch_wan",
+        name="Branch with WAN (Cisco SAFE)",
+        description=(
+            "A branch joined to the organisation over MPLS and SD-WAN, with the "
+            "Internet and an LTE backup: two WAN routers, a branch firewall "
+            "pair behind both, a redundant switch pair and dual-homed access "
+            "switches, so no single circuit, router or switch cuts the branch "
+            "off."
+        ),
+        framework="Cisco SAFE",
+    ),
 ]
 
 SCALES = {
@@ -61,12 +85,15 @@ def list_templates() -> list[TemplateInfo]:
 # zoning the layout already encodes in y/x position is also visible at a
 # glance, not just implied by where boxes happen to sit.
 ZONES: dict[str, dict[str, str]] = {
+    "wan_edge": {"label": "WAN Edge", "color": "#f0fdfa"},
     "internet_edge": {"label": "Internet Edge", "color": "#eef2ff"},
     "dmz": {"label": "DMZ", "color": "#fff7ed"},
     "core": {"label": "Core", "color": "#eef6ff"},
     "distribution": {"label": "Distribution", "color": "#ecfdf5"},
     "access": {"label": "Access", "color": "#f0fdf4"},
     "data_center": {"label": "Data Center", "color": "#fdf4ff"},
+    "storage": {"label": "Storage network (SAN)", "color": "#fefce8"},
+    "management": {"label": "Management", "color": "#f1f5f9"},
 }
 
 
@@ -169,7 +196,105 @@ def build_safe_enterprise_campus(scale: str = "medium") -> tuple[list[dict[str, 
     return components, relationships
 
 
+# Hypervisors per scale in the data center template (the access-switch count is the campus's).
+DC_HOSTS = {"small": 2, "medium": 3, "large": 4}
+
+
+def build_safe_data_center_san(scale: str = "medium") -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The SAFE data center with its storage network: reached from the campus core only through a
+    redundant firewall pair; hypervisors dual-homed to a redundant switch pair; storage on its own two
+    SAN fabrics (A and B), reached by the hypervisors only and by every one over both fabrics, so no
+    switch, cable or port is a single point of failure for the data; management on its own network
+    behind the firewall, reached through a jump host."""
+    hosts = DC_HOSTS.get(scale, DC_HOSTS["medium"])
+    x0 = 480 - (hosts - 1) * 110
+    components = [
+        _component("campus_core", "router", "Campus Core", 480, 20, "core"),
+        _component("dc_fw1", "firewall", "Data Center Firewall 1", 360, 180, "data_center"),
+        _component("dc_fw2", "firewall", "Data Center Firewall 2", 600, 180, "data_center"),
+        _component("dc_sw1", "switch", "Data Center Switch 1", 360, 350, "data_center"),
+        _component("dc_sw2", "switch", "Data Center Switch 2", 600, 350, "data_center"),
+        _component("san_a", "switch", "SAN Fabric A Switch", 360, 690, "storage"),
+        _component("san_b", "switch", "SAN Fabric B Switch", 600, 690, "storage"),
+        _component("storage", "storage", "Storage Array", 360, 860, "storage"),
+        _component("backup", "storage", "Backup Storage", 600, 860, "storage"),
+        _component("mgmt_sw", "switch", "Management Switch", 980, 350, "management"),
+        _component("jump", "server", "Jump Host", 980, 520, "management"),
+    ]
+    relationships = [
+        _link("campus_core", "dc_fw1"),
+        _link("campus_core", "dc_fw2"),
+        _link("dc_fw1", "dc_fw2"),
+        _link("dc_fw1", "dc_sw1"),
+        _link("dc_fw1", "dc_sw2"),
+        _link("dc_fw2", "dc_sw1"),
+        _link("dc_fw2", "dc_sw2"),
+        _link("dc_sw1", "dc_sw2"),
+        # storage on both fabrics; the fabrics are not linked to each other (A and B stay apart)
+        _link("storage", "san_a", "fiber"),
+        _link("storage", "san_b", "fiber"),
+        _link("backup", "san_a", "fiber"),
+        _link("backup", "san_b", "fiber"),
+        # management only behind the firewall pair
+        _link("dc_fw1", "mgmt_sw"),
+        _link("dc_fw2", "mgmt_sw"),
+        _link("mgmt_sw", "jump"),
+    ]
+    for i in range(hosts):
+        key = f"host{i + 1}"
+        components.append(_component(key, "hypervisor", f"Hypervisor {i + 1}", x0 + i * 220, 520, "data_center"))
+        for upstream in ("dc_sw1", "dc_sw2"):
+            relationships.append(_link(upstream, key))
+        for fabric in ("san_a", "san_b"):
+            relationships.append(_link(key, fabric, "fiber"))
+    return components, relationships
+
+
+def build_safe_branch_wan(scale: str = "medium") -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The SAFE branch with its WAN: MPLS and an LTE backup on one router, the SD-WAN overlay and the
+    Internet on the other, so one circuit or router never cuts the branch off from the organisation or
+    the Internet; a branch firewall pair
+    behind both routers, so nothing from a WAN or the Internet reaches the branch unfiltered; a
+    redundant switch pair with every access switch dual-homed. The external networks are design
+    components of their own kinds (mpls, sdwan, internet, lte), as drawn on the topology, and the
+    shape passes Architecture Validation's checks (tests/test_design_templates.py)."""
+    access = SCALES.get(scale, SCALES["medium"])["access_switches"]
+    components = [
+        _component("mpls", "mpls", "MPLS", 220, 20, "wan_edge"),
+        _component("sdwan", "sdwan", "SD-WAN", 560, 20, "wan_edge"),
+        _component("internet", "internet", "Internet", 780, 20, "wan_edge"),
+        _component("lte", "lte", "LTE / 4G Backup", 0, 20, "wan_edge"),
+        _component("wan_r1", "router", "WAN Router 1 (MPLS, LTE)", 300, 180, "wan_edge"),
+        _component("wan_r2", "router", "WAN Router 2 (SD-WAN, Internet)", 660, 180, "wan_edge"),
+        _component("br_fw1", "firewall", "Branch Firewall 1", 360, 340, "wan_edge"),
+        _component("br_fw2", "firewall", "Branch Firewall 2", 600, 340, "wan_edge"),
+        _component("br_sw1", "switch", "Branch Switch 1", 360, 500, "core"),
+        _component("br_sw2", "switch", "Branch Switch 2", 600, 500, "core"),
+    ]
+    relationships = [
+        _link("mpls", "wan_r1", "logical"),
+        _link("sdwan", "wan_r2", "logical"),
+        _link("internet", "wan_r2", "logical"),
+        _link("lte", "wan_r1", "wireless"),
+        _link("wan_r1", "wan_r2"),
+        _link("br_fw1", "br_fw2"),
+        _link("br_sw1", "br_sw2"),
+    ]
+    for fw in ("br_fw1", "br_fw2"):
+        relationships += [_link("wan_r1", fw), _link("wan_r2", fw), _link(fw, "br_sw1"), _link(fw, "br_sw2")]
+    x0 = 480 - (access - 1) * 120
+    for i in range(access):
+        key = f"access{i + 1}"
+        components.append(_component(key, "switch", f"Access Switch {i + 1}", x0 + i * 240, 660, "access"))
+        relationships += [_link("br_sw1", key), _link("br_sw2", key)]
+    return components, relationships
+
+
 def build_template(template_id: str, scale: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     if template_id == "safe_enterprise_campus":
         return build_safe_enterprise_campus(scale)
+    if template_id == "safe_data_center_san":
+        return build_safe_data_center_san(scale)
+    if template_id == "safe_branch_wan":
+        return build_safe_branch_wan(scale)
     raise ValueError(f"Unknown template: {template_id}")

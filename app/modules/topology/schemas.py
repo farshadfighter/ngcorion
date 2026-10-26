@@ -1,7 +1,10 @@
 """Pydantic schemas for the Topology module."""
-from typing import Optional
+from typing import Literal, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+CloudKind = Literal["internet", "mpls", "wan", "sdwan", "lte", "public_cloud", "partner"]
+LinkStatus = Literal["active", "planned", "down"]
 
 
 class TopologyNode(BaseModel):
@@ -51,10 +54,79 @@ class TopologyLinkSummary(BaseModel):
         from_attributes = True
 
 
+class TopologyCloudOut(BaseModel):
+    """An external network on the canvas (app/models/topology.py, TopologyCloud)."""
+    id: int
+    kind: str
+    label: str
+    provider: Optional[str] = None
+    notes: Optional[str] = None
+    pos_x: Optional[float] = None
+    pos_y: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TopologyCloudLinkOut(BaseModel):
+    """A device's connection to an external network."""
+    id: int
+    cloud_id: int
+    asset_id: int
+    interface: Optional[str] = None
+    circuit_id: Optional[str] = None
+    speed_mbps: Optional[int] = None
+    status: str = "active"
+
+    class Config:
+        from_attributes = True
+
+
+def _one_line(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    v = v.strip()
+    if "\n" in v or "\r" in v:
+        raise ValueError("must be one line")
+    return v or None
+
+
+class TopologyCloudIn(BaseModel):
+    """Body of adding or changing an external network; omitted fields stay as they are on a change."""
+    kind: Optional[CloudKind] = None
+    label: Optional[str] = Field(None, max_length=120)
+    provider: Optional[str] = Field(None, max_length=120)
+    notes: Optional[str] = Field(None, max_length=2000)
+    pos_x: Optional[float] = None
+    pos_y: Optional[float] = None
+
+    @field_validator("label", "provider")
+    @classmethod
+    def _one_line_text(cls, v: Optional[str]) -> Optional[str]:
+        return _one_line(v)
+
+
+class TopologyCloudLinkIn(BaseModel):
+    """Body of connecting a device to an external network, or changing that connection."""
+    cloud_id: Optional[int] = None
+    asset_id: Optional[int] = None
+    interface: Optional[str] = Field(None, max_length=100)
+    circuit_id: Optional[str] = Field(None, max_length=100)
+    speed_mbps: Optional[int] = Field(None, ge=0, le=10_000_000)
+    status: Optional[LinkStatus] = None
+
+    @field_validator("interface", "circuit_id")
+    @classmethod
+    def _one_line_text(cls, v: Optional[str]) -> Optional[str]:
+        return _one_line(v)
+
+
 class TopologyGraph(BaseModel):
-    """Every asset as a node and every link, for the canvas."""
+    """Every asset as a node and every link, and the external networks with their links, for the canvas."""
     nodes: list[TopologyNode]
     links: list[TopologyLinkSummary]
+    clouds: list[TopologyCloudOut] = []
+    cloud_links: list[TopologyCloudLinkOut] = []
 
 
 class TopologyLinkCreate(BaseModel):

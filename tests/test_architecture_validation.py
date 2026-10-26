@@ -26,7 +26,7 @@ from app.models.asset_types import AssetType
 from app.models.architecture_finding import ArchitectureFinding
 from app.models.asset_zone import find_zone
 from app.models.risk import RiskZone
-from app.models.topology import TopologyLink
+from app.models.topology import TopologyCloud, TopologyCloudLink, TopologyLink
 from app.models.user import User
 from app.modules.architecture_validation.engine import (
     evaluate_condition,
@@ -148,7 +148,8 @@ def test_load_rules_are_all_unique_and_valid():
     for rule in rules:
         assert rule["severity"] in ("low", "medium", "high")
         assert rule["category"] in ("segmentation", "threat_defense", "management", "availability", "visibility")
-        assert rule.get("place") in ("edge", "data_center", "campus", "branch", "management", "lab", None)
+        assert rule.get("place") in ("edge", "data_center", "storage", "campus", "branch", "management", "lab", "wan",
+                                     "cloud", None)
         assert bool(rule.get("evidence")) == bool(rule.get("evidence_label"))
         # Every condition must at least parse.
         import ast as _ast
@@ -367,3 +368,151 @@ def test_every_rule_text_has_a_persian_translation():
             if text:
                 assert f"msg({json.dumps(text, ensure_ascii=False)})" in registered, (rule["code"], key)
                 assert persian.get(text), (rule["code"], key)
+
+
+# ======================================================================
+# Storage: SAN, iSCSI, NFS (AV-150 to AV-152)
+# ======================================================================
+
+STORAGE_NET = "Storage Network (SAN)"
+
+
+def test_the_storage_network_is_a_place():
+    assert place_from_name("Storage Network (SAN)") == "storage"
+    assert place_from_name("iSCSI VLAN") == "storage"
+    assert place_from_name("NAS") == "storage"
+    assert place_from_name("Internal Server Zone") == "data_center"
+
+
+def test_storage_reached_by_users_is_one_finding(db):
+    """Users reach a NAS through switches only: AV-150 with the path, not the general AV-104 too."""
+    pc = _make_asset(db, "Workstation", USERS)
+    access = _make_asset(db, "Switch", USERS)
+    nas = _make_asset(db, "Synology NAS", DC)
+    _link(db, pc, access)
+    _link(db, access, nas)
+    found = _found(db)
+    assert found[("AV-150", nas.asset_name)] == f"{access.asset_name} -> {nas.asset_name}"    # from the user network
+    assert ("AV-104", nas.asset_name) not in found
+    # and on one switch: a single path (not the general AV-132)
+    assert ("AV-152", nas.asset_name) in found and ("AV-132", nas.asset_name) not in found
+
+
+def test_storage_behind_the_data_center_firewall_on_two_fabrics_is_clean(db):
+    pc = _make_asset(db, "Workstation", USERS)
+    access = _make_asset(db, "Switch", USERS)
+    dc_fw = _make_asset(db, "Firewall", DC)
+    san_a = _make_asset(db, "Switch", STORAGE_NET)
+    san_b = _make_asset(db, "Switch", STORAGE_NET)
+    array = _make_asset(db, "NetApp Storage", STORAGE_NET)
+    host = _make_asset(db, "Hypervisor", DC)
+    for a, b in ((pc, access), (access, dc_fw), (dc_fw, host), (host, san_a), (host, san_b),
+                 (array, san_a), (array, san_b)):
+        _link(db, a, b)
+    found = _found(db)
+    assert not [k for k in found if k[0] in ("AV-150", "AV-151", "AV-152") and k[1] == array.asset_name]
+
+
+def test_storage_in_a_user_network(db):
+    nas = _make_asset(db, "QNAP NAS", USERS)
+    sw1, sw2 = _make_asset(db, "Switch", USERS), _make_asset(db, "Switch", USERS)
+    _link(db, nas, sw1)
+    _link(db, nas, sw2)
+    found = _found(db)
+    assert ("AV-151", nas.asset_name) in found and ("AV-111", nas.asset_name) not in found
+
+
+# ======================================================================
+# External networks (clouds) drawn on the topology
+# ======================================================================
+
+def _cloud(db, kind, label=None):
+    row = TopologyCloud(kind=kind, label=label or f"{kind} {_next()}")
+    db.add(row)
+    db.flush()
+    return row
+
+
+def _cloud_link(db, cloud, asset, status="active", interface=None):
+    db.add(TopologyCloudLink(cloud_id=cloud.id, asset_id=asset.id, status=status, interface=interface))
+    db.flush()
+
+
+def test_the_internet_cloud_is_the_outside(db):
+    """A drawn Internet cloud works like an Internet asset: a path to a host, and the only uplink."""
+    internet = _cloud(db, "internet", "Internet")
+    core = _make_asset(db, "Switch", USERS)
+    srv = _make_asset(db, "Server", DC)
+    _cloud_link(db, internet, core)
+    _link(db, core, srv)
+    found = _found(db)
+    assert found[("AV-101", srv.asset_name)] == f"Internet -> {core.asset_name} -> {srv.asset_name}"
+    assert found[("AV-121", core.asset_name)] == f"Internet - {core.asset_name}"
+    assert not [k for k in found if k[1] == "Internet"]             # a cloud has no findings
+
+
+def test_an_internet_cloud_behind_two_edge_firewalls(db):
+    internet = _cloud(db, "internet", "Internet")
+    fw1, fw2 = _make_asset(db, "Firewall", DMZ), _make_asset(db, "Firewall", DMZ)
+    srv = _make_asset(db, "Server", DC)
+    for fw in (fw1, fw2):
+        _cloud_link(db, internet, fw)
+        _link(db, fw, srv)
+    found = _found(db)
+    assert not [k for k in found if k[0] in ("AV-101", "AV-120", "AV-121")]
+
+
+def test_mpls_on_a_switch_and_a_single_wan_link(db):
+    mpls = _cloud(db, "mpls", "MPLS")
+    sw = _make_asset(db, "Switch", USERS)
+    _cloud_link(db, mpls, sw)
+    found = _found(db)
+    assert found[("AV-161", sw.asset_name)] == "MPLS"
+    assert found[("AV-162", sw.asset_name)] == f"MPLS - {sw.asset_name}"
+    assert not [k for k in found if k[0] in ("AV-101", "AV-121")]    # the WAN is not the Internet
+
+    router = _make_asset(db, "Router", USERS)
+    lte = _cloud(db, "sdwan", "SD-WAN")
+    _cloud_link(db, lte, router)
+    found = _found(db)
+    assert ("AV-161", router.asset_name) not in found               # a router ends a WAN circuit
+    assert not [k for k in found if k[0] == "AV-162"]               # two WAN links now
+
+
+def test_a_public_cloud_reaches_the_data_center_without_a_firewall(db):
+    aws = _cloud(db, "public_cloud", "AWS")
+    router = _make_asset(db, "Router", DC)
+    srv = _make_asset(db, "Server", DC)
+    _cloud_link(db, aws, router)
+    _link(db, router, srv)
+    found = _found(db)
+    assert found[("AV-160", srv.asset_name)] == f"AWS -> {router.asset_name} -> {srv.asset_name}"
+    assert ("AV-101", srv.asset_name) not in found                  # a cloud is not the Internet
+
+    fw = _make_asset(db, "Firewall", DC)
+    db.query(TopologyLink).filter(TopologyLink.source_asset_id == router.id).delete()
+    _link(db, router, fw)
+    _link(db, fw, srv)
+    assert ("AV-160", srv.asset_name) not in _found(db)
+
+
+def test_a_planned_or_down_cloud_link(db):
+    internet = _cloud(db, "internet", "Internet")
+    fw = _make_asset(db, "Firewall", DMZ)
+    _cloud_link(db, internet, fw, status="planned")
+    assert ("AV-121", fw.asset_name) not in _found(db)              # not there yet
+    db.query(TopologyCloudLink).delete()
+    _cloud_link(db, internet, fw, status="down", interface="port1")
+    found = _found(db)
+    assert found[("AV-135", fw.asset_name)] == f"Internet - {fw.asset_name} port1"
+
+
+def test_wan_type_names_are_the_wan_not_the_internet(db):
+    wan = _make_asset(db, "WAN Link")
+    sw = _make_asset(db, "Switch", USERS)
+    srv = _make_asset(db, "Server", DC)
+    _link(db, wan, sw)
+    _link(db, sw, srv)
+    found = _found(db)
+    assert ("AV-101", srv.asset_name) not in found
+    assert ("AV-161", sw.asset_name) in found

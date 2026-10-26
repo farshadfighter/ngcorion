@@ -8,7 +8,8 @@ Only the topology is checked. Owners, backups and audits are covered by their ow
 
 - **Links:** [Topology](/topology), drawn or found over LLDP/CDP. An active link counts, a link that is down is reported, a planned one is not there yet.
 - **Kind of device:** from the asset's type (firewall, switch, router, access point, server, workstation …), the same as its icon.
-- **Place in the network:** from the asset's network zone. Each zone has a place (Asset Requirements, Network Zones): chosen there, or read from the zone's name ("DMZ" is the Edge, "Internal Server Zone" the Data Center, "User Network" the Campus). Besides SAFE's places, the Internet, guest networks, the management network and labs are kept apart because the checks need them.
+- **External networks:** the Internet, MPLS, WAN, SD-WAN, LTE, public clouds and partners drawn on [Topology](/topology). The Internet and a partner are outside, MPLS, a WAN, SD-WAN and LTE the WAN, a public cloud the Cloud. They never have findings of their own.
+- **Place in the network:** from the asset's network zone. Each zone has a place (Asset Requirements, Network Zones): chosen there, or read from the zone's name ("DMZ" is the Edge, "Internal Server Zone" the Data Center, "User Network" the Campus, "Storage Network (SAN)" or "iSCSI" the storage network). Besides SAFE's places, the Internet, guest networks, the management network and labs are kept apart because the checks need them.
 
 A path is "unfiltered" when it leads from one place to another over active links without passing a firewall.
 
@@ -27,7 +28,14 @@ A path is "unfiltered" when it leads from one place to another over active links
 | Availability | Only one Internet connection | Medium |
 | Availability | Single point of failure (for critical or data center assets: high) | High/Medium |
 | Availability | Server or critical asset connected to a single device; network device with a single uplink; link down | High–Low |
+| Segmentation | Storage reachable from users, guests or the DMZ without a firewall; storage in a user, guest or DMZ network | High |
+| Availability | Storage with a single path (two switches or SAN fabrics A and B, with multipathing) | High |
+| Segmentation | A public cloud reaches the inside without a firewall | High |
+| Segmentation | WAN or MPLS ends on a switch or a host (not a router, firewall or VPN gateway) | Medium |
+| Availability | Only one WAN connection | Medium |
 | Visibility | Network device or server not in the topology; place in the network unknown | Low |
+
+Storage (a storage array, or a host in the storage network) gets the storage checks instead of the general server checks, so one problem is one finding. Fibre Channel fabrics are not reported over LLDP: draw them by hand.
 
 "What is checked" on the page lists every check with its recommendation.
 

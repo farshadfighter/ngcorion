@@ -17,6 +17,7 @@ export const PLACES = [
     ["internet", t("Internet")],
     ["edge", t("Edge (DMZ)")],
     ["data_center", t("Data center")],
+    ["storage", t("Storage network (SAN)")],
     ["campus", t("Campus (users)")],
     ["branch", t("Branch")],
     ["wan", t("WAN")],

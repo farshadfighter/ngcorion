@@ -73,11 +73,10 @@ def user(db) -> User:
 # Pure template-generation functions
 # ======================================================================
 
-def test_list_templates_returns_the_safe_campus_template():
+def test_list_templates_returns_the_safe_templates():
     templates = list_templates()
-    assert len(templates) == 1
-    assert templates[0].id == "safe_enterprise_campus"
-    assert templates[0].framework == "Cisco SAFE"
+    assert [t.id for t in templates] == ["safe_enterprise_campus", "safe_data_center_san", "safe_branch_wan"]
+    assert all(t.framework == "Cisco SAFE" for t in templates)
 
 
 @pytest.mark.parametrize("scale", ["small", "medium", "large"])
@@ -253,3 +252,68 @@ def test_route_create_design_with_unknown_template_id_returns_400(db, user):
     with pytest.raises(HTTPException) as exc_info:
         route(request=request, current_user=user, db=db)
     assert exc_info.value.status_code == 400
+
+
+# ── Data center with SAN ──────────────────────────────────────────────
+
+@pytest.mark.parametrize("scale", ["small", "medium", "large"])
+def test_data_center_san_template_keeps_storage_on_two_fabrics_for_hypervisors_only(scale):
+    from app.modules.design.templates import DC_HOSTS, ZONES, build_safe_data_center_san
+    components, relationships = build_template("safe_data_center_san", scale)
+    keys = {c["_key"]: c for c in components}
+    assert len(keys) == len(components) and all(c["zone"] in ZONES for c in components)
+    links = {(r["_source"], r["_destination"]) for r in relationships}
+    links |= {(b, a) for a, b in links}
+    assert all(a in keys and b in keys for a, b in links)
+    hosts = [k for k, c in keys.items() if c["component_type"] == "hypervisor"]
+    assert len(hosts) == DC_HOSTS[scale]
+    for h in hosts:      # dual-homed, and on both fabrics
+        assert {("dc_sw1", h), ("dc_sw2", h), (h, "san_a"), (h, "san_b")} <= links
+    for array in ("storage", "backup"):
+        neighbours = {b for a, b in links if a == array}
+        assert neighbours == {"san_a", "san_b"}            # nothing but the two fabrics
+    assert ("san_a", "san_b") not in links                # A and B stay apart
+    # the SAN is reached from the core only through the hypervisors (behind the firewalls)
+    assert not {("campus_core", "san_a"), ("campus_core", "dc_sw1")} & links
+    assert build_safe_data_center_san("nope") is not None
+
+
+# ── Branch with WAN: external networks as design components ─────────────
+
+@pytest.mark.parametrize("scale", ["small", "medium", "large"])
+def test_branch_wan_template_passes_the_safe_checks(scale):
+    """The branch drawn as a topology - its external networks as clouds - gives no finding."""
+    from types import SimpleNamespace
+    from app.core.asset_icons import EXTERNAL_KINDS
+    from app.modules.architecture_validation.engine import run_rules
+    from app.modules.architecture_validation.topology import Topology
+    from app.modules.design.templates import ZONES
+
+    components, relationships = build_template("safe_branch_wan", scale)
+    keys = {c["_key"]: c for c in components}
+    assert all(c["zone"] in ZONES for c in components)
+    assert {c["component_type"] for c in components} >= {"mpls", "sdwan", "internet", "lte"}
+    assert sum(1 for c in components if c["_key"].startswith("access")) == SCALES[scale]["access_switches"]
+
+    ids = {k: i + 1 for i, k in enumerate(keys)}
+    external = {k for k, c in keys.items() if c["component_type"] in EXTERNAL_KINDS}
+    assets = [SimpleNamespace(id=ids[k], asset_name=c["label"], icon=c["component_type"])
+              for k, c in keys.items() if k not in external]
+    clouds = [SimpleNamespace(id=ids[k], kind=keys[k]["component_type"], label=keys[k]["label"]) for k in external]
+    links, cloud_links = [], []
+    for r in relationships:
+        a, b = r["_source"], r["_destination"]
+        if a in external or b in external:
+            cloud, device = (a, b) if a in external else (b, a)
+            cloud_links.append(SimpleNamespace(cloud_id=ids[cloud], asset_id=ids[device], interface=None,
+                                               status="active"))
+        else:
+            links.append(SimpleNamespace(source_asset_id=ids[a], destination_asset_id=ids[b], source_interface=None,
+                                         destination_interface=None, status="active", missing_since=None))
+    places = {ids[k]: ("edge" if c["zone"] == "wan_edge" else "branch") for k, c in keys.items()
+              if k not in external}
+    topology = Topology(assets, places, links, clouds, cloud_links)
+    facts = topology.facts({})
+    found = {(rule["code"], a.asset_name) for a in assets
+             for rule in run_rules({"asset_name": a.asset_name, **facts[a.id]})}
+    assert found == set()

@@ -11,7 +11,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.models import User, Asset, TopologyLink
+from app.models.topology import TopologyCloud, TopologyCloudLink
 from app.models.topology_log import (
+    TopologyLog,
     log_topology_link_created,
     log_topology_link_updated,
     log_topology_link_deleted,
@@ -25,6 +27,10 @@ from app.modules.topology.schemas import (
     TopologyLinkCreate,
     TopologyLinkUpdate,
     TopologyValidationResult,
+    TopologyCloudIn,
+    TopologyCloudOut,
+    TopologyCloudLinkIn,
+    TopologyCloudLinkOut,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,7 +68,9 @@ def get_topology(
         for a in assets
     ]
 
-    return TopologyGraph(nodes=nodes, links=links)
+    return TopologyGraph(nodes=nodes, links=links,
+                         clouds=db.query(TopologyCloud).order_by(TopologyCloud.id).all(),
+                         cloud_links=db.query(TopologyCloudLink).order_by(TopologyCloudLink.id).all())
 
 
 @router.patch("/nodes/{asset_id}/position", status_code=204)
@@ -151,3 +159,112 @@ def validate_topology(
     asset_count = db.query(Asset).count()
     link_count = db.query(TopologyLink).count()
     return TopologyValidationResult(findings=findings, asset_count=asset_count, link_count=link_count)
+
+
+# ── External networks (clouds): not assets, so not inventory and not licensed ──
+
+def _cloud_log(db: Session, user: User, action: str, details: dict) -> None:
+    db.add(TopologyLog(user_id=user.id, action=action, details=details, status="success"))
+    db.commit()
+
+
+@router.post("/clouds", response_model=TopologyCloudOut, status_code=201)
+def create_cloud(request: TopologyCloudIn, current_user: User = Depends(require_permission("topology", "write")),
+                 db: Session = Depends(get_db)):
+    """Add an external network (the Internet, MPLS, a WAN, SD-WAN, an LTE/4G backup, a public cloud or a
+    partner's network) to the canvas."""
+    if not request.kind or not request.label:
+        raise HTTPException(status_code=422, detail="Choose the kind of network and give it a name")
+    cloud = TopologyCloud(**request.model_dump(), created_by=current_user.id)
+    db.add(cloud)
+    db.commit()
+    db.refresh(cloud)
+    _cloud_log(db, current_user, "cloud.create", {"cloud_id": cloud.id, "kind": cloud.kind, "label": cloud.label})
+    return cloud
+
+
+@router.patch("/clouds/{cloud_id}", response_model=TopologyCloudOut)
+def update_cloud(cloud_id: int, request: TopologyCloudIn,
+                 current_user: User = Depends(require_permission("topology", "write")), db: Session = Depends(get_db)):
+    """Rename an external network, change its kind, provider or notes, or move it on the canvas."""
+    cloud = db.get(TopologyCloud, cloud_id)
+    if cloud is None:
+        raise HTTPException(status_code=404, detail="External network not found")
+    changes = request.model_dump(exclude_unset=True)
+    if "label" in changes and not changes["label"]:
+        raise HTTPException(status_code=422, detail="Choose the kind of network and give it a name")
+    if "kind" in changes and not changes["kind"]:
+        changes.pop("kind")
+    for k, v in changes.items():
+        setattr(cloud, k, v)
+    db.commit()
+    db.refresh(cloud)
+    if set(changes) - {"pos_x", "pos_y"}:           # a drag is not worth a log line
+        _cloud_log(db, current_user, "cloud.update", {"cloud_id": cloud.id, "changes": sorted(changes)})
+    return cloud
+
+
+@router.delete("/clouds/{cloud_id}", status_code=204)
+def delete_cloud(cloud_id: int, current_user: User = Depends(require_permission("topology", "delete")),
+                 db: Session = Depends(get_db)):
+    """Remove an external network and its connections."""
+    cloud = db.get(TopologyCloud, cloud_id)
+    if cloud is None:
+        raise HTTPException(status_code=404, detail="External network not found")
+    details = {"cloud_id": cloud.id, "kind": cloud.kind, "label": cloud.label}
+    db.query(TopologyCloudLink).filter(TopologyCloudLink.cloud_id == cloud.id).delete()
+    db.delete(cloud)
+    db.commit()
+    _cloud_log(db, current_user, "cloud.delete", details)
+
+
+@router.post("/cloud-links", response_model=TopologyCloudLinkOut, status_code=201)
+def create_cloud_link(request: TopologyCloudLinkIn,
+                      current_user: User = Depends(require_permission("topology", "write")),
+                      db: Session = Depends(get_db)):
+    """Connect a device to an external network (on an interface, with the circuit and its speed)."""
+    if request.cloud_id is None or db.get(TopologyCloud, request.cloud_id) is None:
+        raise HTTPException(status_code=404, detail="External network not found")
+    if request.asset_id is None or db.get(Asset, request.asset_id) is None:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    data = request.model_dump()
+    data["status"] = data.get("status") or "active"
+    link = TopologyCloudLink(**data, created_by=current_user.id)
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+    _cloud_log(db, current_user, "cloud_link.create", {"cloud_link_id": link.id, "cloud_id": link.cloud_id,
+                                                       "asset_id": link.asset_id})
+    return link
+
+
+@router.patch("/cloud-links/{link_id}", response_model=TopologyCloudLinkOut)
+def update_cloud_link(link_id: int, request: TopologyCloudLinkIn,
+                      current_user: User = Depends(require_permission("topology", "write")),
+                      db: Session = Depends(get_db)):
+    """Change a connection's interface, circuit, speed or status."""
+    link = db.get(TopologyCloudLink, link_id)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    changes = {k: v for k, v in request.model_dump(exclude_unset=True).items() if k not in ("cloud_id", "asset_id")}
+    if "status" in changes and not changes["status"]:
+        changes.pop("status")
+    for k, v in changes.items():
+        setattr(link, k, v)
+    db.commit()
+    db.refresh(link)
+    _cloud_log(db, current_user, "cloud_link.update", {"cloud_link_id": link.id, "changes": sorted(changes)})
+    return link
+
+
+@router.delete("/cloud-links/{link_id}", status_code=204)
+def delete_cloud_link(link_id: int, current_user: User = Depends(require_permission("topology", "delete")),
+                      db: Session = Depends(get_db)):
+    """Disconnect a device from an external network."""
+    link = db.get(TopologyCloudLink, link_id)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    details = {"cloud_link_id": link.id, "cloud_id": link.cloud_id, "asset_id": link.asset_id}
+    db.delete(link)
+    db.commit()
+    _cloud_log(db, current_user, "cloud_link.delete", details)

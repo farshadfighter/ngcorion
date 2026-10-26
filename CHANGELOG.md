@@ -13,6 +13,39 @@
 
 ### Changes
 
+- Storage in the Cisco SAFE checks: a storage network (SAN, iSCSI, NAS) is
+  a place in the network of its own ("Storage Network (SAN)", "iSCSI" and
+  "NAS" zones are read as it). New checks: storage reachable from users,
+  guests, the DMZ or the lab without a firewall (AV-150, with the path),
+  storage in a user, guest or DMZ network (AV-151), storage with a single
+  path (AV-152). Storage gets these instead of the general server checks,
+  so one problem is one finding.
+- External networks on the topology: the Internet, MPLS, a WAN or leased
+  line, SD-WAN, an LTE/4G backup, a public cloud or a partner's network,
+  drawn as clouds ("Add external network") and connected to devices by
+  dragging from a port, with the interface, circuit ID, speed and status of
+  each connection (new tables topology_clouds and topology_cloud_links,
+  API /api/topology/clouds and /api/topology/cloud-links, changes in the
+  topology log). They are not assets: not in the inventory, not licensed.
+  Architecture Validation reads them: the Internet and a partner are
+  outside, MPLS, a WAN, SD-WAN and LTE the WAN, a public cloud the Cloud.
+  New checks: a public cloud reaches the inside without a firewall
+  (AV-160), WAN or MPLS ends on a switch or a host (AV-161), only one WAN
+  connection (AV-162).
+- Icons for the external networks (MPLS, WAN, SD-WAN, LTE, public cloud,
+  partner) in the topology and the design palette's "External" group. An
+  asset type named "WAN", "Leased Line" or "Metro Ethernet" is now the WAN,
+  not the Internet; "MPLS VPN", "L3VPN" and "VPLS" are MPLS, not a VPN
+  gateway.
+- Design templates: "Data Center with SAN (Cisco SAFE)" (a firewall and
+  switch pair, hypervisors dual-homed, storage on two SAN fabrics A and B
+  reached by the hypervisors only, a management network with a jump host)
+  and "Branch with WAN (Cisco SAFE)" (MPLS and LTE on one router, SD-WAN and
+  the Internet on the other, a branch firewall pair, dual-homed switches);
+  the branch passes the SAFE checks as drawn.
+- Topology page at phone width: the toolbar wraps and the side panel goes
+  under the map.
+
 - Benchmark policy for all 17 families: the benchmark list and the
   checks to choose from come from each audit module's own rule catalog
   (app/modules/audit_policy/catalog.py), so rules can be set for a

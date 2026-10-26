@@ -1,4 +1,5 @@
 {
+  "…and {{value}} more": "…و {{value}} مورد دیگر",
   "{{address}} is also the IP address of {{assets}}. It can be saved, but syslog and devices seen at this address are matched to only one of them.": "نشانی {{address}} نشانی IP دارایی {{assets}} هم هست. ثبت می‌شود، ولی پیام‌های syslog و دستگاه‌هایی که از این نشانی دیده می‌شوند فقط به یکی از آن‌ها نسبت داده می‌شوند.",
   "{{count}} CVEs": "{{count, number}} CVE",
   "{{count}} packages": "{{count, number}} بسته",
@@ -14,6 +15,7 @@
   "{{value}} assets changed.": "{{value}} دارایی تغییر کرد.",
   "{{value}} changes applied": "{{value}} تغییر اعمال شده",
   "{{value}} changes outside NGCorion in 30 days": "{{value}} تغییر بیرون از NGCorion در ۳۰ روز",
+  "{{value}} critical": "{{value}} بحرانی",
   "{{value}} critical, {{value2}} high": "{{value}} بحرانی، {{value2}} بالا",
   "{{value}} in total, {{value2}} down": "در مجموع {{value}}، {{value2}} قطع",
   "{{value}} of {{value2}}": "{{value}} از {{value2}}",
@@ -73,6 +75,7 @@
   "Changed by NGCorion": "تغییر توسط NGCorion",
   "Changed outside NGCorion": "تغییر بیرون از NGCorion",
   "Clear selection": "لغو انتخاب",
+  "closes {{closes}} findings": "{{closes}} یافته را می‌بندد",
   "Collected": "جمع‌آوری",
   "Confidentiality": "محرمانگی",
   "Confidentiality Level": "سطح محرمانگی",
@@ -305,6 +308,7 @@
   "What changed": "چه تغییر کرد",
   "What happened to this asset, newest first": "آنچه بر این دارایی گذشته است، جدیدترین در بالا",
   "What it is (optional)": "چیست (اختیاری)",
+  "What to do first": "اول چه کنیم",
   "Working…": "در حال انجام…",
   "Yesterday": "دیروز"
 }

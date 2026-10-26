@@ -13,6 +13,7 @@ import {
 } from "../../store/designSlice.jsx";
 import "../../assets/DesignConfiguration.css";
 import { t as tr, uiLocale } from "../../i18n";
+import { tb } from "../../i18n/backendText";
 
 export const DesignList = () => {
     const dispatch = useDispatch();
@@ -139,8 +140,8 @@ export const DesignList = () => {
                                         onClick={() => setTemplateId(t.id)}
                                     >
                                         <span className="dc-template-card-framework">{t.framework}</span>
-                                        <span className="dc-template-card-title">{t.name}</span>
-                                        <span className="dc-template-card-desc">{t.description}</span>
+                                        <span className="dc-template-card-title">{tb(t.name)}</span>
+                                        <span className="dc-template-card-desc">{tb(t.description)}</span>
                                     </button>
                                 ))}
                             </div>
