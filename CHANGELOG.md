@@ -4,6 +4,10 @@
 
 ### Fixes
 
+- The OVA could not be deployed on ESXi older than 6.7 ("Line 73:
+  Unsupported hardware family 'vmx-14'"). It now asks for hardware
+  version 13 (ESXi 6.5 and later), the oldest with EFI Secure Boot; the
+  VM's compatibility can be upgraded after deployment.
 - A user editing their own account (an administrator included) could not
   save a new email or phone: the form sent the unchanged role and
   permissions with it, and the server refuses any change of one's own role

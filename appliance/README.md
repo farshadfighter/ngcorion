@@ -4,7 +4,7 @@ One build produces three images from the same disk:
 
 | File | For |
 |---|---|
-| `ngcorion-<version>.ova` | VMware vSphere / ESXi / Workstation (EFI, Secure Boot, pvscsi, vmxnet3) |
+| `ngcorion-<version>.ova` | VMware vSphere / ESXi 6.5 or later / Workstation 14 or later (hardware version 13: EFI, Secure Boot, pvscsi, vmxnet3) |
 | `ngcorion-<version>.vhdx` | Microsoft Hyper-V (Generation 2) |
 | `ngcorion-<version>.qcow2` | KVM, Proxmox, OpenStack |
 

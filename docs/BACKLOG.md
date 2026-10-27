@@ -17,6 +17,7 @@ this file describes what is not (yet).
 | I6 | From testing: the benchmark policy offered only Linux (the benchmarks audits had run); all 17 families, from the rule catalogs | done (9c4a9ce) |
 | I7 | From testing: an administrator could not change their own email or phone (the form sent the unchanged role and permissions) | done (6def5d7) |
 | I8 | From testing: SAN and storage in the Cisco SAFE checks, a Data Center with SAN design template; external networks (Internet, MPLS, WAN, SD-WAN, LTE, public cloud, partner) on the topology and in designs, read by the checks, with a Branch with WAN template | done (27f7a7e) |
+| I9 | From testing: the OVA was refused by ESXi older than 6.7 ("Unsupported hardware family 'vmx-14'"); hardware version 13 (ESXi 6.5 and later) | done |
 
 Bugs reported from testing on the customer test server go before everything else here.
 

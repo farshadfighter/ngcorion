@@ -74,7 +74,9 @@
         <vssd:ElementName>Virtual Hardware Family</vssd:ElementName>
         <vssd:InstanceID>0</vssd:InstanceID>
         <vssd:VirtualSystemIdentifier>NGCorion-@VERSION@</vssd:VirtualSystemIdentifier>
-        <vssd:VirtualSystemType>vmx-14</vssd:VirtualSystemType>
+        <!-- vmx-13 (ESXi 6.5): the oldest hardware with EFI Secure Boot; a newer family is refused by an
+             older host ("Unsupported hardware family"), and the VM can be upgraded in place later -->
+        <vssd:VirtualSystemType>vmx-13</vssd:VirtualSystemType>
       </System>
       <Item>
         <rasd:AllocationUnits>hertz * 10^6</rasd:AllocationUnits>

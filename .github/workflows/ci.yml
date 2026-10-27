@@ -169,6 +169,8 @@ jobs:
           test "$(tar tf /tmp/ova/ngcorion-ci.ova | head -n1)" = ngcorion-ci.ovf
           cd /tmp/ova/x && sed -E 's/^SHA256\((.*)\)= (.*)$/\2  \1/' ngcorion-ci.mf | sha256sum -c -
           grep -q 'ovf:capacity="2147483648"' ngcorion-ci.ovf
+          # deployable from ESXi 6.5 up: a newer hardware family is refused by older hosts
+          grep -q '<vssd:VirtualSystemType>vmx-13</vssd:VirtualSystemType>' ngcorion-ci.ovf
 
   frontend:
     name: Frontend (lint, test, build)

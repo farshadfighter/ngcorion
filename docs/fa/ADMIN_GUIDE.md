@@ -102,7 +102,8 @@
 
 * **vSphere / ESXi:** «Deploy OVF Template». در صفحهٔ خصوصیات می‌توانید نام میزبان، نشانی IP، دروازه،
   DNS، NTP و رمز مدیر وب را وارد کنید؛ اگر نام میزبان و رمز مدیر وارد شوند، راه‌اندازی اول بدون
-  دخالت انجام می‌شود.
+  دخالت انجام می‌شود. ESXi نسخهٔ ۶٫۵ یا بالاتر لازم است (نسخهٔ سخت‌افزار مجازی ۱۳، کمترین نسخه با EFI
+  Secure Boot)؛ پس از نصب می‌توانید از «Upgrade VM Compatibility» نسخهٔ سخت‌افزار را بالا ببرید.
 * **Hyper-V:** ماشین نسل ۲ با فایل VHDX؛ Secure Boot با قالب «Microsoft UEFI Certificate Authority».
 * **KVM / Proxmox:** دیسک qcow2 با virtio و UEFI.
 
