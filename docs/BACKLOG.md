@@ -17,7 +17,7 @@ this file describes what is not (yet).
 | I6 | From testing: the benchmark policy offered only Linux (the benchmarks audits had run); all 17 families, from the rule catalogs | done (9c4a9ce) |
 | I7 | From testing: an administrator could not change their own email or phone (the form sent the unchanged role and permissions) | done (6def5d7) |
 | I8 | From testing: SAN and storage in the Cisco SAFE checks, a Data Center with SAN design template; external networks (Internet, MPLS, WAN, SD-WAN, LTE, public cloud, partner) on the topology and in designs, read by the checks, with a Branch with WAN template | done (27f7a7e) |
-| I9 | From testing: the OVA was refused by ESXi older than 6.7 ("Unsupported hardware family 'vmx-14'"); hardware version 13 (ESXi 6.5 and later) | done |
+| I9 | From testing: the OVA was refused by ESXi older than 6.7 ("Unsupported hardware family 'vmx-14'"); hardware version 13 (ESXi 6.5 and later) | done (cb8dcdd) |
 
 Bugs reported from testing on the customer test server go before everything else here.
 
@@ -73,6 +73,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
+| Version 2.2.0 | (this commit) |
+| The OVA deploys on ESXi 6.5 and later | cb8dcdd |
 | Storage in the SAFE checks, external networks on the topology and in designs | 27f7a7e |
 | Users: one's own email and phone can be changed again | 6def5d7 |
 | Benchmark policy for all 17 families, before their first audit | 9c4a9ce |
