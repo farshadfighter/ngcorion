@@ -18,6 +18,7 @@ this file describes what is not (yet).
 | I7 | From testing: an administrator could not change their own email or phone (the form sent the unchanged role and permissions) | done (6def5d7) |
 | I8 | From testing: SAN and storage in the Cisco SAFE checks, a Data Center with SAN design template; external networks (Internet, MPLS, WAN, SD-WAN, LTE, public cloud, partner) on the topology and in designs, read by the checks, with a Branch with WAN template | done (27f7a7e) |
 | I9 | From testing: the OVA was refused by ESXi older than 6.7 ("Unsupported hardware family 'vmx-14'"); hardware version 13 (ESXi 6.5 and later) | done (cb8dcdd) |
+| I10 | From testing: an audit result's conformity and non-conformity were wrong (not over the scored checks, not the session's score) | done |
 
 Bugs reported from testing on the customer test server go before everything else here.
 

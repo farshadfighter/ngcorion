@@ -18,6 +18,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_permission, assert_session_access
 from app.models import User, Asset, log_action
 from app.models.audit import AuditSession, AuditResult, CheckStatus, DeviceType
+from app.modules.audit_policy.service import is_scored
 
 
 router = APIRouter(prefix="/api/audit", tags=["Audit - Shared"])
@@ -68,6 +69,14 @@ def _build_session_response(db: Session, session: AuditSession) -> dict:
     passed = sum(1 for r in results if r.status == CheckStatus.PASS)
     failed = sum(1 for r in results if r.status == CheckStatus.FAIL)
     errors = sum(1 for r in results if r.status == CheckStatus.ERROR)
+    # The checks the score counts (app/modules/audit_policy/service.py): the result cards show these, so
+    # their percentages add up to 100 and the conformity is the score the reports and dashboards show.
+    scored_passed = sum(1 for r in results if is_scored(r) and r.status == CheckStatus.PASS)
+    scored_failed = sum(1 for r in results if is_scored(r) and r.status == CheckStatus.FAIL)
+    scored = scored_passed + scored_failed
+    pct = session.compliance_pct
+    if pct is None and scored:
+        pct = round(100.0 * scored_passed / scored, 2)
 
     duration = None
     if session.completed_at and session.started_at:
@@ -89,8 +98,16 @@ def _build_session_response(db: Session, session: AuditSession) -> dict:
             "passed": passed,
             "failed": failed,
             "errors": errors,
-            "compliance_pct": session.compliance_pct,
+            "compliance_pct": pct,
             "weighted_compliance_pct": session.weighted_compliance_pct,
+            "results": len(results),
+            "scored": scored,
+            "scored_passed": scored_passed,
+            "scored_failed": scored_failed,
+            # not in the score: not applicable, errors, informational, optional or excluded by the policy
+            "not_scored": len(results) - scored,
+            "not_applicable": sum(1 for r in results if r.status == CheckStatus.NOT_APPLICABLE),
+            "by_policy": sum(1 for r in results if r.policy),
         },
         "connection_error": session.connection_error,
     }

@@ -23,7 +23,7 @@ Compares an asset's configuration with its reference benchmark (CIS, DISA STIG o
 
 ## Read the result
 
-- "See Result" shows the compliance score and the "Conformity" and "Non-Conformity" counts.
+- "See Result" shows the compliance score and the "Conformity" and "Non-Conformity" counts. Both are over the scored checks, so they add up to 100% and the conformity is the score in reports and dashboards; not applicable checks, errors, informational checks and checks the benchmark policy makes optional or excludes are counted apart, as "not scored".
 - Each control: section, severity, result and "Evidence / Remediation" (what was read from the device and how to fix it).
 - **"⚠ Manual review":** a heuristic or manual control; confirm it yourself.
 - "Report of this audit, with the evidence of every check": a PDF for the auditor.

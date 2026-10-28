@@ -339,3 +339,28 @@ def test_a_family_never_audited_gets_its_rules(db):
     with pytest.raises(HTTPException) as unknown:
         _ask(db, requester, benchmark="sophos", check_number="DKR-1.1.1")
     assert unknown.value.status_code == 400
+
+
+# ── the audit result cards (app/modules/audit/router.py, _build_session_response) ──
+
+def test_the_result_cards_count_the_scored_checks(db):
+    """Conformity and non-conformity add up to 100 and the conformity is the session's score: not
+    applicable, errors, informational and policy-excluded checks are counted apart, as not scored."""
+    from app.modules.audit.router import _build_session_response
+    requester, approver = _user(db, UserRole.MANAGER), _user(db)
+    results = RESULTS + [("4.1", "medium", "L1", NA), ("4.2", "medium", "L1", CheckStatus.ERROR)]
+    s = _audit(db, _asset(db), requester, results=results, raw=(40.0, 50.0))
+    s.total_checks = 5                           # a module's own count, of its scored checks only
+    db.flush()
+    db.refresh(s)
+    c = _build_session_response(db, s)["compliance"]
+    # 1.1 P, 1.2 F, 2.1 F, 3.1 F, 3.2 P scored; 9.9 info, 4.1 not applicable, 4.2 error not
+    assert (c["scored_passed"], c["scored_failed"], c["scored"], c["not_scored"], c["results"]) == (2, 3, 5, 3, 8)
+    assert c["compliance_pct"] == 40.0 and c["not_applicable"] == 1 and c["by_policy"] == 0
+    assert (c["passed"], c["failed"], c["errors"]) == (2, 4, 1)               # every row, as before
+
+    P.run_pending(db)
+    _decide(db, approver, _ask(db, requester, check_number="2.1").id)
+    db.refresh(s)
+    c = _build_session_response(db, s)["compliance"]
+    assert (c["scored_passed"], c["scored_failed"], c["by_policy"], c["compliance_pct"]) == (2, 2, 1, 50.0)

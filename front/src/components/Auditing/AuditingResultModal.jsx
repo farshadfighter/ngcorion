@@ -5,6 +5,7 @@
 import { useEffect, useState, Fragment } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults, fetchAuditSession } from "../../store/auditSlice";
+import { auditScore } from "./auditScore.js";
 import { getDeviceName } from "../../store/hardeningSlice";
 import { FixUnsuccessfulWizard } from "../Hardening/FixUnsuccessfulWizard";
 import { ResultHardeningBar } from "./ResultHardeningBar";
@@ -121,31 +122,9 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
-    let totalChecks = 0;
-    let passedChecks = 0;
-    let failedChecks = 0;
-
-    if (sessionDetails?.compliance) {
-        totalChecks = sessionDetails.compliance.total_checks || sessionDetails.compliance.total || 0;
-        passedChecks = sessionDetails.compliance.passed_checks || sessionDetails.compliance.passed || 0;
-        failedChecks = sessionDetails.compliance.failed_checks || sessionDetails.compliance.failed || 0;
-    }
-
-    if (totalChecks === 0 && results && results.length > 0) {
-        totalChecks = results.length;
-        passedChecks = results.filter(r => {
-            const status = r.status?.toString().toUpperCase();
-            return status === 'PASS' || status === 'PASSED' || status === 'SUCCESS';
-        }).length;
-        failedChecks = results.filter(r => {
-            const status = r.status?.toString().toUpperCase();
-            return status === 'FAIL' || status === 'FAILED';
-        }).length;
-    }
-
-    const conformityPercent = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 0;
-    const nonConformityPercent = totalChecks > 0 ? Math.round((failedChecks / totalChecks) * 100) : 0;
-    const otherChecks = Math.max(totalChecks - passedChecks - failedChecks, 0);
+    const score = auditScore(sessionDetails?.compliance, results);
+    const { total: totalChecks, passed: passedChecks, failed: failedChecks, scored: scoredChecks,
+            notScored, conformity: conformityPercent, nonConformity: nonConformityPercent } = score;
 
     // FortiGate multi-VDOM audits tag each result with its VDOM ("global"/"root"/<name>).
     // Only show the VDOM column when at least one result carries it.
@@ -273,13 +252,13 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                 <div className="result-stats-summary">
                     <div className="result-card result-card-success">
                         <div className="card-percent">{n(`${conformityPercent}%`)}</div>
-                        <div className="card-sub">{t("{{passedChecks}} of {{totalChecks}} checks", { passedChecks, totalChecks })}</div>
+                        <div className="card-sub">{t("{{passedChecks}} of {{scoredChecks}} scored checks", { passedChecks: n(passedChecks), scoredChecks: n(scoredChecks) })}</div>
                         <div className="card-label">{t("Conformity")}</div>
                     </div>
 
                     <div className="result-card result-card-danger">
                         <div className="card-percent">{n(`${nonConformityPercent}%`)}</div>
-                        <div className="card-sub">{t("{{failedChecks}} of {{totalChecks}} checks", { failedChecks, totalChecks })}</div>
+                        <div className="card-sub">{t("{{failedChecks}} of {{scoredChecks}} scored checks", { failedChecks: n(failedChecks), scoredChecks: n(scoredChecks) })}</div>
                         <div className="card-label">{t("Non-Conformity")}</div>
                     </div>
 
@@ -287,9 +266,10 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                         <div className="card-number">{n(totalChecks)}</div>
                         <div className="card-label">
                             {t("Total Conditions")}
-                            {otherChecks > 0 && (
-                                <span style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                                    {t("({{otherChecks}} error / other)", { otherChecks })}
+                            {notScored > 0 && (
+                                <span style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginTop: '4px' }}
+                                      title={t("Not applicable, errors, informational checks and checks the benchmark policy makes optional or excludes")}>
+                                    {t("({{notScored}} not scored)", { notScored: n(notScored) })}
                                 </span>
                             )}
                         </div>
@@ -299,7 +279,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
 
                 <ResultHardeningBar
                     onHarden={() => setShowHardeningWizard(true)}
-                    disabled={failedChecks === 0}
+                    disabled={score.failedRows === 0}
                 />
 
                 {/* Results Table */}

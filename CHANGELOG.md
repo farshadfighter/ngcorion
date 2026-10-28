@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- The conformity and non-conformity of an audit result were wrong: both
+  were taken over the module's count of checks while the passed and
+  failed counts took every row, so they could add up to more than 100%
+  and differ from the score in reports and dashboards. Both are now over
+  the scored checks (not applicable, errors, informational checks and
+  the checks the benchmark policy makes optional or excludes are counted
+  apart, as "not scored"), and the conformity is the session's score.
+
 ## 2.2.0 — 2026-10-27
 
 ### Fixes

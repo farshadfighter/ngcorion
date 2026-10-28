@@ -90,11 +90,17 @@ def load(db: Session, now: Optional[datetime] = None) -> Policy:
     return Policy(dict(by_check), dict(by_level), members)
 
 
+def is_scored(r: AuditResult) -> bool:
+    """Whether a result counts in the score: passed or failed, not informational (INFO level) and
+    required by the policy (not optional or excluded). Not applicable checks and errors do not count."""
+    return not r.policy and r.status in (CheckStatus.PASS, CheckStatus.FAIL) and (r.level or "").upper() != "INFO"
+
+
 def _scores(results: Iterable[AuditResult]) -> Tuple[Optional[float], Optional[float]]:
     passed = failed = 0
     w_pass = w_total = 0
     for r in results:
-        if r.policy or r.status not in (CheckStatus.PASS, CheckStatus.FAIL) or (r.level or "").upper() == "INFO":
+        if not is_scored(r):
             continue
         weight = WEIGHTS.get((r.severity or "medium").lower(), 2)
         w_total += weight
