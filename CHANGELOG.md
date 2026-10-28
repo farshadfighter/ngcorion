@@ -11,6 +11,7 @@
   the scored checks (not applicable, errors, informational checks and
   the checks the benchmark policy makes optional or excludes are counted
   apart, as "not scored"), and the conformity is the session's score.
+- dnspython 2.9.0 (CVE-2026-114605 in 2.8.0).
 
 ## 2.2.0 — 2026-10-27
 
