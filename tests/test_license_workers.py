@@ -41,7 +41,7 @@ def _reset():
 
 
 @pytest.fixture
-def clients(tmp_path, monkeypatch, trusted_test_key):
+def clients(tmp_path, monkeypatch, trusted_test_key):  # noqa: F811  (the fixture imported above)
     """(this worker's client, attached to the state; another worker's client, same storage)."""
     monkeypatch.setattr(mf, "HW_UUID_FILE", tmp_path / "none-hw")
     monkeypatch.setattr(mf, "DMI_UUID_FILE", tmp_path / "none-dmi")
