@@ -128,3 +128,76 @@ class ApplianceSettings:
     hostname: str
     network: Network
     ntp: List[str]
+
+
+# ---------- SSH access (the console menu over SSH) ----------
+
+SSH_USER = "ngcadmin"
+# Key types OpenSSH 9.6 accepts for user keys, minus DSA (removed) and RSA under 3072 bits.
+_SSH_KEY_TYPES = ("ssh-ed25519", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521",
+                  "sk-ssh-ed25519@openssh.com", "sk-ecdsa-sha2-nistp256@openssh.com", "ssh-rsa")
+
+
+def ssh_public_key(value: str) -> str:
+    """One OpenSSH public key line ("ssh-ed25519 AAAA... comment"), checked and returned without
+    options: a pasted line may not carry authorized_keys options (command=, from=, ...)."""
+    import base64
+    import struct
+    parts = (value or "").strip().split()
+    if len(parts) < 2 or parts[0] not in _SSH_KEY_TYPES:
+        raise ValueError("Paste one public key line, e.g. 'ssh-ed25519 AAAA... name' "
+                         "(ed25519, ECDSA or RSA of 3072 bits or more)")
+    kind, data = parts[0], parts[1]
+    try:
+        blob = base64.b64decode(data, validate=True)
+        (n,) = struct.unpack(">I", blob[:4])
+        inner = blob[4:4 + n].decode("ascii")
+    except (ValueError, struct.error, UnicodeDecodeError):
+        raise ValueError("The key is damaged (its data is not valid)")
+    if inner != kind:
+        raise ValueError("The key is damaged (its type and data do not match)")
+    if kind == "ssh-rsa":
+        # string "ssh-rsa", mpint e, mpint n
+        off = 4 + n
+        (elen,) = struct.unpack(">I", blob[off:off + 4])
+        off += 4 + elen
+        (nlen,) = struct.unpack(">I", blob[off:off + 4])
+        modulus = blob[off + 4:off + 4 + nlen].lstrip(b"\x00")
+        if len(modulus) * 8 < 3072:
+            raise ValueError("RSA keys need at least 3072 bits; an ed25519 key is better")
+    comment = re.sub(r"[^\w.@+-]", "", " ".join(parts[2:]))[:64]
+    return f"{kind} {data}" + (f" {comment}" if comment else "")
+
+
+def ssh_sources(value: str) -> List[str]:
+    """The addresses SSH is accepted from: networks or single addresses, separated by commas or
+    spaces (e.g. "10.20.0.0/24, 192.168.1.5"); empty means from anywhere."""
+    out = []
+    for item in re.split(r"[,\s]+", (value or "").strip()):
+        if not item:
+            continue
+        try:
+            net = ipaddress.ip_network(item, strict=False)
+        except ValueError:
+            raise ValueError(f"'{item}' is not an address or network (e.g. 10.20.0.0/24)")
+        out.append(str(net) if net.num_addresses > 1 else str(net.network_address))
+    return out
+
+
+def ssh_password(value: str) -> str:
+    """The SSH account's password: the same rules as the first administrator's."""
+    return admin_password(value)
+
+
+@dataclass
+class SshAccess:
+    """SSH to the console menu: off by default; on with a password, keys, or both."""
+    enabled: bool = False
+    password: bool = False                  # password sign-in allowed (a password is set)
+    keys: List[str] = field(default_factory=list)
+    sources: List[str] = field(default_factory=list)   # empty: from anywhere
+
+    def check(self) -> "SshAccess":
+        if self.enabled and not (self.password or self.keys):
+            raise ValueError("SSH needs a password or at least one public key")
+        return self

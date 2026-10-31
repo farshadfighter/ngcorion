@@ -1,0 +1,4 @@
+# The SSH account may run the console menu as root, and nothing else: this one
+# command, with no arguments (""). SSH_CONNECTION only labels its log lines.
+Defaults!/usr/local/sbin/ngcorion-ssh-console env_keep += "SSH_CONNECTION"
+ngcadmin ALL=(root) NOPASSWD: /usr/local/sbin/ngcorion-ssh-console ""

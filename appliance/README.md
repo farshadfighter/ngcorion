@@ -94,15 +94,25 @@ unattended.
 
 ## The console
 
-After the first start, the console shows the status and a menu: network,
-host name, NTP, a check of the connection to the license server, restart,
-the application log, resetting the
-web administrator's password, reboot and shut down. There is no shell and no
+After the first start, the console shows the status (with the disk usage and
+SSH) and a menu: network, host name, NTP, a check of the connection to the
+license server, using the whole disk, SSH access, restart, the application
+log, resetting the web administrator's password, reboot and shut down. There
+is no shell and no
 login prompt on any terminal; Ctrl-C only returns to the menu.
 
 ## Locked down
 
-- No SSH server, no accounts with a password, root locked.
+- SSH is off until turned on from the console ("SSH access"). Then one
+  account, `ngcadmin`, gets the console menu and nothing else: sshd's
+  ForceCommand runs it through sudo (that one command, no arguments), and
+  replaces any command, shell or subsystem (no sftp/scp); no forwarding or
+  tunnels; no root login. Password (the admin password rules) and/or public
+  keys (ed25519, ECDSA, RSA 3072+), optionally limited to source networks;
+  five wrong passwords lock the account for 15 minutes (pam_faillock). Every
+  session and every menu action is logged (facility auth). The host keys are
+  made when SSH is first turned on, per machine.
+- No accounts with a password (but the SSH account's, when one is set), root locked.
 - No getty on any virtual terminal or the serial line; Ctrl-Alt-Del disabled.
 - GRUB: no menu, no recovery entries, and the entries cannot be edited (the
   GRUB password is random per build and discarded), which closes the
@@ -110,6 +120,14 @@ login prompt on any terminal; Ctrl-C only returns to the menu.
 - Every deployed appliance creates its own machine-id, SSH-free identity,
   secrets and certificate on first boot; nothing secret is in the image.
 - The OVA enables EFI with Secure Boot (Ubuntu's signed boot chain).
+
+## The disk
+
+The image's disk is 60 GB. Enlarge the virtual disk in the hypervisor (remove
+snapshots first on ESXi): at the next start ngcorion-growdisk.service grows
+the system partition and its filesystem online (growpart, resize2fs), or at
+once with the console's "Use the whole disk (after enlarging it)". A second
+disk is not used.
 
 Not done yet: an encrypted disk tied to the license, a read-only root
 filesystem and signed appliance updates.

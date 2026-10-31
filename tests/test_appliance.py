@@ -554,3 +554,204 @@ def test_growdisk_runs_at_every_start():
     assert "cloud-guest-utils" in base                                   # growpart
     assert "cloud-guest-utils" not in (ROOT / "appliance/provision/30-harden.sh").read_text().split(
         "apt-get purge", 1)[1].splitlines()[0]
+
+
+# ==================== SSH access ====================
+
+ED25519 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxS0h2f8m1r2Dk5JX0cUq1aV1zH3w0Y5r0v2n1kq0b7 ops@corp"
+
+
+def test_a_public_key_is_checked_and_stripped_of_options():
+    assert S.ssh_public_key(ED25519 + "  ") == ED25519
+    # options in front (command=, from=) are not a key line
+    for bad in ('command="sh" ' + ED25519, "ssh-dss AAAAB3NzaC1kc3M= x", "ssh-ed25519 notbase64!", "",
+                "ssh-ed25519 AAAAB3NzaC1yc2EAAAADAQABAAABAQC7 x"):   # type and data differ
+        with pytest.raises(ValueError):
+            S.ssh_public_key(bad)
+    # a comment cannot smuggle anything into authorized_keys
+    assert S.ssh_public_key(ED25519.rsplit(" ", 1)[0] + " a\nb;c") .endswith(" abc")
+
+
+def test_a_short_rsa_key_is_refused():
+    import base64, struct
+    def mpint(n):
+        b = n.to_bytes((n.bit_length() + 8) // 8, "big")
+        return struct.pack(">I", len(b)) + b
+    def rsa(bits):
+        blob = struct.pack(">I", 7) + b"ssh-rsa" + mpint(65537) + mpint((1 << (bits - 1)) | 1)
+        return "ssh-rsa " + base64.b64encode(blob).decode()
+    with pytest.raises(ValueError, match="3072"):
+        S.ssh_public_key(rsa(2048))
+    assert S.ssh_public_key(rsa(3072)).startswith("ssh-rsa ")
+
+
+def test_ssh_sources():
+    assert S.ssh_sources("10.20.0.0/24, 192.168.1.5 10.1.2.3/16") == ["10.20.0.0/24", "192.168.1.5", "10.1.0.0/16"]
+    assert S.ssh_sources("") == []
+    with pytest.raises(ValueError):
+        S.ssh_sources("10.0.0.0/33")
+
+
+def test_ssh_needs_a_way_to_sign_in():
+    with pytest.raises(ValueError):
+        S.SshAccess(enabled=True).check()
+    S.SshAccess(enabled=False).check()
+
+
+def test_the_sshd_settings_give_the_menu_only():
+    text = render.sshd_config(S.SshAccess(enabled=True, password=False, keys=[ED25519], sources=["10.20.0.0/24"]))
+    lines = set(text.splitlines())
+    for must in ("PermitRootLogin no", "AllowUsers ngcadmin@10.20.0.0/24", "PasswordAuthentication no",
+                 "DisableForwarding yes", "AllowTcpForwarding no", "X11Forwarding no", "PermitTunnel no",
+                 "PermitUserRC no", "AuthorizedKeysFile /etc/ngcorion/ssh/authorized_keys",
+                 "ForceCommand /usr/bin/sudo -n /usr/local/sbin/ngcorion-ssh-console", "MaxAuthTries 3"):
+        assert must in lines, must
+    assert "AllowUsers ngcadmin" in render.sshd_config(S.SshAccess(enabled=True, password=True)).splitlines()
+
+
+@pytest.mark.skipif(not Path("/usr/sbin/sshd").exists(), reason="no sshd here")
+def test_sshd_accepts_the_settings(tmp_path):
+    try:
+        Path("/run/sshd").mkdir(mode=0o755, exist_ok=True)       # sshd -t needs it
+    except OSError:
+        pytest.skip("no /run/sshd here")
+    key = tmp_path / "hostkey"
+    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
+    conf = tmp_path / "sshd_config"
+    conf.write_text(render.sshd_config(S.SshAccess(enabled=True, password=True, keys=[ED25519],
+                                                   sources=["10.0.0.0/8", "192.168.1.5"]))
+                    + f"HostKey {key}\nPidFile {tmp_path}/pid\n")
+    result = subprocess.run(["/usr/sbin/sshd", "-t", "-f", str(conf)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+def test_turning_ssh_on_writes_checks_then_starts(machine):
+    system, rec, root = machine
+    access = S.SshAccess(enabled=True, password=True, keys=[ED25519], sources=["10.20.0.0/24"])
+    system.apply_ssh(access, "Ssh-Console-2026!x")
+    cmds = rec.commands()
+    assert ("chpasswd" in [c[0] for c in cmds]
+            and [i for c, i in rec.calls if c == ["chpasswd"]] == ["ngcadmin:Ssh-Console-2026!x\n"])
+    order = [c[:3] for c in cmds]
+    assert order.index(["ssh-keygen", "-A"]) < order.index(["sshd", "-t"]) < order.index(["systemctl", "restart", "ssh.service"])
+    assert ["systemctl", "disable", "--now"] in [c[:3] for c in cmds]                  # ssh.socket off
+    assert (root / "etc/ngcorion/ssh/authorized_keys").read_text() == ED25519 + "\n"
+    assert (root / "run/sshd").is_dir()                 # sshd -t refuses to run without it
+    assert "AllowUsers ngcadmin@10.20.0.0/24" in (root / "etc/ssh/sshd_config.d/00-ngcorion.conf").read_text()
+    state = system.ssh_access()
+    assert (state.enabled, state.password, state.keys, state.sources) == (True, True, [ED25519], ["10.20.0.0/24"])
+    assert "Ssh-Console-2026" not in (root / "var/lib/ngcorion-appliance/ssh.json").read_text()
+
+
+def test_key_only_locks_the_password_and_off_stops_ssh(machine):
+    system, rec, _ = machine
+    system.apply_ssh(S.SshAccess(enabled=True, password=False, keys=[ED25519]))
+    assert ["usermod", "-L", "ngcadmin"] in rec.commands() and "chpasswd" not in [c[0] for c in rec.commands()]
+    system.disable_ssh()
+    assert ["systemctl", "disable", "--now", "ssh.service", "ssh.socket"] in rec.commands()
+    assert system.ssh_access().enabled is False and system.ssh_access().keys == [ED25519]
+
+
+def test_a_config_sshd_refuses_never_goes_live(machine):
+    system, rec, _ = machine
+
+    def runner(args, input=None, capture_output=True, text=True, timeout=None):
+        rec.calls.append((list(args), input))
+        if args[:2] == ["sshd", "-t"]:
+            return subprocess.CompletedProcess(args, 255, "", "Bad configuration option")
+        return subprocess.CompletedProcess(args, 0, "", "")
+    system.runner = runner
+    with pytest.raises(CommandFailed):
+        system.apply_ssh(S.SshAccess(enabled=True, password=False, keys=[ED25519]))
+    assert ["systemctl", "restart", "ssh.service"] not in rec.commands()
+    assert system.ssh_access().enabled is False
+
+
+def test_the_console_turns_ssh_on(machine):
+    system, rec, _ = machine
+    system.mark_configured()
+    labels = [label for label, _ in menu.menu_items(system)]
+    con = Scripted([str(labels.index("SSH access") + 1),
+                    "1",                     # turn on / change
+                    ED25519, "",            # one key, done
+                    "y",                     # also a password
+                    "short", "Ssh-Console-2026!x", "Ssh-Console-2026!x",
+                    "10.20.0.0/24", "y"])
+    menu.run_once(con, system)
+    assert any("Ssh-Console-2026!x" in (i or "") for c, i in rec.calls if c == ["chpasswd"])
+    assert any(line.startswith("  ! At least 12") for line in con.output)
+    assert system.ssh_access().sources == ["10.20.0.0/24"]
+    assert any(line.startswith(" SSH: on") for line in Scripted_status(system))
+
+
+def Scripted_status(system):
+    con = Scripted([])
+    menu._status(con, system)
+    return con.output
+
+
+def test_over_ssh_the_menu_has_no_setup_no_ssh_settings_and_a_way_out(machine):
+    system, _, _ = machine
+    labels = [label for label, _ in menu.menu_items(system, ssh=True)]
+    assert "SSH access" not in labels and "First-start setup" not in labels and labels[-1] == "Log out"
+    assert "SSH access" in [label for label, _ in menu.menu_items(system)]
+
+
+def test_the_ssh_session_ends_with_log_out_or_ctrl_d(machine, monkeypatch):
+    system, _, _ = machine
+    logged = []
+    monkeypatch.setattr(menu, "_log", lambda s, action, origin="console": logged.append((origin, action)))
+    labels = [label for label, _ in menu.menu_items(system, ssh=True)]
+    menu.run_ssh(Scripted([str(labels.index("Host name") + 1), "ngc02", str(len(labels))]), system, "10.20.0.7")
+    assert logged == [("ssh from 10.20.0.7", "session started"), ("ssh from 10.20.0.7", "Host name"),
+                      ("ssh from 10.20.0.7", "Log out"), ("ssh from 10.20.0.7", "session ended")]
+
+    class Eof(Scripted):
+        def ask(self, prompt, default=None):
+            raise EOFError
+    menu.run_ssh(Eof([]), system, "10.20.0.7")              # returns: the session is over
+
+
+def test_a_missing_tool_is_a_failed_command_not_a_crash(machine):
+    system, _, _ = machine
+
+    def runner(args, **kw):
+        raise FileNotFoundError(args[0])
+    system.runner = runner
+    assert system.run(["ip", "-4"], check=False).returncode == 127
+    with pytest.raises(CommandFailed, match="command not found"):
+        system.run(["ip", "-4"])
+    assert system.addresses() == []
+
+
+UBUNTU_PAM_SSHD = """# PAM configuration for the Secure Shell service
+
+# Standard Un*x authentication.
+@include common-auth
+
+# Disallow non-root logins when /etc/nologin exists.
+account    required     pam_nologin.so
+
+# Standard Un*x authorization.
+@include common-account
+"""
+
+
+def test_the_image_gives_ssh_the_menu_only(tmp_path):
+    harden = (ROOT / "appliance/provision/30-harden.sh").read_text()
+    assert "useradd --home-dir /var/lib/ngcadmin --no-create-home --shell /bin/sh" in harden
+    assert "apt-get purge -y cloud-init\n" in harden and "systemctl disable ssh.service ssh.socket" in harden
+    sudoers = (ROOT / "appliance/rootfs/etc/sudoers.d/ngcorion-ssh").read_text()
+    assert 'ngcadmin ALL=(root) NOPASSWD: /usr/local/sbin/ngcorion-ssh-console ""' in sudoers
+    wrapper = (ROOT / "appliance/rootfs/usr/local/sbin/ngcorion-ssh-console").read_text()
+    assert wrapper.rstrip().endswith("exec /usr/bin/python3 -m ngcorion_appliance ssh-console")
+    assert "deny = 5" in (ROOT / "appliance/rootfs/etc/security/faillock.conf").read_text()
+    # the PAM change, run on Ubuntu's file
+    script = harden.split("python3 - <<'EOPAM'\n", 1)[1].split("\nEOPAM\n", 1)[0]
+    pam = tmp_path / "sshd"
+    pam.write_text(UBUNTU_PAM_SSHD)
+    exec(compile(script.replace('"/etc/pam.d/sshd"', repr(str(pam))), "pam", "exec"), {})
+    text = pam.read_text()
+    assert "@include common-auth" not in text
+    assert text.index("pam_faillock.so preauth") < text.index("pam_unix.so") < text.index("pam_faillock.so authfail")
+    assert "account  required                  pam_faillock.so" in text

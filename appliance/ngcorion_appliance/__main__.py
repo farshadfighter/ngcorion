@@ -3,11 +3,13 @@ Entry point on the appliance (ngcorion-console.service runs it on tty1).
 
     python3 -m ngcorion_appliance console
     python3 -m ngcorion_appliance growdisk    (ngcorion-growdisk.service, at every boot)
+    python3 -m ngcorion_appliance ssh-console (the SSH session: sshd ForceCommand, via sudo)
 
 On a machine that is not configured yet it first looks for vCenter OVF
 properties and, when they are complete, configures itself unattended;
 otherwise the first-start questions are asked. Then the console menu.
 """
+import os
 import sys
 
 from . import console, ovf, wizard
@@ -43,8 +45,14 @@ def main(argv=None) -> int:
             print(f"The disk could not be grown: {exc}", file=sys.stderr)
             return 1
         return 0
+    if command == "ssh-console":
+        # SSH_CONNECTION ("client port server port") is kept by sudo for this command only
+        # (/etc/sudoers.d/ngcorion-ssh); it only labels the log lines.
+        client = (os.environ.get("SSH_CONNECTION") or "").split(" ")[0]
+        console.run_ssh(wizard.Console(), System(), client)
+        return 0
     if command != "console":
-        print("usage: python3 -m ngcorion_appliance console|growdisk", file=sys.stderr)
+        print("usage: python3 -m ngcorion_appliance console|growdisk|ssh-console", file=sys.stderr)
         return 2
     con, system = wizard.Console(), System()
     if not system.configured():

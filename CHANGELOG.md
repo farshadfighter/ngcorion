@@ -18,6 +18,14 @@
   "Use the whole disk (after enlarging it)", the partition and filesystem grow online.
   Before, the appliance kept using 60 GB whatever the disk's size. The console status shows
   the disk usage.
+- Appliance: SSH to the console menu. Off by default; turned on from the hypervisor console
+  ("SSH access") with a password and/or public keys, optionally limited to source networks.
+  The one account, `ngcadmin`, gets the same menu as the console and nothing else: no shell,
+  no remote commands, no sftp/scp, no forwarding or tunnels, no root login. Five wrong
+  passwords lock it for 15 minutes; every session and menu action is logged. The SSH
+  settings themselves can only be changed on the hypervisor console.
+- Appliance console: a missing system tool is reported as a failed command instead of
+  ending the menu.
 - The console's license server check says what it found: DNS, port, no TLS, an incomplete
   chain (as now; not a failure) or a certificate that is not the server's public one
   (possible interception), instead of "not reachable" for any certificate problem.

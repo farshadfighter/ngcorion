@@ -9,7 +9,11 @@ install -d -m 0755 /opt/ngcorion /etc/ngcorion /var/lib/ngcorion-appliance
 cp -a /tmp/stage/bundle/. /opt/ngcorion/
 cp -a /tmp/rootfs/. /
 chown -R root:root /opt/ngcorion /etc/systemd/system/ngcorion*.service \
-    /etc/systemd/network /etc/systemd/logind.conf.d
+    /etc/systemd/network /etc/systemd/logind.conf.d \
+    /usr/local/sbin/ngcorion-ssh-console /etc/sudoers.d/ngcorion-ssh /etc/security/faillock.conf
+chmod 0755 /usr/local/sbin/ngcorion-ssh-console
+chmod 0440 /etc/sudoers.d/ngcorion-ssh
+visudo -cf /etc/sudoers.d/ngcorion-ssh
 chmod -R go-w /opt/ngcorion
 
 # Images: loaded now, so the appliance never pulls anything.

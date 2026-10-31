@@ -1,0 +1,6 @@
+#!/bin/sh
+# The whole SSH session of the 'ngcadmin' account: sshd runs it as its ForceCommand,
+# through sudo (/etc/sudoers.d/ngcorion-ssh, this file with no arguments only). It
+# shows the appliance console menu; when the menu ends, so does the session.
+export PYTHONPATH=/opt/ngcorion/appliance PYTHONDONTWRITEBYTECODE=1
+exec /usr/bin/python3 -m ngcorion_appliance ssh-console

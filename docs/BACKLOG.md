@@ -23,7 +23,7 @@ this file describes what is not (yet).
 | I12 | From testing: an offline license file installed on the appliance did not hold; after a reload the activation screen came back (only one of the four worker processes had it) | done (147bb27) |
 | I13 | From testing: online licensing failed (lic.ngcorion.com sends an incomplete Let's Encrypt Gen Y chain, not changeable); the license server's certificate is not checked (product decision), the signed answers are | done (this release) |
 | I14 | From testing: the appliance disk does not grow when the virtual disk is enlarged | done (this release) |
-| I15 | From testing: SSH to the appliance, limited to the console menu | in progress |
+| I15 | From testing: SSH to the appliance, limited to the console menu | done (this release) |
 | I16 | Updates for the appliance: a signed update package, from the GitLab releases (git.ngcorion.com) or uploaded offline | planned (after 2.3.0) |
 
 Bugs reported from testing on the customer test server go before everything else here.

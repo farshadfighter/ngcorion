@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
 from . import APPLIANCE_DIR, LICENSE_SERVER_HOST, STATE_DIR, render
+from . import settings as S
 from .settings import Network
 
 NETWORK_FILE = "/etc/systemd/network/10-ngcorion.network"
@@ -24,6 +25,8 @@ ENV_FILE = f"{APPLIANCE_DIR}/.env"
 CERT_DIR = f"{APPLIANCE_DIR}/traefik/certs"
 CONFIGURED_MARK = f"{STATE_DIR}/configured"
 VERSION_FILE = f"{APPLIANCE_DIR}/VERSION"
+SSHD_DROPIN = "/etc/ssh/sshd_config.d/00-ngcorion.conf"
+SSH_STATE = f"{STATE_DIR}/ssh.json"
 
 COMPOSE = [
     "docker", "compose", "--project-directory", APPLIANCE_DIR,
@@ -108,7 +111,11 @@ class System:
 
     def run(self, args: List[str], *, input: Optional[str] = None, check: bool = True,
             timeout: int = 600) -> subprocess.CompletedProcess:
-        result = self.runner(args, input=input, capture_output=True, text=True, timeout=timeout)
+        try:
+            result = self.runner(args, input=input, capture_output=True, text=True, timeout=timeout)
+        except FileNotFoundError:
+            # A tool that is missing is a failed command, never a crash of the menu.
+            result = subprocess.CompletedProcess(args, 127, "", f"{args[0]}: command not found")
         if check and result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip().splitlines()[-1:] or [""]
             raise CommandFailed(f"{' '.join(args[:4])}...: {detail[0]}")
@@ -300,6 +307,66 @@ class System:
             return f"The partition was grown; its {fstype} filesystem must be grown by hand."
         usage = self.disk_usage()
         return "The disk was grown" + (f": {_gib(usage[1])} now." if usage else ".")
+
+    # ---------- SSH access ----------
+
+    def ssh_access(self) -> S.SshAccess:
+        """What was chosen (STATE_DIR/ssh.json); off when nothing was."""
+        try:
+            data = json.loads(self.read(SSH_STATE) or "{}")
+            return S.SshAccess(enabled=bool(data.get("enabled")), password=bool(data.get("password")),
+                               keys=[str(k) for k in data.get("keys", [])],
+                               sources=[str(x) for x in data.get("sources", [])])
+        except (ValueError, TypeError, AttributeError):
+            return S.SshAccess()
+
+    def apply_ssh(self, access: S.SshAccess, password: Optional[str] = None) -> None:
+        """Turn SSH to the console menu on with these settings (or off: disable_ssh). `password`
+        sets the account's password (hashed by chpasswd into /etc/shadow, nowhere else); without
+        password sign-in the account's password is locked."""
+        access.check()
+        if not access.enabled:
+            self.disable_ssh()
+            return
+        user = S.SSH_USER
+        self.write(render.SSH_AUTHORIZED_KEYS, render.authorized_keys(access.keys), mode=0o644)
+        self.write(render.SSH_BANNER, render.ssh_banner(), mode=0o644)
+        self.write(SSHD_DROPIN, render.sshd_config(access), mode=0o644)
+        if access.password and password:
+            self.run(["chpasswd"], input=f"{user}:{password}\n")
+            self.run(["usermod", "-U", user], check=False)
+        elif not access.password:
+            self.run(["usermod", "-L", user], check=False)
+        self.run(["ssh-keygen", "-A"])                 # this machine's own host keys, made once
+        # sshd -t needs its privilege separation directory, which only exists once ssh.service ran.
+        self.path("/run/sshd").mkdir(mode=0o755, parents=True, exist_ok=True)
+        self.run(["sshd", "-t"])                       # a configuration sshd refuses never goes live
+        self.run(["systemctl", "disable", "--now", "ssh.socket"], check=False)
+        self.run(["systemctl", "enable", "ssh.service"])
+        self.run(["systemctl", "restart", "ssh.service"])
+        self.write(SSH_STATE, json.dumps({"enabled": True, "password": access.password,
+                                          "keys": access.keys, "sources": access.sources}) + "\n", mode=0o600)
+
+    def disable_ssh(self) -> None:
+        self.run(["systemctl", "disable", "--now", "ssh.service", "ssh.socket"], check=False)
+        self.run(["usermod", "-L", S.SSH_USER], check=False)
+        current = self.ssh_access()
+        self.write(SSH_STATE, json.dumps({"enabled": False, "password": False,
+                                          "keys": current.keys, "sources": current.sources}) + "\n", mode=0o600)
+
+    def ssh_running(self) -> bool:
+        return self.run(["systemctl", "is-active", "--quiet", "ssh.service"], check=False).returncode == 0
+
+    def ssh_host_fingerprints(self) -> List[str]:
+        """SHA256 fingerprints of this machine's SSH host keys, to compare on the first connection."""
+        out = []
+        for kind in ("ed25519", "ecdsa", "rsa"):
+            pub = f"/etc/ssh/ssh_host_{kind}_key.pub"
+            if self.path(pub).exists():
+                line = self.run(["ssh-keygen", "-l", "-f", str(self.path(pub))], check=False).stdout.strip()
+                if line:
+                    out.append(line)
+        return out
 
     def mark_configured(self) -> None:
         self.write(CONFIGURED_MARK, time.strftime("%Y-%m-%dT%H:%M:%SZ\n", time.gmtime()))

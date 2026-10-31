@@ -12,7 +12,7 @@ apt-get install -y --no-install-recommends \
     docker.io docker-compose-v2 \
     open-vm-tools qemu-guest-agent \
     snmpd rsyslog openssl ca-certificates python3 \
-    cloud-guest-utils gdisk
+    cloud-guest-utils gdisk openssh-server sudo
 # Not needed on an appliance.
 for pkg in snapd lxd-installer landscape-common; do
     if dpkg -s "$pkg" >/dev/null 2>&1; then apt-get purge -y "$pkg"; fi

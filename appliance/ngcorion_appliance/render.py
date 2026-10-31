@@ -93,3 +93,65 @@ def issue_text(version: str, urls: List[str]) -> str:
     lines = [f"NGCorion {version}", ""]
     lines += [f"  Web interface: {u}" for u in urls] or ["  No network address yet"]
     return "\n".join(lines) + "\n\n"
+
+
+# ---------- SSH access ----------
+
+SSH_CONSOLE = "/usr/local/sbin/ngcorion-ssh-console"
+SSH_AUTHORIZED_KEYS = "/etc/ngcorion/ssh/authorized_keys"
+SSH_BANNER = "/etc/ngcorion/ssh/banner"
+
+
+def sshd_config(access) -> str:
+    """/etc/ssh/sshd_config.d/00-ngcorion.conf. The first value sshd reads for a keyword wins, and
+    this file is read before the image's own drop-ins and the rest of sshd_config.
+
+    One account, and it only ever gets the console menu: ForceCommand also replaces any command,
+    shell or subsystem (sftp, scp) the client asks for; nothing can be forwarded or tunnelled."""
+    from .settings import SSH_USER
+    allow = " ".join(f"{SSH_USER}@{src}" for src in access.sources) or SSH_USER
+    lines = [
+        "# Written by the NGCorion console (SSH access). Changes here are overwritten.",
+        "Port 22",
+        "PermitRootLogin no",
+        f"AllowUsers {allow}",
+        f"PasswordAuthentication {'yes' if access.password else 'no'}",
+        "KbdInteractiveAuthentication no",
+        "PermitEmptyPasswords no",
+        "PubkeyAuthentication yes",
+        f"AuthorizedKeysFile {SSH_AUTHORIZED_KEYS}",
+        "AuthorizedPrincipalsFile none",
+        "HostbasedAuthentication no",
+        "GSSAPIAuthentication no",
+        "MaxAuthTries 3",
+        "LoginGraceTime 30",
+        "MaxSessions 2",
+        "MaxStartups 3:50:10",
+        "ClientAliveInterval 300",
+        "ClientAliveCountMax 2",
+        "DisableForwarding yes",
+        "AllowTcpForwarding no",
+        "AllowStreamLocalForwarding no",
+        "AllowAgentForwarding no",
+        "X11Forwarding no",
+        "PermitTunnel no",
+        "GatewayPorts no",
+        "PermitUserRC no",
+        "PermitUserEnvironment no",
+        "PermitTTY yes",
+        "PrintMotd no",
+        f"Banner {SSH_BANNER}",
+        "LogLevel VERBOSE",
+        f"ForceCommand /usr/bin/sudo -n {SSH_CONSOLE}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def authorized_keys(keys) -> str:
+    return "".join(f"{key}\n" for key in keys)
+
+
+def ssh_banner() -> str:
+    return ("NGCorion appliance - authorised use only. Every sign-in and action is recorded.\n"
+            "This session offers the appliance console menu only.\n")
