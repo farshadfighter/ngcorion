@@ -31,7 +31,7 @@ paramiko>=3.3.0
 smbprotocol>=1.13
 
 # CIS MongoDB benchmark module (app/cis/services/mongodb.py)
-pymongo>=4.0.0
+pymongo>=4.18.3
 PyYAML>=6.0
 
 # Data Export (Excel)
