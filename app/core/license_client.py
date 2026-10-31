@@ -161,13 +161,17 @@ class SecureStorage:
 
     @staticmethod
     def _write_private(path: Path, payload: bytes) -> None:
-        """Write bytes to a file that is 0600 from the moment it exists."""
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        """Write bytes to a file that is 0600 from the moment it exists. Written next to it and
+        renamed into place, so another worker process reading it at that moment sees the old
+        content or the new, never a half-written file."""
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         try:
             os.write(fd, payload)
         finally:
             os.close(fd)
-        os.chmod(path, 0o600)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
 
     def _get_cipher(self) -> Fernet:
         """Get Fernet cipher instance"""

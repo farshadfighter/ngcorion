@@ -29,7 +29,9 @@ system clock that goes backwards (to stretch the windows) invalidates the
 state, and a license past its signed expiry is not valid offline either.
 """
 import logging
+import os
 import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
@@ -106,7 +108,7 @@ _max_seen: Optional[datetime] = None
 CLOCK_ROLLBACK_TOLERANCE = timedelta(minutes=5)
 
 
-def attach_state_cache(store, verifier=None) -> None:
+def attach_state_cache(store, verifier=None, client=None) -> None:
     """
     Register the store used to persist the last validated state, and the
     function that verifies a cached signed token (token -> state dict, raising
@@ -115,10 +117,136 @@ def attach_state_cache(store, verifier=None) -> None:
     `store` only needs save_state(dict) / load_state() -> Optional[dict]
     (SecureStorage implements both), so this module stays free of any
     license-client import. Without a verifier nothing cached is ever restored.
+
+    With `client` (the license client), this process also follows license changes that another
+    worker process makes (sync_with_storage).
     """
-    global _state_cache, _token_verifier
+    global _state_cache, _token_verifier, _sync_client, _license_stamp, _state_stamp, _last_sync
     _state_cache = store
     _token_verifier = verifier
+    _sync_client = client
+    _license_stamp = _file_stamp(getattr(store, "license_file", None))
+    _state_stamp = _file_stamp(getattr(store, "state_file", None))
+    _last_sync = float("-inf")
+
+
+# ---------- several worker processes ----------
+#
+# The server runs several worker processes (uvicorn --workers), and each has its own copy of the
+# state above. A license activated, installed from an offline file, or refreshed in one of them is
+# written to the license storage; the others notice the change there (sync_with_storage, called
+# for every API request by the license middleware) and load it, so a page reload that lands on
+# another worker sees the same license. Everything loaded this way is verified again: the offline
+# license file by the client, a cached answer by its signature. Nothing unsigned becomes a license.
+
+_sync_client = None
+_sync_lock = threading.Lock()
+# What the license file and the state cache looked like when this process last read or wrote them.
+_license_stamp = None
+_state_stamp = None
+_last_sync = float("-inf")
+# How often a process looks at the storage at most: a stat of two files.
+SYNC_INTERVAL_SECONDS = 1.0
+
+
+def _file_stamp(path):
+    """(inode, size, mtime) of a file, None when it does not exist: changes whenever it is written."""
+    if path is None:
+        return None
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (st.st_ino, st.st_size, st.st_mtime_ns)
+
+
+def sync_with_storage() -> None:
+    """
+    Load a license change another worker process made. Cheap when nothing changed (a stat of two
+    files; with a valid license at most once per SYNC_INTERVAL_SECONDS); never raises.
+
+    * The license file changed (activation, offline license file installed or removed): an offline
+      license file is read and verified again here, locally; no license file means no license.
+    * The state cache changed (another process got a new signed answer from the license server):
+      that answer is verified and taken when it is newer than the one this process has.
+    """
+    global _license_stamp, _state_stamp, _last_sync
+    store, client = _state_cache, _sync_client
+    if store is None or client is None:
+        return
+    if not _sync_lock.acquire(blocking=False):
+        return              # another thread of this process is syncing right now
+    try:
+        now = time.monotonic()
+        # Without a valid license every request looks (a license just installed in another worker
+        # must hold for the very next page load); with one, at most once per interval.
+        if _license_state.valid and now - _last_sync < SYNC_INTERVAL_SECONDS:
+            return
+        _last_sync = now
+        license_stamp = _file_stamp(getattr(store, "license_file", None))
+        state_stamp = _file_stamp(getattr(store, "state_file", None))
+        if license_stamp == _license_stamp and state_stamp == _state_stamp:
+            return
+        license_changed = license_stamp != _license_stamp
+        _license_stamp, _state_stamp = license_stamp, state_stamp
+        try:
+            if license_changed and license_stamp is None:
+                _no_license("No license is activated on this machine.")
+            elif license_changed and client.is_offline():
+                logger.info("[License] The license file changed in another worker; loading it.")
+                refresh_license_state(client)       # local: the file is verified, nothing is sent
+            else:
+                _adopt_cached_answer()
+        except Exception as exc:
+            logger.warning("[License] Could not load the license change of another worker: %s", exc)
+    finally:
+        _sync_lock.release()
+
+
+def _no_license(message: str) -> None:
+    global _signed_token
+    with _state_lock:
+        _license_state.valid = False
+        _license_state.offline = False
+        _clear_entitlement()
+        _license_state.issued_at = None
+        _license_state.message = message
+        _signed_token = None
+
+
+def _adopt_cached_answer() -> None:
+    """Take the signed answer another process cached, if it verifies and is newer than ours."""
+    global _signed_token
+    if _token_verifier is None or not settings.LICENSE_STATE_CACHE_ENABLED:
+        return
+    cached = _state_cache.load_state() or {}
+    token = cached.get("signed_token")
+    if not token or token == _signed_token:
+        return
+    try:
+        state = _token_verifier(token)
+    except Exception as exc:
+        logger.warning("[License] The license answer another worker cached does not verify (%s).", exc)
+        return
+    issued = _utc_from_epoch(state.get("issued_at"))
+    if issued is None:
+        return
+    with _state_lock:
+        # Newer than what this process knows: its own signed answer, or when it was last told "no"
+        # (a rejection here must not be undone by an older answer from another worker).
+        known = _license_state.issued_at
+        if not _license_state.valid and _license_state.last_validated_at is not None:
+            known = max(known, _license_state.last_validated_at) if known else _license_state.last_validated_at
+        if known is not None and issued <= known:
+            return
+        _apply(state)
+        _license_state.message = state.get("message", "")
+        _license_state.last_validated_at = issued
+        _license_state.issued_at = issued
+        _license_state.offline = False
+        _signed_token = token
+    logger.info("[License] Loaded the license answer another worker received (valid=%s, plan=%s).",
+                state.get("valid"), state.get("plan_code"))
 
 
 def _utc_from_epoch(value) -> Optional[datetime]:

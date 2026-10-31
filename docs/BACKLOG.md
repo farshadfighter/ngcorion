@@ -19,7 +19,8 @@ this file describes what is not (yet).
 | I8 | From testing: SAN and storage in the Cisco SAFE checks, a Data Center with SAN design template; external networks (Internet, MPLS, WAN, SD-WAN, LTE, public cloud, partner) on the topology and in designs, read by the checks, with a Branch with WAN template | done (27f7a7e) |
 | I9 | From testing: the OVA was refused by ESXi older than 6.7 ("Unsupported hardware family 'vmx-14'"); hardware version 13 (ESXi 6.5 and later) | done (cb8dcdd) |
 | I10 | From testing: an audit result's conformity and non-conformity were wrong (not over the scored checks, not the session's score) | done (59b2867) |
-| I11 | From testing: on the appliance the admin password chosen at setup or reset at the console never signed in (no admin account was made) | done (this release) |
+| I11 | From testing: on the appliance the admin password chosen at setup or reset at the console never signed in (no admin account was made) | done (8b73e39) |
+| I12 | From testing: an offline license file installed on the appliance did not hold; after a reload the activation screen came back (only one of the four worker processes had it) | done (this release) |
 
 Bugs reported from testing on the customer test server go before everything else here.
 
@@ -75,7 +76,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Version 2.2.1 | (this commit) |
+| The license reaches every worker process (offline license file held after a reload) | (this commit) |
+| Version 2.2.1 | 8b73e39 |
 | Version 2.2.0 | aed4519 |
 | The OVA deploys on ESXi 6.5 and later | cb8dcdd |
 | Storage in the SAFE checks, external networks on the topology and in designs | 27f7a7e |

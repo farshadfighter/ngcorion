@@ -210,7 +210,7 @@ async def lifespan(app: FastAPI):
     # validation. If the license server is unreachable right now, the app comes
     # up on the last validated state (still bounded by the offline grace
     # window) instead of 403/503-ing every request until connectivity returns.
-    attach_state_cache(client.storage, verifier=client.verify_cached_token)
+    attach_state_cache(client.storage, verifier=client.verify_cached_token, client=client)
     restored = restore_cached_state()
 
     try:
@@ -288,7 +288,8 @@ async def lifespan(app: FastAPI):
     # Background loops run in ONE worker process (uvicorn runs several in
     # production): each competes for a Postgres advisory lock, see
     # app/core/singleton.py. The license heartbeat stays per process - each
-    # worker keeps its own in-memory license state.
+    # worker keeps its own in-memory license state, and loads a change another
+    # worker made from the license storage (license_state.sync_with_storage).
     from app.core.singleton import SingletonTask
     from app.modules.cve.jobs import start_auto_updater, stop_auto_updater
     from app.modules.alerts.engine import start_alert_engine, stop_alert_engine

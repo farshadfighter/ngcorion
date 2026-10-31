@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- An offline license file was installed but did not hold: after a page
+  reload the activation screen came back. The server runs several worker
+  processes, each with its own copy of the license state, and the file
+  reached only the one that took the upload; the others waited for their
+  hourly heartbeat. Each worker now notices a change in the license
+  storage (an offline license file installed or removed, a new signed
+  answer from the license server) and loads it at once, verified again
+  (the file by its signature, the answer by its signature, for this
+  machine). The same held for an online activation. The license files are
+  also replaced whole, so another worker never reads one half-written.
+
 ## 2.2.1 — 2026-10-31
 
 ### Fixes

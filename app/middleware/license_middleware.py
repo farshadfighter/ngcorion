@@ -7,7 +7,7 @@ Blocks requests to /api/* if license is invalid, except for whitelisted paths.
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.core.license_state import get_license_state
+from app.core.license_state import get_license_state, sync_with_storage
 
 
 class LicenseMiddleware(BaseHTTPMiddleware):
@@ -50,7 +50,9 @@ class LicenseMiddleware(BaseHTTPMiddleware):
         if not path.startswith("/api/"):
             return await call_next(request)
         
-        # Check license state
+        # Check license state, after loading a change another worker process made (an
+        # activation or an offline license file installed there): each worker keeps its own copy.
+        sync_with_storage()
         state = get_license_state()
         if not state.valid:
             # Tell an infrastructure problem apart from a licensing problem.

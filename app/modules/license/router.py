@@ -14,7 +14,7 @@ import logging
 import requests
 
 from app.core.asset_entitlement import count_assets, usage as asset_usage
-from app.core.license_state import get_license_state, refresh_license_state
+from app.core.license_state import get_license_state, refresh_license_state, sync_with_storage
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, license_error_detail, require_admin
 from app.core.license_client import LicenseRejected, LicenseServerError, LicenseServerUnreachable
@@ -125,6 +125,7 @@ def get_license_status(request: Request):
     STATUS_REFRESH_TTL_SECONDS), falling back to the cached state only when the
     server is unreachable.
     """
+    sync_with_storage()
     state = get_license_state()
     client = getattr(request.app.state, "license_client", None)
 
