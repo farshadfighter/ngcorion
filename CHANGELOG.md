@@ -13,6 +13,11 @@
   this machine. Accepted risk: someone in the network path with their own certificate could
   read the license key and organization token, or block the connection (use an offline
   license on an untrusted network).
+- Appliance: the system disk grows to the size of the virtual disk. Enlarge the disk in the
+  hypervisor; at the next start (ngcorion-growdisk.service), or at once with the console's
+  "Use the whole disk (after enlarging it)", the partition and filesystem grow online.
+  Before, the appliance kept using 60 GB whatever the disk's size. The console status shows
+  the disk usage.
 - The console's license server check says what it found: DNS, port, no TLS, an incomplete
   chain (as now; not a failure) or a certificate that is not the server's public one
   (possible interception), instead of "not reachable" for any certificate problem.

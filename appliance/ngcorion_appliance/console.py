@@ -20,6 +20,11 @@ def _status(console: wizard.Console, system: System) -> None:
     console.say(" Web interface: " + (", ".join(urls) if urls else "no network address"))
     for name, state in system.service_status() or [("NGCorion", "not running")]:
         console.say(f"   {name:<10} {state}")
+    usage = system.disk_usage()
+    if usage:
+        used, total = usage
+        console.say(f" Disk: {used / 1024 ** 3:.1f} GiB used of {total / 1024 ** 3:.1f} GiB"
+                    f" ({used * 100 // max(total, 1)}%)")
     console.say("")
 
 
@@ -48,6 +53,12 @@ def _ntp(console, system):
 def _license_server(console, system):
     console.say(f"Checking the connection to {LICENSE_SERVER_HOST}...")
     wizard.report_license_server(console.say)
+
+
+def _grow_disk(console, system):
+    console.say("After enlarging the virtual disk in the hypervisor (the machine grows it at every")
+    console.say("start as well): growing the system partition and filesystem to the new size...")
+    console.say("  " + system.grow_disk())
 
 
 def _restart(console, system):
@@ -88,6 +99,7 @@ def menu_items(system: System) -> List[Tuple[str, Callable]]:
         ("Host name", _hostname),
         ("NTP servers", _ntp),
         ("Check the connection to the license server", _license_server),
+        ("Use the whole disk (after enlarging it)", _grow_disk),
         ("Restart NGCorion", _restart),
         ("Show the application log", _logs),
         ("Reset the web administrator's password", _reset_password),

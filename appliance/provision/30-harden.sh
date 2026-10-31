@@ -46,7 +46,8 @@ cat > /usr/local/sbin/ngcorion-finalize <<'EOF2'
 set -eux
 export DEBIAN_FRONTEND=noninteractive
 # Build access goes: SSH server, cloud-init (and its seed), the build account.
-apt-get purge -y openssh-server cloud-init cloud-guest-utils
+# cloud-guest-utils (growpart) stays: ngcorion-growdisk.service uses it.
+apt-get purge -y openssh-server cloud-init
 rm -rf /etc/ssh/ssh_host_* /etc/cloud /var/lib/cloud /etc/sudoers.d/90-cloud-init-users
 userdel -rf packer || true
 # Per-machine identity: every deployed appliance makes its own on first boot.

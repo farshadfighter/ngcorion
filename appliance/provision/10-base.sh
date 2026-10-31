@@ -1,5 +1,6 @@
 #!/bin/sh
-# Appliance OS: updates, Docker, hypervisor guest tools, and systemd-networkd
+# Appliance OS: updates, Docker, hypervisor guest tools, growpart (the disk grows when the
+# virtual disk is enlarged: ngcorion-growdisk.service), and systemd-networkd
 # in place of cloud-init's netplan configuration. Runs as root inside the
 # image being built (Packer), never on a customer machine.
 set -eux
@@ -10,7 +11,8 @@ apt-get -y -o Dpkg::Options::=--force-confold full-upgrade
 apt-get install -y --no-install-recommends \
     docker.io docker-compose-v2 \
     open-vm-tools qemu-guest-agent \
-    snmpd rsyslog openssl ca-certificates python3
+    snmpd rsyslog openssl ca-certificates python3 \
+    cloud-guest-utils gdisk
 # Not needed on an appliance.
 for pkg in snapd lxd-installer landscape-common; do
     if dpkg -s "$pkg" >/dev/null 2>&1; then apt-get purge -y "$pkg"; fi

@@ -16,7 +16,8 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "appliance"))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "appliance"))
 
 from ngcorion_appliance import console as menu  # noqa: E402
 from ngcorion_appliance import ovf, render, wizard  # noqa: E402
@@ -470,3 +471,86 @@ def test_log_shows_why_the_stack_did_not_start(machine):
         return rec(args, input=input)
     system.runner = runner
     assert "container postgres is unhealthy" in system.logs()
+
+
+# ==================== the disk ====================
+
+def _disk_machine(machine, fstype="ext4", growpart=(0, "CHANGED: partition=1 start=2048 old: size=1 new: size=2", "")):
+    """The machine of `machine`, with / on /dev/sda1 and growpart answering `growpart`."""
+    system, rec, root = machine
+    (root / "sys/class/block/sda1").mkdir(parents=True)
+    (root / "sys/class/block/sda1/partition").write_text("1\n")
+    (root / "sys/class/block/sda/device").mkdir(parents=True)
+    (root / "sys/class/block/sda/device/rescan").write_text("")
+
+    def runner(args, input=None, capture_output=True, text=True, timeout=None):
+        rec.calls.append((list(args), input))
+        if args[0] == "findmnt":
+            return subprocess.CompletedProcess(args, 0, f"/dev/sda1 {fstype}\n", "")
+        if args[0] == "lsblk":
+            return subprocess.CompletedProcess(args, 0, "sda\n", "")
+        if args[0] == "growpart":
+            return subprocess.CompletedProcess(args, *growpart)
+        return subprocess.CompletedProcess(args, 0, "", "")
+    system.runner = runner
+    return system, rec, root
+
+
+def test_the_disk_grows_into_an_enlarged_virtual_disk(machine):
+    system, rec, root = _disk_machine(machine)
+    assert system.grow_disk().startswith("The disk was grown")
+    assert ["growpart", "/dev/sda", "1"] in rec.commands()
+    assert ["resize2fs", "/dev/sda1"] in rec.commands()
+    assert (root / "sys/class/block/sda/device/rescan").read_text() == "1"     # new size read first
+
+
+def test_nothing_to_grow_changes_nothing(machine):
+    system, rec, _ = _disk_machine(machine, growpart=(1, "NOCHANGE: partition 1 is size 125827039. it cannot be grown\n", ""))
+    assert system.grow_disk() == "The disk is already used to its full size."
+    assert not [c for c in rec.commands() if c[0] in ("resize2fs", "xfs_growfs")]
+
+
+def test_an_xfs_root_is_grown_with_xfs_growfs(machine):
+    system, rec, _ = _disk_machine(machine, fstype="xfs")
+    system.grow_disk()
+    assert ["xfs_growfs", "/"] in rec.commands()
+
+
+def test_a_growpart_failure_is_reported(machine):
+    system, _, _ = _disk_machine(machine, growpart=(2, "", "FAILED: sfdisk failed\n"))
+    with pytest.raises(CommandFailed, match="sfdisk failed"):
+        system.grow_disk()
+
+
+def test_a_root_that_is_not_a_partition_is_left_alone(machine):
+    system, rec, _ = machine
+
+    def runner(args, input=None, capture_output=True, text=True, timeout=None):
+        rec.calls.append((list(args), input))
+        out = "/dev/mapper/vg-root ext4\n" if args[0] == "findmnt" else ""
+        return subprocess.CompletedProcess(args, 0, out, "")
+    system.runner = runner
+    assert "could not be identified" in system.grow_disk()
+    assert not [c for c in rec.commands() if c[0] == "growpart"]
+
+
+def test_the_console_shows_the_disk_and_can_grow_it(machine):
+    system, rec, _ = _disk_machine(machine)
+    system.mark_configured()
+    con = Scripted([])
+    menu._status(con, system)
+    assert any(line.startswith(" Disk: ") and "GiB used of" in line for line in con.output)
+    labels = [label for label, _ in menu.menu_items(system)]
+    con = Scripted([str(labels.index("Use the whole disk (after enlarging it)") + 1)])
+    menu.run_once(con, system)
+    assert ["resize2fs", "/dev/sda1"] in rec.commands()
+
+
+def test_growdisk_runs_at_every_start():
+    unit = (ROOT / "appliance/rootfs/etc/systemd/system/ngcorion-growdisk.service").read_text()
+    assert "ExecStart=/usr/bin/python3 -m ngcorion_appliance growdisk" in unit
+    assert "ngcorion-growdisk.service" in (ROOT / "appliance/provision/20-ngcorion.sh").read_text()
+    base = (ROOT / "appliance/provision/10-base.sh").read_text()
+    assert "cloud-guest-utils" in base                                   # growpart
+    assert "cloud-guest-utils" not in (ROOT / "appliance/provision/30-harden.sh").read_text().split(
+        "apt-get purge", 1)[1].splitlines()[0]

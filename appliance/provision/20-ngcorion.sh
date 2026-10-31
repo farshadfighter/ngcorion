@@ -18,5 +18,5 @@ docker image ls
 
 python3 -m compileall -q /opt/ngcorion/appliance
 systemctl daemon-reload
-systemctl enable ngcorion-console.service
+systemctl enable ngcorion-console.service ngcorion-growdisk.service
 rm -rf /tmp/stage /tmp/rootfs

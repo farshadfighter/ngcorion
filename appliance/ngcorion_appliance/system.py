@@ -7,6 +7,7 @@ root=<tmpdir> and a recording runner nothing on the real machine is touched.
 """
 import json
 import os
+import shutil
 import socket
 import ssl
 import subprocess
@@ -246,12 +247,70 @@ class System:
             out = f"{out}\n--- ngcorion.service ---\n{journal}"
         return out
 
+    # ---------- the disk ----------
+
+    def root_partition(self) -> Optional[Tuple[str, str, int, str]]:
+        """(partition, disk, partition number, filesystem type) of the root filesystem, e.g.
+        ("sda1", "sda", 1, "ext4"); None when / is not on a partition of a disk."""
+        out = self.run(["findmnt", "-n", "-o", "SOURCE,FSTYPE", "/"], check=False).stdout.split()
+        if len(out) != 2 or not out[0].startswith("/dev/"):
+            return None
+        source, fstype = out
+        name = os.path.basename(source)
+        disk = self.run(["lsblk", "-n", "-d", "-o", "PKNAME", source], check=False).stdout.strip()
+        number = (self.read(f"/sys/class/block/{name}/partition") or "").strip()
+        if not disk or not number.isdigit():
+            return None
+        return name, disk, int(number), fstype
+
+    def disk_usage(self) -> Optional[Tuple[int, int]]:
+        """(used, total) bytes of the root filesystem."""
+        try:
+            usage = shutil.disk_usage(self.path("/"))
+        except OSError:
+            return None
+        return usage.total - usage.free, usage.total
+
+    def grow_disk(self) -> str:
+        """Grow the root partition and its filesystem to the end of the virtual disk, after the
+        disk was enlarged in the hypervisor. Run at every boot (ngcorion-growdisk.service) and
+        from the console; does nothing when there is no room. Returns what happened."""
+        found = self.root_partition()
+        if found is None:
+            return "The system disk could not be identified; nothing was changed."
+        part, disk, number, fstype = found
+        # A disk enlarged while the machine runs: have the kernel read its new size first.
+        rescan = self.path(f"/sys/class/block/{disk}/device/rescan")
+        if rescan.exists():
+            try:
+                rescan.write_text("1")
+            except OSError:
+                pass
+        grown = self.run(["growpart", f"/dev/{disk}", str(number)], check=False)
+        if grown.returncode == 1 and "NOCHANGE" in (grown.stdout or ""):
+            return "The disk is already used to its full size."
+        if grown.returncode != 0:
+            detail = (grown.stderr or grown.stdout or "").strip().splitlines()[-1:] or ["growpart failed"]
+            raise CommandFailed(f"growing the partition: {detail[0]}")
+        if fstype == "xfs":
+            self.run(["xfs_growfs", "/"])
+        elif fstype.startswith("ext"):
+            self.run(["resize2fs", f"/dev/{part}"])
+        else:
+            return f"The partition was grown; its {fstype} filesystem must be grown by hand."
+        usage = self.disk_usage()
+        return "The disk was grown" + (f": {_gib(usage[1])} now." if usage else ".")
+
     def mark_configured(self) -> None:
         self.write(CONFIGURED_MARK, time.strftime("%Y-%m-%dT%H:%M:%SZ\n", time.gmtime()))
 
     def power(self, action: str) -> None:
         assert action in ("reboot", "poweroff")
         self.run(["systemctl", action])
+
+
+def _gib(size: int) -> str:
+    return f"{size / 1024 ** 3:.1f} GiB"
 
 
 # ---------- the license server ----------

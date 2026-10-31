@@ -1,0 +1,16 @@
+# Use the whole virtual disk: when it was enlarged in the hypervisor, the system
+# partition and its filesystem grow to the new size at the next start (online,
+# nothing is unmounted). Does nothing when there is no room to grow into. The
+# console menu offers the same without a restart.
+[Unit]
+Description=NGCorion: grow the system disk to the size of the virtual disk
+After=local-fs.target
+Before=docker.service ngcorion.service
+
+[Service]
+Type=oneshot
+Environment=PYTHONPATH=/opt/ngcorion/appliance PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m ngcorion_appliance growdisk
+
+[Install]
+WantedBy=multi-user.target

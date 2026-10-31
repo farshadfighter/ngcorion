@@ -2,6 +2,7 @@
 Entry point on the appliance (ngcorion-console.service runs it on tty1).
 
     python3 -m ngcorion_appliance console
+    python3 -m ngcorion_appliance growdisk    (ngcorion-growdisk.service, at every boot)
 
 On a machine that is not configured yet it first looks for vCenter OVF
 properties and, when they are complete, configures itself unattended;
@@ -35,8 +36,15 @@ def first_boot(con: wizard.Console, system: System) -> None:
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     command = args[0] if args else "console"
+    if command == "growdisk":
+        try:
+            print(System().grow_disk())
+        except CommandFailed as exc:
+            print(f"The disk could not be grown: {exc}", file=sys.stderr)
+            return 1
+        return 0
     if command != "console":
-        print("usage: python3 -m ngcorion_appliance console", file=sys.stderr)
+        print("usage: python3 -m ngcorion_appliance console|growdisk", file=sys.stderr)
         return 2
     con, system = wizard.Console(), System()
     if not system.configured():
