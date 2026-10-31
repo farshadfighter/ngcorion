@@ -6,6 +6,7 @@ The console is plain text on purpose: it works on every hypervisor console,
 serial line and screen size, and needs nothing beyond Python.
 """
 import getpass
+import textwrap
 from typing import Callable, List, Optional
 
 from . import LICENSE_SERVER_HOST
@@ -118,9 +119,10 @@ def report_license_server(say: Callable[[str], None]) -> bool:
     the network team may still have to open the way, and NGCorion retries on its own."""
     ok, detail = check_license_server()
     if ok:
-        say(f"  {detail}.")
+        say(textwrap.fill(f"{detail}.", width=78, initial_indent="  ", subsequent_indent="    "))
     else:
-        say(f"  ! The license server is not reachable: {detail}.")
+        say(textwrap.fill(f"The license server is not reachable: {detail}.", width=78,
+                          initial_indent="  ! ", subsequent_indent="    "))
         say(f"    NGCorion needs {LICENSE_SERVER_HOST} on port 443 to activate and check its license.")
         say("    The setup continues; check again later from the menu.")
     return ok

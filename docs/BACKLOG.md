@@ -21,6 +21,10 @@ this file describes what is not (yet).
 | I10 | From testing: an audit result's conformity and non-conformity were wrong (not over the scored checks, not the session's score) | done (59b2867) |
 | I11 | From testing: on the appliance the admin password chosen at setup or reset at the console never signed in (no admin account was made) | done (8b73e39) |
 | I12 | From testing: an offline license file installed on the appliance did not hold; after a reload the activation screen came back (only one of the four worker processes had it) | done (147bb27) |
+| I13 | From testing: online licensing failed (lic.ngcorion.com sends an incomplete Let's Encrypt Gen Y chain, not changeable); the license server's certificate is not checked (product decision), the signed answers are | done (this release) |
+| I14 | From testing: the appliance disk does not grow when the virtual disk is enlarged | in progress |
+| I15 | From testing: SSH to the appliance, limited to the console menu | in progress |
+| I16 | Updates for the appliance: a signed update package, from the GitLab releases (git.ngcorion.com) or uploaded offline | planned (after 2.3.0) |
 
 Bugs reported from testing on the customer test server go before everything else here.
 
@@ -70,7 +74,6 @@ too) was added on request before the bug list. Next: the bugs reported from test
   development session).
 - After testing: publish a release. The 2.1.0 draft predates items 6, 7 and 8; a 2.2.0 tagged from the
   tested `main` is the better candidate.
-- Online licensing: port 443 for lic.ngcorion.com behind the WAF (offline licenses work meanwhile).
 
 ## Done (newest first)
 

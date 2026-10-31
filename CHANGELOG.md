@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- Online activation and the hourly check failed with CERTIFICATE_VERIFY_FAILED: the license
+  server's host sends an incomplete certificate chain (a Let's Encrypt "Generation Y"
+  certificate without the cross-signed root), which cannot be changed there. NGCorion no
+  longer checks the TLS certificate of the fixed license server (product decision); only
+  that server is exempt, and nothing makes it configurable. What makes a license is
+  unchanged: every answer must be signed by a key built into the code, for this license and
+  this machine. Accepted risk: someone in the network path with their own certificate could
+  read the license key and organization token, or block the connection (use an offline
+  license on an untrusted network).
+- The console's license server check says what it found: DNS, port, no TLS, an incomplete
+  chain (as now; not a failure) or a certificate that is not the server's public one
+  (possible interception), instead of "not reachable" for any certificate problem.
+
 ## 2.2.2 — 2026-10-31
 
 ### Fixes

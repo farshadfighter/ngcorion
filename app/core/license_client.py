@@ -24,19 +24,38 @@ import os
 import re
 import secrets
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 from cryptography.fernet import Fernet
 from requests.adapters import HTTPAdapter
+from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
 
 from app.core.config import settings
+from app.core.license_keys import LICENSE_SERVER_URL
 from app.core.license_token import LicenseTokenError, claims_to_state, verify_token
 from app.core.machine_fingerprint import compute_fingerprint
 
 logger = logging.getLogger(__name__)
+
+# The certificate of the license server is not checked (product decision, 2026-10-31): its host
+# sends an incomplete chain (a Let's Encrypt "Generation Y" certificate without the cross-signed
+# root that links it to ISRG Root X1), which cannot be changed there, and every activation and
+# check failed with CERTIFICATE_VERIFY_FAILED. What makes a license is unchanged: every answer is a
+# token signed by a key built into this code (license_token.verify_token), bound to this license,
+# this machine and, where the request carried one, a fresh nonce - a forged or replayed answer is
+# refused whatever the transport. Accepted risk: someone in the path who presents their own
+# certificate can read the license key and organization token sent with the requests, or block
+# them. Only the fixed license server (LICENSE_SERVER_URL) is exempt; nothing makes it
+# configurable. urllib3 warns about every such request; only those warnings are silenced.
+LICENSE_SERVER_TLS_UNVERIFIED = True
+warnings.filterwarnings(
+    "ignore", category=InsecureRequestWarning,
+    message=rf"Unverified HTTPS request is being made to host '{urlparse(LICENSE_SERVER_URL).hostname}'",
+)
 
 # HTTP status codes that mean "the license server failed", never "this license
 # is not valid". The server returns licensing verdicts as HTTP 200 with
@@ -283,14 +302,17 @@ class LicenseClient:
         self.session = self._build_session(self.retries, idempotent=False)
         self.idempotent_session = self._build_session(self.retries, idempotent=True)
 
-        # The license server (lic.ngcorion.com) has a publicly trusted
-        # certificate, verified with requests' normal CA bundle. `ca_bundle` is
-        # for tests against a local server with its own certificate; there is
-        # no setting for it, and never a way to switch verification off.
+        # Any other server's certificate is verified with requests' normal CA bundle, or with
+        # `ca_bundle` (tests against a local server with its own certificate; there is no setting
+        # for it). The fixed license server is the one exception (LICENSE_SERVER_TLS_UNVERIFIED
+        # above): the signed answers, not the transport, are what this client trusts.
         self.ca_bundle = self._resolve_ca_bundle(ca_bundle or "")
         if self.ca_bundle:
             self.session.verify = self.ca_bundle
             self.idempotent_session.verify = self.ca_bundle
+        elif LICENSE_SERVER_TLS_UNVERIFIED and self.server_url == LICENSE_SERVER_URL:
+            self.session.verify = False
+            self.idempotent_session.verify = False
 
     @staticmethod
     def _require_https(url: str) -> str:

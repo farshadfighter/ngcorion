@@ -325,11 +325,90 @@ def test_unreachable_license_server_is_explained(machine, monkeypatch):
     assert not ok and "firewall" in detail
 
 
-def test_license_server_certificate_must_be_trusted(tls_server):
+def test_a_foreign_certificate_is_reported_but_the_server_is_reachable(tls_server):
+    # NGCorion checks the signed answers, not this certificate (app/core/license_client.py): a
+    # certificate that is not the public one is a warning about the path, not a failure.
     port, ca = tls_server
-    ok, detail = sysmod.check_license_server("127.0.0.1", port)       # system CAs: not trusted
-    assert not ok and "not trusted" in detail
+    ok, detail = sysmod.check_license_server("127.0.0.1", port)       # self-signed: not public
+    assert ok and "intercepting" in detail and "signature" in detail
     assert sysmod.check_license_server("127.0.0.1", port, cafile=ca) == (True, "127.0.0.1 is reachable")
+
+
+def test_an_incomplete_chain_is_named_as_such(tls_server, tmp_path):
+    # As lic.ngcorion.com: the server sends its certificate without the one that links it to a
+    # root - here a leaf from a test CA, sent alone; with the CA it verifies.
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    ca_key, leaf_key = ec.generate_private_key(ec.SECP256R1()), ec.generate_private_key(ec.SECP256R1())
+    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test root")])
+    ca = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name).public_key(ca_key.public_key())
+          .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(minutes=5))
+          .not_valid_after(now + datetime.timedelta(days=1))
+          .add_extension(x509.BasicConstraints(ca=True, path_length=None), True)
+          .add_extension(x509.KeyUsage(False, False, False, False, False, True, True, False, False), True)
+          .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), False)
+          .sign(ca_key, hashes.SHA256()))
+    leaf = (x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "lic")]))
+            .issuer_name(ca_name).public_key(leaf_key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now - datetime.timedelta(minutes=5)).not_valid_after(now + datetime.timedelta(days=1))
+            .add_extension(x509.SubjectAlternativeName([x509.IPAddress(ipaddress.IPv4Address("127.0.0.1"))]), False)
+            .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), False)
+            .add_extension(x509.ExtendedKeyUsage([x509.oid.ExtendedKeyUsageOID.SERVER_AUTH]), False)
+            .sign(ca_key, hashes.SHA256()))
+    (tmp_path / "leaf.pem").write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
+    (tmp_path / "leaf.key").write_bytes(leaf_key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+    (tmp_path / "root.pem").write_bytes(ca.public_bytes(serialization.Encoding.PEM))
+    port = _serve_tls(tmp_path / "leaf.pem", tmp_path / "leaf.key")
+
+    ok, detail = sysmod.check_license_server("127.0.0.1", port)
+    assert ok and "chain is incomplete" in detail
+    assert sysmod.check_license_server("127.0.0.1", port, cafile=str(tmp_path / "root.pem")) == \
+        (True, "127.0.0.1 is reachable")
+
+
+def _serve_tls(cert, key):
+    """Answer TLS handshakes on a local port in the background, for the rest of the test run."""
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(cert, key)
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(8)
+
+    def serve():
+        while True:
+            try:
+                conn, _ = sock.accept()
+            except OSError:
+                return
+            try:
+                with ctx.wrap_socket(conn, server_side=True) as s:
+                    s.recv(1)
+            except (OSError, ssl.SSLError):
+                pass
+
+    threading.Thread(target=serve, daemon=True).start()
+    return sock.getsockname()[1]
+
+
+def test_no_tls_at_all_is_a_failure():
+    plain = socket.socket()
+    plain.bind(("127.0.0.1", 0))
+    plain.listen(1)
+
+    def answer():
+        conn, _ = plain.accept()
+        conn.sendall(b"HTTP/1.1 400 Bad Request\r\n\r\n")
+        conn.close()
+
+    threading.Thread(target=answer, daemon=True).start()
+    ok, detail = sysmod.check_license_server("127.0.0.1", plain.getsockname()[1], timeout=5)
+    plain.close()
+    assert not ok and "no TLS connection" in detail
 
 
 def test_setup_goes_on_when_the_license_server_is_unreachable(machine, monkeypatch):

@@ -256,23 +256,41 @@ class System:
 
 # ---------- the license server ----------
 
+# OpenSSL verify codes meaning "the chain the server sent does not reach a root we know": the
+# license server's host sends a Let's Encrypt "Generation Y" certificate without the cross-signed
+# root (2026). NGCorion does not check that server's certificate (it checks the signed license
+# answers instead; app/core/license_client.py), so this is reported, not treated as a failure.
+_INCOMPLETE_CHAIN = {2, 20}          # unable to get issuer certificate / ... local issuer certificate
+
+
 def check_license_server(host: str = LICENSE_SERVER_HOST, port: int = 443,
                          timeout: float = 10.0, cafile: Optional[str] = None) -> Tuple[bool, str]:
-    """Can this machine reach the license server the way NGCorion will: name resolution,
-    a connection on port 443 and a certificate the public CAs vouch for (with the host name
-    checked)? Returns (ok, what happened) - a description the operator can act on."""
+    """Can this machine reach the license server the way NGCorion will: name resolution, a
+    connection on port 443 and a TLS handshake? Returns (ok, what happened) - a description the
+    operator can act on. The certificate is looked at too, and what it says is part of the
+    description: NGCorion trusts the signed license answers, not this certificate, so only a
+    server that cannot be reached at all is a failure."""
     try:
         socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except OSError as exc:
         return False, f"{host} cannot be resolved ({exc}); check the DNS servers"
     try:
+        # cafile: tests only (a local server with its own CA); otherwise the system's CAs.
         with socket.create_connection((host, port), timeout=timeout) as sock:
-            # cafile: tests only (a local server with its own CA); otherwise the system's CAs.
             with ssl.create_default_context(cafile=cafile).wrap_socket(sock, server_hostname=host):
                 pass
+    except ssl.SSLCertVerificationError as exc:
+        if exc.verify_code in _INCOMPLETE_CHAIN:
+            return True, (f"{host} is reachable (its certificate chain is incomplete - the server "
+                          "does not send the certificate that links it to a public root; NGCorion "
+                          "checks the signed license answers instead)")
+        return True, (f"{host} is reachable, but the certificate it presented is not the license "
+                      f"server's public one ({exc.verify_message}). Something in the path may be "
+                      "intercepting the connection: the license answers are still checked by "
+                      "their signature, but the license key sent with the requests could be read")
     except ssl.SSLError as exc:
-        return False, (f"{host} answered, but its certificate is not trusted ({exc.reason or exc}); "
-                       "a proxy or filter may be intercepting the connection")
+        return False, (f"{host} answered on port {port}, but no TLS connection could be made "
+                       f"({exc.reason or exc}); a proxy or filter may be in the way")
     except OSError as exc:
         return False, f"cannot connect to {host} on port {port} ({exc}); check the gateway and firewall"
     return True, f"{host} is reachable"
