@@ -21,9 +21,9 @@ this file describes what is not (yet).
 | I10 | From testing: an audit result's conformity and non-conformity were wrong (not over the scored checks, not the session's score) | done (59b2867) |
 | I11 | From testing: on the appliance the admin password chosen at setup or reset at the console never signed in (no admin account was made) | done (8b73e39) |
 | I12 | From testing: an offline license file installed on the appliance did not hold; after a reload the activation screen came back (only one of the four worker processes had it) | done (147bb27) |
-| I13 | From testing: online licensing failed (lic.ngcorion.com sends an incomplete Let's Encrypt Gen Y chain, not changeable); the license server's certificate is not checked (product decision), the signed answers are | done (this release) |
-| I14 | From testing: the appliance disk does not grow when the virtual disk is enlarged | done (this release) |
-| I15 | From testing: SSH to the appliance, limited to the console menu | done (this release) |
+| I13 | From testing: online licensing failed (lic.ngcorion.com sends an incomplete Let's Encrypt Gen Y chain, not changeable); the license server's certificate is not checked (product decision), the signed answers are | done (2.3.0) |
+| I14 | From testing: the appliance disk does not grow when the virtual disk is enlarged | done (2.3.0) |
+| I15 | From testing: SSH to the appliance, limited to the console menu | done (2.3.0) |
 | I16 | Updates for the appliance: a signed update package, from the GitLab releases (git.ngcorion.com) or uploaded offline | planned (after 2.3.0) |
 
 Bugs reported from testing on the customer test server go before everything else here.
@@ -79,7 +79,11 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Version 2.2.2 | (this commit) |
+| Version 2.3.0 | (this commit) |
+| SSH to the console menu | d62e332 |
+| The appliance disk grows with the virtual disk | 645cc89 |
+| The license server's certificate is not checked (signed answers are) | 0b573f9 |
+| Version 2.2.2 | 9e705c4 |
 | The license reaches every worker process (offline license file held after a reload) | 147bb27 |
 | Version 2.2.1 | 8b73e39 |
 | Version 2.2.0 | aed4519 |
