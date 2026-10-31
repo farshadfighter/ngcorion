@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.3.1 — 2026-10-31
+
+The appliance of 2.3.0 was never built (its tag stays; this is the release with its changes).
+
+### Fixes
+
+- Appliance image: the build copied the appliance's files with `cp -a`, which also gave the
+  existing directories /etc, /etc/sudoers.d, /opt and /usr/local/sbin the owner of the
+  uploaded copies - the build account's uid (1000), deleted when the image is sealed. In
+  2.2.x images these directories therefore belong to an unused uid; 2.3.0's new sudoers
+  file made sudo refuse the directory and stopped the build. The files are now copied
+  without their owner, existing directories are left alone, and the build fails if anything
+  of the system still belongs to the build account or is writable by group or others.
+  Deploy the new image (2.2.x appliances: see the admin guide's upgrade section).
+
 ## 2.3.0 — 2026-10-31
 
 ### Changes

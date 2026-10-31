@@ -79,7 +79,9 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| Version 2.3.0 | (this commit) |
+| Version 2.3.1 | (this commit) |
+| Appliance image: no directory keeps the build account's ownership | fd4657c |
+| Version 2.3.0 | a71a256 (appliance not built) |
 | SSH to the console menu | d62e332 |
 | The appliance disk grows with the virtual disk | 645cc89 |
 | The license server's certificate is not checked (signed answers are) | 0b573f9 |
