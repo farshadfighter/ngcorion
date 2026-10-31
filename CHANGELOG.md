@@ -1,9 +1,17 @@
 # Changelog
 
-## Unreleased
+## 2.2.1 — 2026-10-31
 
 ### Fixes
 
+- The appliance made no web administrator, so no password chosen at the
+  first start (or set with the console's reset) could sign in:
+  scripts/init_db.py, which makes the account, still imported the
+  network zones model the one zone list removed (2.1.2) and stopped
+  before making it; the console's reset then found no `admin`. The
+  script no longer seeds zones (the migrations do), the console's reset
+  makes `admin` when there is none, and CI makes the administrator in
+  the built image as the appliance does and signs in with its password.
 - The conformity and non-conformity of an audit result were wrong: both
   were taken over the module's count of checks while the passed and
   failed counts took every row, so they could add up to more than 100%

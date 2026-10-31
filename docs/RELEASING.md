@@ -28,6 +28,7 @@ Tags are never moved or deleted once pushed; a fix gets a new number.
 | `v2.1.1` | `5e1ae2c` | 2026-10-24; tagged by the Release tag workflow, without an appliance build |
 | `v2.1.2` | the "Version 2.1.2" commit | 2026-10-24; security review (OWASP WSTG) fixes, documents up to date; tagged with the appliance build |
 | `v2.2.0` | the "Version 2.2.0" commit | 2026-10-27; storage and external networks in the SAFE checks, CVE recommended actions, email/SMS delivery policy and sms.ir, benchmark policy for all 17 families; the OVA deploys on ESXi 6.5 and later (hardware version 13) |
+| `v2.2.1` | the "Version 2.2.1" commit | 2026-10-31; the appliance makes its web administrator again (the password chosen at setup signs in), audit result conformity over the scored checks, dnspython 2.9.0 |
 
 ## Making a release
 
