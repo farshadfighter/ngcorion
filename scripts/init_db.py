@@ -7,7 +7,7 @@ This script:
    NGCORION_ADMIN_PASSWORD, or generated at random and printed once; it must
    pass the same password policy as every other account. There is no
    built-in default password.
-3. Creates default asset types
+3. Creates default asset types (the network zones come from the migrations)
 4. Sets up admin permissions
 
 Run from the project root, after `alembic upgrade head`:
@@ -25,7 +25,7 @@ from app.models import (
     User, UserPermission, LoginLog,
     Asset, AssetType, AssetOwner, AssetLocation,
     AssetDependency, AssetSecurityStatus,
-    NetworkZone, OSCatalog, VendorCatalog
+    OSCatalog, VendorCatalog
 )
 from app.models.user import UserRole
 from app.schemas.user import validate_password_strength
@@ -162,31 +162,6 @@ def create_default_asset_types(db):
     print(f"✓ Created {len(asset_types)} default asset types")
 
 
-def create_default_network_zones(db):
-    """Create default network zones"""
-    print("\nCreating default network zones...")
-    
-    existing = db.query(NetworkZone).first()
-    if existing:
-        print("✓ Network zones already exist (skipping)")
-        return
-    
-    zones = [
-        {"zone_name": "DMZ", "description": "Demilitarized Zone"},
-        {"zone_name": "Internal", "description": "Internal network"},
-        {"zone_name": "External", "description": "External/Internet facing"},
-        {"zone_name": "Management", "description": "Management network"},
-        {"zone_name": "Guest", "description": "Guest network"},
-    ]
-    
-    for z in zones:
-        zone = NetworkZone(**z)
-        db.add(zone)
-    
-    db.commit()
-    print(f"✓ Created {len(zones)} default network zones")
-
-
 def create_default_os_catalog(db):
     """Create default OS catalog entries"""
     print("\nCreating default OS catalog...")
@@ -267,7 +242,6 @@ def main():
         
         # Create default data
         create_default_asset_types(db)
-        create_default_network_zones(db)
         create_default_os_catalog(db)
         create_default_vendors(db)
         

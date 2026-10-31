@@ -100,7 +100,7 @@ def _ca(cn="Corp Root CA"):
 
 def _leaf(cn="srv.corp.local", issuer=None, days=(-10, 365), rsa_bits=None, sans=None):
     key = rsa.generate_private_key(65537, rsa_bits) if rsa_bits else ec.generate_private_key(ec.SECP256R1())
-    now = datetime.now(timezone.utc)
+    now = NOW.replace(tzinfo=timezone.utc)          # the tests evaluate at NOW, not today
     ca_cert, ca_key = issuer if issuer else (None, key)
     b = (x509.CertificateBuilder().subject_name(_name(cn))
          .issuer_name(ca_cert.subject if ca_cert else _name(cn)).public_key(key.public_key())

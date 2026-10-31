@@ -48,7 +48,12 @@ password = validate_password_strength(sys.stdin.readline().rstrip("\n"))
 db = SessionLocal()
 user = db.query(User).filter(User.username == "admin").first()
 if user is None:
-    sys.exit("There is no user named admin")
+    # no administrator yet (the first-start setup stopped before making one): make it now
+    import os, runpy
+    db.close()
+    os.environ["NGCORION_ADMIN_PASSWORD"] = password
+    runpy.run_path("scripts/init_db.py", run_name="__main__")
+    sys.exit(0)
 user.hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 user.must_change_password = True
 user.is_active = True

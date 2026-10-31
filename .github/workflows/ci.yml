@@ -132,6 +132,21 @@ jobs:
           # The command-line tools the admin guide gives run on the compiled code.
           docker exec -w /app ngcorion python -m app.modules.sysbackup.cli --help > /dev/null
           docker exec -w /app ngcorion python -m app.modules.audit_archive --help > /dev/null
+      - name: The first administrator signs in with the password chosen at setup
+        # As the appliance's first start makes it (appliance/ngcorion_appliance/system.py create_admin,
+        # scripts/init_db.py) and as its console resets it: the password on stdin, then a real sign-in.
+        run: |
+          login() {
+            curl -s -X POST http://127.0.0.1:8000/auth/login -H 'Content-Type: application/json' \
+              -d "{\"username\":\"admin\",\"password\":\"$1\"}"
+          }
+          echo 'Ci-Admin-First-2026!' | docker exec -i -u 10001:10001 -w /app ngcorion sh -c \
+            'IFS= read -r NGCORION_ADMIN_PASSWORD; export NGCORION_ADMIN_PASSWORD; exec python scripts/init_db.py'
+          login 'Ci-Admin-First-2026!' | grep -q '"access_token"'
+          reset=$(PYTHONPATH=appliance python3 -c 'from ngcorion_appliance.system import _RESET_PASSWORD_PY as s; print(s)')
+          echo 'Ci-Admin-Reset-2026!' | docker exec -i -u 10001:10001 -w /app ngcorion python -c "$reset"
+          login 'Ci-Admin-Reset-2026!' | grep -q '"access_token"'
+          login 'Ci-Admin-First-2026!' | grep -q 'Incorrect username or password'
 
   appliance:
     name: Appliance (Packer template, OVA packaging)
