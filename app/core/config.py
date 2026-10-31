@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Project Info
     PROJECT_NAME: str = "NGcorion"
-    VERSION: str = "2.2.1"
+    VERSION: str = "2.2.2"
     DESCRIPTION: str = "Network Monitoring and Asset Management System"
 
     # Database

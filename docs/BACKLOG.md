@@ -20,7 +20,7 @@ this file describes what is not (yet).
 | I9 | From testing: the OVA was refused by ESXi older than 6.7 ("Unsupported hardware family 'vmx-14'"); hardware version 13 (ESXi 6.5 and later) | done (cb8dcdd) |
 | I10 | From testing: an audit result's conformity and non-conformity were wrong (not over the scored checks, not the session's score) | done (59b2867) |
 | I11 | From testing: on the appliance the admin password chosen at setup or reset at the console never signed in (no admin account was made) | done (8b73e39) |
-| I12 | From testing: an offline license file installed on the appliance did not hold; after a reload the activation screen came back (only one of the four worker processes had it) | done (this release) |
+| I12 | From testing: an offline license file installed on the appliance did not hold; after a reload the activation screen came back (only one of the four worker processes had it) | done (147bb27) |
 
 Bugs reported from testing on the customer test server go before everything else here.
 
@@ -76,7 +76,8 @@ too) was added on request before the bug list. Next: the bugs reported from test
 
 | Item | Commit |
 |---|---|
-| The license reaches every worker process (offline license file held after a reload) | (this commit) |
+| Version 2.2.2 | (this commit) |
+| The license reaches every worker process (offline license file held after a reload) | 147bb27 |
 | Version 2.2.1 | 8b73e39 |
 | Version 2.2.0 | aed4519 |
 | The OVA deploys on ESXi 6.5 and later | cb8dcdd |
