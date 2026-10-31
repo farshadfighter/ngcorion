@@ -755,3 +755,12 @@ def test_the_image_gives_ssh_the_menu_only(tmp_path):
     assert "@include common-auth" not in text
     assert text.index("pam_faillock.so preauth") < text.index("pam_unix.so") < text.index("pam_faillock.so authfail")
     assert "account  required                  pam_faillock.so" in text
+
+
+def test_the_image_files_are_copied_without_the_build_accounts_ownership():
+    # cp -a gave /etc, /etc/sudoers.d, /opt and /usr/local/sbin the uploaded copies' owner (the
+    # build account's uid); sudo then refused /etc/sudoers.d and the 2.3.0 build stopped.
+    script = (ROOT / "appliance/provision/20-ngcorion.sh").read_text()
+    assert "cp -a /tmp/rootfs" not in script
+    assert "tar -C / -xf - --no-overwrite-dir --no-same-owner --no-same-permissions" in script
+    assert "-user packer" in script and "! -user root -o -perm /022" in script
