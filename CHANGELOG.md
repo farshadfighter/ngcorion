@@ -13,6 +13,8 @@
   makes `admin` when there is none, and CI makes the administrator in
   the built image as the appliance does and signs in with its password.
 - pyasn1 0.6.5 (CVE-2026-119194 to CVE-2026-119197 in 0.6.4).
+- Web UI: follow-redirects 1.16.2 (GHSA-mrwp-f3q8-3g9p); minimatch 11 for the
+  lint tools (GHSA-g3hv-75wg-m249).
 - The conformity and non-conformity of an audit result were wrong: both
   were taken over the module's count of checks while the passed and
   failed counts took every row, so they could add up to more than 100%
