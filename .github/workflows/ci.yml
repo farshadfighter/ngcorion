@@ -251,7 +251,7 @@ jobs:
         run: >-
           uv run --no-project --with markdown==3.5.2 --with playwright==1.63.0 --with pypdf==5.4.0
           python scripts/docs_pdf.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ngcorion-docs-fa-pdf
           path: dist/docs/*.pdf
